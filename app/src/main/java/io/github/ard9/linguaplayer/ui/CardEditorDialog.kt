@@ -17,6 +17,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,6 +43,9 @@ fun CardEditorDialog(
     initialStartMs: Long,
     initialEndMs: Long,
     initialText: String,
+    /** Text read from the subtitle picture; fills the Text field if it is still empty. */
+    detectedText: String,
+    readingText: Boolean,
     image: Bitmap?,
     currentTime: () -> Long,
     onPreview: (startMs: Long, endMs: Long) -> Unit,
@@ -52,6 +56,9 @@ fun CardEditorDialog(
     var endText by remember { mutableStateOf(formatClock(initialEndMs)) }
     var text by remember { mutableStateOf(initialText) }
     var meaning by remember { mutableStateOf("") }
+    LaunchedEffect(detectedText) {
+        if (text.isBlank() && detectedText.isNotBlank()) text = detectedText
+    }
 
     val start = parseClock(startText)
     val end = parseClock(endText)
@@ -95,7 +102,7 @@ fun CardEditorDialog(
                     value = text,
                     onValueChange = { text = it },
                     label = { Text("Text") },
-                    placeholder = { Text("What is said") },
+                    placeholder = { Text(if (readingText) "Reading the subtitle…" else "What is said") },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(

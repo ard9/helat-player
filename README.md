@@ -35,8 +35,9 @@ Review intervals: Box 1 every day, Box 2 every 2 days, Box 3 every 4, Box 4 ever
 ## Limitations
 
 - The APK is built for 64-bit ARM phones (arm64-v8a) only.
-- Text of subtitle tracks inside the video cannot be read by the app, so saving a line
-  automatically needs a separate subtitle file. Use the manual time range otherwise.
+- For subtitle tracks inside the video, the app times each line from when it appears and
+  disappears on screen, and reads its text with on-device text recognition (ML Kit).
+  The recognised text can contain small mistakes; check it before saving.
 
 ## Fonts
 

@@ -75,6 +75,8 @@ import io.github.ard9.linguaplayer.data.SourceNames
 import io.github.ard9.linguaplayer.data.SubtitleStyle
 import io.github.ard9.linguaplayer.data.formatTime
 import io.github.ard9.linguaplayer.player.FrameGrabber
+import io.github.ard9.linguaplayer.player.SubtitleOcr
+import io.github.ard9.linguaplayer.player.SubtitleWatcher
 import io.github.ard9.linguaplayer.player.openVlcMedia
 import io.github.ard9.linguaplayer.subtitle.SubtitleLine
 import io.github.ard9.linguaplayer.subtitle.SubtitleLookup
@@ -165,6 +167,17 @@ fun PlayerScreen(
     var draft by remember { mutableStateOf<SaveDraft?>(null) }
     var draftImage by remember { mutableStateOf<Bitmap?>(null) }
     var videoLayout by remember { mutableStateOf<VLCVideoLayout?>(null) }
+    var detectedText by remember { mutableStateOf("") }
+    var readingText by remember { mutableStateOf(false) }
+    var waitingForLine by remember { mutableStateOf(false) }
+    // Times built-in subtitles from the moment they appear and disappear on screen.
+    val watcher = remember {
+        SubtitleWatcher(
+            layout = { videoLayout },
+            clock = { player.time },
+            isActive = { player.isPlaying && externalLines == null },
+        )
+    }
     var previewEndMs by remember { mutableStateOf<Long?>(null) }
     var trackDialog by remember { mutableStateOf<TrackKind?>(null) }
 
@@ -185,6 +198,8 @@ fun PlayerScreen(
 
     fun seekTo(ms: Long) {
         val upper = if (lengthMs > 0) lengthMs else Long.MAX_VALUE
+        watcher.reset()
+        waitingForLine = false
         player.setTime(ms.coerceIn(0L, upper))
     }
 
@@ -224,17 +239,57 @@ fun PlayerScreen(
         }
     }
 
-    fun onSaveClicked() {
-        val now = player.time
+    fun openDraft(startMs: Long, endMs: Long, text: String, subtitleImage: Bitmap?) {
         player.pause()
-        val line = externalLines?.let { SubtitleLookup.lineForSave(it, now) }
-        draft = if (line != null) {
-            SaveDraft(max(0L, line.startMs - CLIP_PADDING_MS), line.endMs + CLIP_PADDING_MS, line.text)
-        } else {
-            SaveDraft(max(0L, now - 5_000L), now, "")
-        }
+        draft = SaveDraft(startMs, endMs, text)
         draftImage = null
+        detectedText = ""
+        readingText = subtitleImage != null
         videoLayout?.let { layout -> FrameGrabber.grab(layout) { draftImage = it } }
+        subtitleImage?.let { image ->
+            SubtitleOcr.read(image) {
+                detectedText = it
+                readingText = false
+            }
+        }
+    }
+
+    fun openDraftFor(line: SubtitleWatcher.Line) = openDraft(
+        max(0L, line.startMs - CLIP_PADDING_MS),
+        line.endMs + CLIP_PADDING_MS,
+        "",
+        line.image,
+    )
+
+    fun onSaveClicked() {
+        if (waitingForLine) return
+        val now = player.time
+        val fileLine = externalLines?.let { SubtitleLookup.lineForSave(it, now) }
+        if (fileLine != null) {
+            openDraft(max(0L, fileLine.startMs - CLIP_PADDING_MS), fileLine.endMs + CLIP_PADDING_MS, fileLine.text, null)
+            return
+        }
+        when (val target = if (externalLines == null) watcher.lineForSave(now) else SubtitleWatcher.SaveTarget.NoLine) {
+            is SubtitleWatcher.SaveTarget.Ready -> openDraftFor(target.line)
+            SubtitleWatcher.SaveTarget.WaitForEnd -> {
+                // Keep playing until the subtitle disappears, so its end time is exact.
+                waitingForLine = true
+                if (!player.isPlaying) player.play()
+                message("Saving when this line ends…")
+            }
+            SubtitleWatcher.SaveTarget.NoLine -> openDraft(max(0L, now - 5_000L), now, "", null)
+        }
+    }
+
+    DisposableEffect(watcher) {
+        watcher.onLineClosed = { line ->
+            if (waitingForLine) {
+                waitingForLine = false
+                openDraftFor(line)
+            }
+        }
+        watcher.start()
+        onDispose { watcher.stop() }
     }
 
     DisposableEffect(player) {
@@ -403,7 +458,15 @@ fun PlayerScreen(
             ExtendedFloatingActionButton(
                 onClick = ::onSaveClicked,
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text(if (savingCount > 0) "Saving…" else "Save") },
+                text = {
+                    Text(
+                        when {
+                            waitingForLine -> "Waiting…"
+                            savingCount > 0 -> "Saving…"
+                            else -> "Save"
+                        }
+                    )
+                },
                 modifier = Modifier.align(Alignment.CenterEnd).padding(end = 16.dp),
             )
 
@@ -498,9 +561,12 @@ fun PlayerScreen(
             initialStartMs = current.startMs,
             initialEndMs = current.endMs,
             initialText = current.text,
+            detectedText = detectedText,
+            readingText = readingText,
             image = draftImage,
             currentTime = { player.time },
             onPreview = { s, e ->
+                watcher.reset()
                 player.setTime(s)
                 player.play()
                 previewEndMs = e

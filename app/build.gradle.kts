@@ -83,6 +83,9 @@ dependencies {
     // Video playback (all formats VLC supports).
     implementation("org.videolan.android:libvlc-all:3.7.6")
 
+    // Reads built-in subtitle text on the device (bundled model, no Play services needed).
+    implementation("com.google.mlkit:text-recognition:16.0.1")
+
     // Audio clipping (fast path) and playing saved clips.
     implementation("androidx.media3:media3-exoplayer:$media3")
     implementation("androidx.media3:media3-transformer:$media3")
