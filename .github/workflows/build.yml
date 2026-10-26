@@ -44,13 +44,22 @@ jobs:
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: |
+          set -o pipefail
           if [ "$SIGNED" = "true" ]; then
-            gradle --no-daemon assembleRelease
+            gradle --no-daemon assembleRelease 2>&1 | tee build.log
             cp app/build/outputs/apk/release/app-release.apk LinguaPlayer.apk
           else
-            gradle --no-daemon assembleDebug
+            gradle --no-daemon assembleDebug 2>&1 | tee build.log
             cp app/build/outputs/apk/debug/app-debug.apk LinguaPlayer.apk
           fi
+
+      - name: Summarize build errors
+        if: failure()
+        run: |
+          # Put the compiler errors in one annotation so they show on the run summary page.
+          summary=$(grep -E "^e: |What went wrong|^> |error:" -A2 build.log | grep -v "^--$" | head -60 \
+            | sed -e 's/%/%25/g' -e 's/\r//g' | sed ':a;N;$!ba;s/\n/%0A/g')
+          echo "::error title=Build errors::${summary:-No error lines found in build.log}"
 
       - name: Remove signing key
         if: always()
