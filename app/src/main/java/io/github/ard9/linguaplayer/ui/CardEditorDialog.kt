@@ -1,10 +1,15 @@
 package io.github.ard9.linguaplayer.ui
 
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -18,6 +23,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import io.github.ard9.linguaplayer.data.formatClock
@@ -26,21 +33,25 @@ import io.github.ard9.linguaplayer.data.parseClock
 const val MAX_CLIP_MS = 60_000L
 
 /**
- * Lets the user pick a start and end time by hand when there is no subtitle line to save.
- * [currentTime] is read when a "Now" button is pressed, so it follows a running preview.
+ * Shown when the user taps Save: start/end time (prefilled from the subtitle line when there
+ * is one), text, meaning and the captured frame. [currentTime] is read when a "Now" button is
+ * pressed, so it follows a running preview.
  */
 @Composable
-fun RangeSaveDialog(
+fun CardEditorDialog(
     initialStartMs: Long,
     initialEndMs: Long,
+    initialText: String,
+    image: Bitmap?,
     currentTime: () -> Long,
     onPreview: (startMs: Long, endMs: Long) -> Unit,
     onDismiss: () -> Unit,
-    onSave: (startMs: Long, endMs: Long, text: String) -> Unit,
+    onSave: (startMs: Long, endMs: Long, text: String, meaning: String) -> Unit,
 ) {
     var startText by remember { mutableStateOf(formatClock(initialStartMs)) }
     var endText by remember { mutableStateOf(formatClock(initialEndMs)) }
-    var note by remember { mutableStateOf("") }
+    var text by remember { mutableStateOf(initialText) }
+    var meaning by remember { mutableStateOf("") }
 
     val start = parseClock(startText)
     val end = parseClock(endText)
@@ -55,12 +66,24 @@ fun RangeSaveDialog(
     } else {
         null
     }
+    val imageBitmap = remember(image) { image?.asImageBitmap() }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Save a part") },
+        title = { Text("New card") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+            ) {
+                if (imageBitmap != null) {
+                    Image(
+                        bitmap = imageBitmap,
+                        contentDescription = "Video frame",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 140.dp),
+                    )
+                }
                 TimeRow("Start", startText, { startText = it }) { startText = formatClock(currentTime()) }
                 TimeRow("End", endText, { endText = it }) { endText = formatClock(currentTime()) }
                 OutlinedButton(
@@ -69,10 +92,17 @@ fun RangeSaveDialog(
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text("Preview") }
                 OutlinedTextField(
-                    value = note,
-                    onValueChange = { note = it },
-                    label = { Text("Text (optional)") },
-                    placeholder = { Text("What is said in this part") },
+                    value = text,
+                    onValueChange = { text = it },
+                    label = { Text("Text") },
+                    placeholder = { Text("What is said") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = meaning,
+                    onValueChange = { meaning = it },
+                    label = { Text("Meaning") },
+                    placeholder = { Text("Translation or note") },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 if (error != null) {
@@ -82,10 +112,46 @@ fun RangeSaveDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { if (start != null && end != null && error == null) onSave(start, end, note.trim()) },
+                onClick = {
+                    if (start != null && end != null && error == null) onSave(start, end, text.trim(), meaning.trim())
+                },
                 enabled = error == null,
             ) { Text("Save") }
         },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+/** Edits the text and meaning of an existing card. */
+@Composable
+fun CardTextDialog(
+    initialText: String,
+    initialMeaning: String,
+    onDismiss: () -> Unit,
+    onSave: (text: String, meaning: String) -> Unit,
+) {
+    var text by remember { mutableStateOf(initialText) }
+    var meaning by remember { mutableStateOf(initialMeaning) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit card") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    label = { Text("Text") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = meaning,
+                    onValueChange = { meaning = it },
+                    label = { Text("Meaning") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = { onSave(text.trim(), meaning.trim()) }) { Text("Save") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }

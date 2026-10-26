@@ -14,6 +14,7 @@ import java.io.File
 class CardRepository(context: Context) {
     private val file = File(context.filesDir, "cards.json")
     private val clipsDir = File(context.filesDir, "clips").apply { mkdirs() }
+    private val imagesDir = File(context.filesDir, "images").apply { mkdirs() }
 
     private val _cards = MutableStateFlow(load())
     val cards: StateFlow<List<Card>> = _cards
@@ -22,6 +23,11 @@ class CardRepository(context: Context) {
     fun newClipFile(id: String, extension: String): File = File(clipsDir, "$id.$extension")
 
     fun audioFile(card: Card): File = File(clipsDir, File(card.audioFileName).name)
+
+    /** Where the picture of a new card with this id should be written. */
+    fun newImageFile(id: String): File = File(imagesDir, "$id.jpg")
+
+    fun imageFile(card: Card): File? = card.imageFileName?.let { File(imagesDir, File(it).name) }
 
     @Synchronized
     fun add(card: Card) = save(_cards.value + card)
@@ -32,6 +38,7 @@ class CardRepository(context: Context) {
     @Synchronized
     fun delete(card: Card) {
         audioFile(card).delete()
+        imageFile(card)?.delete()
         save(_cards.value.filterNot { it.id == card.id })
     }
 

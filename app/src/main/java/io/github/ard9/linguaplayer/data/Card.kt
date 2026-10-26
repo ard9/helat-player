@@ -4,15 +4,18 @@ import org.json.JSONObject
 import java.util.UUID
 import kotlin.math.min
 
-/** One saved sentence: its audio clip, subtitle text and Leitner state. */
+/** One saved sentence: its audio clip, optional picture, text, meaning and Leitner state. */
 data class Card(
     val id: String,
     val text: String,
+    val meaning: String,
     val sourceTitle: String,
     val sourceUri: String,
     val startMs: Long,
     val endMs: Long,
     val audioFileName: String,
+    /** A frame of the video at the moment of saving; null if none could be taken. */
+    val imageFileName: String?,
     val box: Int,
     val createdAt: Long,
     val nextReviewAt: Long,
@@ -20,11 +23,13 @@ data class Card(
     fun toJson(): JSONObject = JSONObject()
         .put("id", id)
         .put("text", text)
+        .put("meaning", meaning)
         .put("sourceTitle", sourceTitle)
         .put("sourceUri", sourceUri)
         .put("startMs", startMs)
         .put("endMs", endMs)
         .put("audioFileName", audioFileName)
+        .put("imageFileName", imageFileName ?: JSONObject.NULL)
         .put("box", box)
         .put("createdAt", createdAt)
         .put("nextReviewAt", nextReviewAt)
@@ -35,11 +40,13 @@ data class Card(
         fun fromJson(o: JSONObject): Card = Card(
             id = o.getString("id"),
             text = o.getString("text"),
+            meaning = o.optString("meaning"),
             sourceTitle = o.optString("sourceTitle"),
             sourceUri = o.optString("sourceUri"),
             startMs = o.getLong("startMs"),
             endMs = o.getLong("endMs"),
             audioFileName = o.getString("audioFileName"),
+            imageFileName = if (o.isNull("imageFileName")) null else o.getString("imageFileName"),
             box = o.getInt("box").coerceIn(1, Leitner.BOX_COUNT),
             createdAt = o.getLong("createdAt"),
             nextReviewAt = o.getLong("nextReviewAt"),

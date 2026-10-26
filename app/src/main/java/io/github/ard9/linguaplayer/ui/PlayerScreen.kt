@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.ActivityInfo
+import android.graphics.Bitmap
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -69,6 +70,7 @@ import io.github.ard9.linguaplayer.data.CardRepository
 import io.github.ard9.linguaplayer.data.PlaybackSource
 import io.github.ard9.linguaplayer.data.SourceNames
 import io.github.ard9.linguaplayer.data.formatTime
+import io.github.ard9.linguaplayer.player.FrameGrabber
 import io.github.ard9.linguaplayer.player.openVlcMedia
 import io.github.ard9.linguaplayer.subtitle.SubtitleLine
 import io.github.ard9.linguaplayer.subtitle.SubtitleLookup
@@ -98,6 +100,8 @@ private val SCALES = listOf(
 
 private enum class TrackKind { Audio, Subtitle }
 
+private data class SaveDraft(val startMs: Long, val endMs: Long, val text: String)
+
 @Composable
 fun PlayerScreen(
     source: PlaybackSource,
@@ -125,7 +129,9 @@ fun PlayerScreen(
     var externalLines by remember { mutableStateOf<List<SubtitleLine>?>(null) }
     var externalName by remember { mutableStateOf<String?>(null) }
     var savingCount by remember { mutableIntStateOf(0) }
-    var rangeDraft by remember { mutableStateOf<Pair<Long, Long>?>(null) }
+    var draft by remember { mutableStateOf<SaveDraft?>(null) }
+    var draftImage by remember { mutableStateOf<Bitmap?>(null) }
+    var videoLayout by remember { mutableStateOf<VLCVideoLayout?>(null) }
     var previewEndMs by remember { mutableStateOf<Long?>(null) }
     var trackDialog by remember { mutableStateOf<TrackKind?>(null) }
 
@@ -149,8 +155,11 @@ fun PlayerScreen(
         player.setTime(ms.coerceIn(0L, upper))
     }
 
-    fun saveClip(startMs: Long, endMs: Long, text: String) {
+    fun saveClip(startMs: Long, endMs: Long, text: String, meaning: String, image: Bitmap?) {
         val id = Card.newId()
+        val imageFile = image?.let { bitmap ->
+            repository.newImageFile(id).takeIf { FrameGrabber.saveJpeg(bitmap, it) }
+        }
         savingCount++
         clips.clip(source.uri, startMs, endMs, id) { result ->
             savingCount--
@@ -161,11 +170,13 @@ fun PlayerScreen(
                         Card(
                             id = id,
                             text = text,
+                            meaning = meaning,
                             sourceTitle = source.title,
                             sourceUri = source.uri.toString(),
                             startMs = startMs,
                             endMs = endMs,
                             audioFileName = file.name,
+                            imageFileName = imageFile?.name,
                             box = 1,
                             createdAt = now,
                             nextReviewAt = now,
@@ -173,19 +184,24 @@ fun PlayerScreen(
                     )
                     message("Saved to Box 1")
                 }
-                .onFailure { message("Could not cut the audio: ${it.message}", sticky = true) }
+                .onFailure {
+                    imageFile?.delete()
+                    message("Could not cut the audio: ${it.message}", sticky = true)
+                }
         }
     }
 
     fun onSaveClicked() {
         val now = player.time
+        player.pause()
         val line = externalLines?.let { SubtitleLookup.lineForSave(it, now) }
-        if (line != null) {
-            saveClip(max(0L, line.startMs - CLIP_PADDING_MS), line.endMs + CLIP_PADDING_MS, line.text)
+        draft = if (line != null) {
+            SaveDraft(max(0L, line.startMs - CLIP_PADDING_MS), line.endMs + CLIP_PADDING_MS, line.text)
         } else {
-            player.pause()
-            rangeDraft = max(0L, now - 5_000L) to now
+            SaveDraft(max(0L, now - 5_000L), now, "")
         }
+        draftImage = null
+        videoLayout?.let { layout -> FrameGrabber.grab(layout) { draftImage = it } }
     }
 
     DisposableEffect(player) {
@@ -282,6 +298,7 @@ fun PlayerScreen(
                 VLCVideoLayout(ctx).apply {
                     keepScreenOn = true
                     player.attachViews(this, null, true, false)
+                    videoLayout = this
                 }
             },
             modifier = Modifier.fillMaxSize(),
@@ -328,6 +345,13 @@ fun PlayerScreen(
                     modifier = Modifier.weight(1f),
                 )
             }
+
+            ExtendedFloatingActionButton(
+                onClick = ::onSaveClicked,
+                icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                text = { Text(if (savingCount > 0) "Saving…" else "Save") },
+                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 16.dp),
+            )
 
             Row(
                 horizontalArrangement = Arrangement.spacedBy(32.dp),
@@ -407,20 +431,16 @@ fun PlayerScreen(
             }
         }
 
-        ExtendedFloatingActionButton(
-            onClick = ::onSaveClicked,
-            icon = { Icon(Icons.Default.Add, contentDescription = null) },
-            text = { Text(if (savingCount > 0) "Saving…" else "Save") },
-            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 16.dp),
-        )
 
         SnackbarHost(snackbar, Modifier.align(Alignment.TopCenter).padding(top = 56.dp))
     }
 
-    rangeDraft?.let { (start, end) ->
-        RangeSaveDialog(
-            initialStartMs = start,
-            initialEndMs = end,
+    draft?.let { current ->
+        CardEditorDialog(
+            initialStartMs = current.startMs,
+            initialEndMs = current.endMs,
+            initialText = current.text,
+            image = draftImage,
             currentTime = { player.time },
             onPreview = { s, e ->
                 player.setTime(s)
@@ -428,14 +448,17 @@ fun PlayerScreen(
                 previewEndMs = e
             },
             onDismiss = {
-                rangeDraft = null
+                draft = null
+                draftImage = null
                 previewEndMs = null
             },
-            onSave = { s, e, text ->
-                rangeDraft = null
+            onSave = { s, e, text, meaning ->
+                val image = draftImage
+                draft = null
+                draftImage = null
                 previewEndMs = null
                 player.pause()
-                saveClip(s, e, text)
+                saveClip(s, e, text, meaning, image)
             },
         )
     }

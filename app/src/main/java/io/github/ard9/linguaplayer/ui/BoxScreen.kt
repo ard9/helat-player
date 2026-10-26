@@ -1,6 +1,14 @@
 package io.github.ard9.linguaplayer.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -47,6 +55,7 @@ import io.github.ard9.linguaplayer.data.formatTime
 fun BoxScreen(cards: List<Card>, repository: CardRepository, onBack: () -> Unit) {
     var selectedBox by rememberSaveable { mutableIntStateOf(1) }
     var toDelete by remember { mutableStateOf<Card?>(null) }
+    var toEdit by remember { mutableStateOf<Card?>(null) }
     val audio = rememberClipAudioPlayer()
     val inBox = cards.filter { it.box == selectedBox }.sortedByDescending { it.createdAt }
 
@@ -85,10 +94,25 @@ fun BoxScreen(cards: List<Card>, repository: CardRepository, onBack: () -> Unit)
                         ElevatedCard(Modifier.fillMaxWidth()) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
+                                modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 8.dp),
                             ) {
+                                val thumbnail = rememberCardImage(repository.imageFile(card), maxWidthPx = 240)
+                                if (thumbnail != null) {
+                                    Image(
+                                        bitmap = thumbnail,
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .size(width = 72.dp, height = 48.dp)
+                                            .clip(RoundedCornerShape(6.dp)),
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                }
                                 Column(Modifier.weight(1f)) {
                                     Text(card.text.ifBlank { "(audio only)" }, style = MaterialTheme.typography.bodyLarge)
+                                    if (card.meaning.isNotBlank()) {
+                                        Text(card.meaning, style = MaterialTheme.typography.bodyMedium)
+                                    }
                                     Text(
                                         "${card.sourceTitle} · ${formatTime(card.startMs)}",
                                         style = MaterialTheme.typography.bodySmall,
@@ -99,6 +123,9 @@ fun BoxScreen(cards: List<Card>, repository: CardRepository, onBack: () -> Unit)
                                 IconButton(onClick = { audio.play(repository.audioFile(card)) }) {
                                     Icon(Icons.Default.PlayArrow, contentDescription = "Play")
                                 }
+                                IconButton(onClick = { toEdit = card }) {
+                                    Icon(Icons.Default.Edit, contentDescription = "Edit")
+                                }
                                 IconButton(onClick = { toDelete = card }) {
                                     Icon(Icons.Default.Delete, contentDescription = "Delete")
                                 }
@@ -108,6 +135,18 @@ fun BoxScreen(cards: List<Card>, repository: CardRepository, onBack: () -> Unit)
                 }
             }
         }
+    }
+
+    toEdit?.let { card ->
+        CardTextDialog(
+            initialText = card.text,
+            initialMeaning = card.meaning,
+            onDismiss = { toEdit = null },
+            onSave = { text, meaning ->
+                repository.update(card.copy(text = text, meaning = meaning))
+                toEdit = null
+            },
+        )
     }
 
     toDelete?.let { card ->
