@@ -66,6 +66,24 @@ object Leitner {
         card.copy(box = 1, nextReviewAt = now + intervalMs(1))
 }
 
+/** Like [formatTime] but with tenths of a second, e.g. "1:23.4". */
+fun formatClock(ms: Long): String = "${formatTime(ms)}.${(ms % 1000) / 100}"
+
+/** Parses "83", "1:23", "1:23.4" or "1:02:03.5" into milliseconds; null if invalid. */
+fun parseClock(text: String): Long? {
+    val parts = text.trim().split(':')
+    if (parts.isEmpty() || parts.size > 3) return null
+    val seconds = parts.last().toDoubleOrNull() ?: return null
+    if (seconds < 0 || (parts.size > 1 && seconds >= 60)) return null
+    var total = 0L
+    for (part in parts.dropLast(1)) {
+        val value = part.toLongOrNull() ?: return null
+        if (value < 0) return null
+        total = total * 60 + value
+    }
+    return total * 60_000 + Math.round(seconds * 1000)
+}
+
 fun formatTime(ms: Long): String {
     val totalSeconds = ms / 1000
     val h = totalSeconds / 3600

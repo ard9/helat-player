@@ -88,7 +88,7 @@ fun BoxScreen(cards: List<Card>, repository: CardRepository, onBack: () -> Unit)
                                 modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
                             ) {
                                 Column(Modifier.weight(1f)) {
-                                    Text(card.text, style = MaterialTheme.typography.bodyLarge)
+                                    Text(card.text.ifBlank { "(audio only)" }, style = MaterialTheme.typography.bodyLarge)
                                     Text(
                                         "${card.sourceTitle} · ${formatTime(card.startMs)}",
                                         style = MaterialTheme.typography.bodySmall,
@@ -114,7 +114,7 @@ fun BoxScreen(cards: List<Card>, repository: CardRepository, onBack: () -> Unit)
         AlertDialog(
             onDismissRequest = { toDelete = null },
             title = { Text("Delete card?") },
-            text = { Text(card.text) },
+            text = { Text(card.text.ifBlank { "(audio only)" }) },
             confirmButton = {
                 TextButton(onClick = {
                     repository.delete(card)

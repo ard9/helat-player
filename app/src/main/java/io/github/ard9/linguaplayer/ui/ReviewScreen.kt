@@ -74,7 +74,11 @@ fun ReviewScreen(cards: List<Card>, repository: CardRepository, onBack: () -> Un
                 ElevatedCard(Modifier.fillMaxWidth()) {
                     Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
                         Text(
-                            text = if (revealed || !hasAudio) card.text else "Listen, then reveal the text",
+                            text = if (revealed || !hasAudio) {
+                                card.text.ifBlank { "No text" }
+                            } else {
+                                "Listen, then reveal the text"
+                            },
                             style = if (revealed || !hasAudio) {
                                 MaterialTheme.typography.headlineSmall
                             } else {

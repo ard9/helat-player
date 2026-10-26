@@ -19,7 +19,7 @@ class CardRepository(context: Context) {
     val cards: StateFlow<List<Card>> = _cards
 
     /** Where a new clip with this card id should be written. */
-    fun newClipFile(id: String): File = File(clipsDir, "$id.m4a")
+    fun newClipFile(id: String, extension: String): File = File(clipsDir, "$id.$extension")
 
     fun audioFile(card: Card): File = File(clipsDir, File(card.audioFileName).name)
 

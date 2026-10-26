@@ -1,38 +1,49 @@
 package io.github.ard9.linguaplayer.ui
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.pm.ActivityInfo
 import android.net.Uri
-import android.view.View
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -40,31 +51,25 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.media3.common.MediaItem
-import androidx.media3.common.PlaybackException
-import androidx.media3.common.Player
-import androidx.media3.common.text.CueGroup
-import androidx.media3.common.util.UnstableApi
-import androidx.media3.exoplayer.DefaultRenderersFactory
-import androidx.media3.exoplayer.ExoPlaybackException
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.mediacodec.MediaCodecRenderer
-import androidx.media3.ui.PlayerView
-import io.github.ard9.linguaplayer.clip.AudioClipper
+import io.github.ard9.linguaplayer.clip.ClipService
 import io.github.ard9.linguaplayer.data.Card
 import io.github.ard9.linguaplayer.data.CardRepository
 import io.github.ard9.linguaplayer.data.PlaybackSource
 import io.github.ard9.linguaplayer.data.SourceNames
-import io.github.ard9.linguaplayer.subtitle.EmbeddedCueTracker
-import io.github.ard9.linguaplayer.subtitle.EmbeddedCueTracker.SaveTarget
+import io.github.ard9.linguaplayer.data.formatTime
+import io.github.ard9.linguaplayer.player.openVlcMedia
 import io.github.ard9.linguaplayer.subtitle.SubtitleLine
 import io.github.ard9.linguaplayer.subtitle.SubtitleLookup
 import io.github.ard9.linguaplayer.subtitle.SubtitleParser
@@ -72,68 +77,57 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.videolan.libvlc.LibVLC
+import org.videolan.libvlc.MediaPlayer
+import org.videolan.libvlc.util.VLCVideoLayout
 import kotlin.math.max
 
-/** Extra audio kept before and after each line so words are not cut off. */
+/** Extra audio kept before and after each subtitle line so words are not cut off. */
 private const val CLIP_PADDING_MS = 250L
+private const val SKIP_MS = 10_000L
+private const val CONTROLS_TIMEOUT_MS = 4_000L
 
-/** Turns a playback error into a message that names the failing track and codec. */
-@androidx.annotation.OptIn(UnstableApi::class)
-private fun describePlaybackError(error: PlaybackException): String {
-    val format = (error as? ExoPlaybackException)?.rendererFormat
-    val decoderInfo = generateSequence(error.cause) { it.cause }
-        .filterIsInstance<MediaCodecRenderer.DecoderInitializationException>()
-        .firstOrNull()
-    val mimeType = format?.sampleMimeType ?: decoderInfo?.mimeType
-    return buildString {
-        append("Playback error: ${error.errorCodeName}")
-        if (mimeType != null) {
-            val kind = when {
-                mimeType.startsWith("audio/") -> "audio"
-                mimeType.startsWith("video/") -> "video"
-                else -> "track"
-            }
-            append("\nThis device can't decode the $kind format: $mimeType")
-            format?.codecs?.let { append(" ($it)") }
-            if (kind == "video" && format != null && format.width > 0) {
-                append(", ${format.width}x${format.height}")
-            }
-        }
-    }
-}
+private val SCALES = listOf(
+    MediaPlayer.ScaleType.SURFACE_BEST_FIT to "Best fit",
+    MediaPlayer.ScaleType.SURFACE_FIT_SCREEN to "Fit screen",
+    MediaPlayer.ScaleType.SURFACE_FILL to "Fill",
+    MediaPlayer.ScaleType.SURFACE_16_9 to "16:9",
+    MediaPlayer.ScaleType.SURFACE_4_3 to "4:3",
+    MediaPlayer.ScaleType.SURFACE_ORIGINAL to "Original",
+)
 
-@androidx.annotation.OptIn(UnstableApi::class)
-@OptIn(ExperimentalMaterial3Api::class)
+private enum class TrackKind { Audio, Subtitle }
+
 @Composable
 fun PlayerScreen(
     source: PlaybackSource,
+    libVlc: LibVLC,
     repository: CardRepository,
-    clipper: AudioClipper,
+    clips: ClipService,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
+    val activity = remember(context) { context.findActivity() }
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
 
-    val player = remember {
-        // If the preferred (usually hardware) decoder fails, try the device's other decoders.
-        val renderers = DefaultRenderersFactory(context).setEnableDecoderFallback(true)
-        ExoPlayer.Builder(context, renderers).build().apply {
-            trackSelectionParameters = trackSelectionParameters.buildUpon()
-                .setPreferredTextLanguage("en")
-                .setSelectUndeterminedTextLanguage(true)
-                .build()
-            setMediaItem(MediaItem.fromUri(source.uri))
-            prepare()
-            playWhenReady = true
-        }
-    }
-    val tracker = remember { EmbeddedCueTracker() }
+    val opened = remember { runCatching { openVlcMedia(context, libVlc, source.uri) } }
+    val player = remember { MediaPlayer(libVlc) }
+
+    var timeMs by remember { mutableLongStateOf(0L) }
+    var lengthMs by remember { mutableLongStateOf(0L) }
+    var isPlaying by remember { mutableStateOf(false) }
+    var controlsVisible by remember { mutableStateOf(true) }
+    var interaction by remember { mutableIntStateOf(0) }
+    var fullscreen by remember { mutableStateOf(false) }
+    var scaleIndex by remember { mutableIntStateOf(0) }
+    var seekFraction by remember { mutableStateOf<Float?>(null) }
     var externalLines by remember { mutableStateOf<List<SubtitleLine>?>(null) }
     var externalName by remember { mutableStateOf<String?>(null) }
-    var currentText by remember { mutableStateOf("") }
     var savingCount by remember { mutableIntStateOf(0) }
-    var saveWhenLineEnds by remember { mutableStateOf(false) }
+    var rangeDraft by remember { mutableStateOf<Pair<Long, Long>?>(null) }
+    var previewEndMs by remember { mutableStateOf<Long?>(null) }
+    var trackDialog by remember { mutableStateOf<TrackKind?>(null) }
 
     fun message(text: String, sticky: Boolean = false) {
         scope.launch {
@@ -146,26 +140,32 @@ fun PlayerScreen(
         }
     }
 
-    fun saveLine(line: SubtitleLine) {
-        val start = max(0L, line.startMs - CLIP_PADDING_MS)
-        val end = line.endMs + CLIP_PADDING_MS
+    fun touch() {
+        interaction++
+    }
+
+    fun seekTo(ms: Long) {
+        val upper = if (lengthMs > 0) lengthMs else Long.MAX_VALUE
+        player.setTime(ms.coerceIn(0L, upper))
+    }
+
+    fun saveClip(startMs: Long, endMs: Long, text: String) {
         val id = Card.newId()
-        val output = repository.newClipFile(id)
         savingCount++
-        clipper.clip(source.uri, start, end, output) { result ->
+        clips.clip(source.uri, startMs, endMs, id) { result ->
             savingCount--
             result
-                .onSuccess {
+                .onSuccess { file ->
                     val now = System.currentTimeMillis()
                     repository.add(
                         Card(
                             id = id,
-                            text = line.text,
+                            text = text,
                             sourceTitle = source.title,
                             sourceUri = source.uri.toString(),
-                            startMs = line.startMs,
-                            endMs = line.endMs,
-                            audioFileName = output.name,
+                            startMs = startMs,
+                            endMs = endMs,
+                            audioFileName = file.name,
                             box = 1,
                             createdAt = now,
                             nextReviewAt = now,
@@ -173,61 +173,51 @@ fun PlayerScreen(
                     )
                     message("Saved to Box 1")
                 }
-                .onFailure { message("Could not cut the audio: ${it.message}") }
+                .onFailure { message("Could not cut the audio: ${it.message}", sticky = true) }
         }
     }
 
     fun onSaveClicked() {
-        val position = player.currentPosition
-        val lines = externalLines
-        if (lines != null) {
-            val line = SubtitleLookup.lineForSave(lines, position)
-            if (line == null) message("No subtitle line here yet") else saveLine(line)
-            return
-        }
-        when (val target = tracker.lineForSave(position)) {
-            is SaveTarget.Ready -> saveLine(target.line)
-            SaveTarget.WaitForEnd -> {
-                saveWhenLineEnds = true
-                message("Will save when this line ends")
-            }
-            SaveTarget.NoLine ->
-                message("No subtitles yet. Load a subtitle file or pick a subtitle track.")
+        val now = player.time
+        val line = externalLines?.let { SubtitleLookup.lineForSave(it, now) }
+        if (line != null) {
+            saveClip(max(0L, line.startMs - CLIP_PADDING_MS), line.endMs + CLIP_PADDING_MS, line.text)
+        } else {
+            player.pause()
+            rangeDraft = max(0L, now - 5_000L) to now
         }
     }
 
     DisposableEffect(player) {
-        val listener = object : Player.Listener {
-            override fun onCues(cueGroup: CueGroup) {
-                if (externalLines != null) return
-                val text = cueGroup.cues.mapNotNull { it.text?.toString() }.joinToString("\n").trim()
-                val closed = tracker.onCues(text, player.currentPosition)
-                currentText = text
-                if (saveWhenLineEnds && closed != null) {
-                    saveWhenLineEnds = false
-                    saveLine(closed)
+        player.setEventListener(MediaPlayer.EventListener { event ->
+            when (event.type) {
+                MediaPlayer.Event.TimeChanged -> timeMs = event.timeChanged
+                MediaPlayer.Event.LengthChanged -> lengthMs = event.lengthChanged
+                MediaPlayer.Event.Playing -> isPlaying = true
+                MediaPlayer.Event.Paused, MediaPlayer.Event.Stopped -> isPlaying = false
+                MediaPlayer.Event.EndReached -> {
+                    isPlaying = false
+                    controlsVisible = true
+                }
+                MediaPlayer.Event.EncounteredError -> {
+                    isPlaying = false
+                    message("VLC could not play this media", sticky = true)
                 }
             }
-
-            override fun onPositionDiscontinuity(
-                oldPosition: Player.PositionInfo,
-                newPosition: Player.PositionInfo,
-                reason: Int,
-            ) {
-                if (reason == Player.DISCONTINUITY_REASON_SEEK) {
-                    tracker.dropOpenLine()
-                    saveWhenLineEnds = false
-                }
+        })
+        opened
+            .onSuccess {
+                player.setMedia(it.media)
+                it.media.release()
+                player.play()
             }
-
-            override fun onPlayerError(error: PlaybackException) {
-                message(describePlaybackError(error), sticky = true)
-            }
-        }
-        player.addListener(listener)
+            .onFailure { message("Could not open: ${it.message}", sticky = true) }
         onDispose {
-            player.removeListener(listener)
+            player.setEventListener(null)
+            player.stop()
+            player.detachViews()
             player.release()
+            opened.getOrNull()?.close()
         }
     }
 
@@ -241,13 +231,26 @@ fun PlayerScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    // With an external file the timing is known, so follow the playback position.
-    LaunchedEffect(externalLines) {
-        val lines = externalLines ?: return@LaunchedEffect
-        while (true) {
-            currentText = SubtitleLookup.activeAt(lines, player.currentPosition)?.text ?: ""
-            delay(150)
+    LaunchedEffect(fullscreen) { activity?.let { setFullscreen(it, fullscreen) } }
+    DisposableEffect(activity) { onDispose { activity?.let { setFullscreen(it, false) } } }
+
+    LaunchedEffect(controlsVisible, isPlaying, interaction) {
+        if (controlsVisible && isPlaying) {
+            delay(CONTROLS_TIMEOUT_MS)
+            controlsVisible = false
         }
+    }
+
+    // Stop a preview at the end of its range.
+    LaunchedEffect(previewEndMs) {
+        val end = previewEndMs ?: return@LaunchedEffect
+        while (player.time < end) delay(50)
+        player.pause()
+        previewEndMs = null
+    }
+
+    BackHandler {
+        if (fullscreen) fullscreen = false else onBack()
     }
 
     val subtitlePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
@@ -263,7 +266,7 @@ fun PlayerScreen(
                     } else {
                         externalLines = lines
                         externalName = SourceNames.displayName(context, uri)
-                        saveWhenLineEnds = false
+                        player.setSpuTrack(-1) // Hide built-in subtitles so text is not shown twice.
                         message("Loaded ${lines.size} subtitle lines")
                     }
                 }
@@ -271,70 +274,253 @@ fun PlayerScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(source.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbar) },
-    ) { padding ->
-        Column(Modifier.padding(padding).fillMaxSize()) {
-            AndroidView(
-                factory = { ctx ->
-                    PlayerView(ctx).apply {
-                        this.player = player
-                        keepScreenOn = true
-                        setShowSubtitleButton(true)
-                        // Subtitles are drawn below the video instead, larger and easier to read.
-                        subtitleView?.visibility = View.GONE
-                    }
-                },
+    val currentText = externalLines?.let { SubtitleLookup.activeAt(it, timeMs)?.text }.orEmpty()
+
+    Box(Modifier.fillMaxSize().background(Color.Black)) {
+        AndroidView(
+            factory = { ctx ->
+                VLCVideoLayout(ctx).apply {
+                    keepScreenOn = true
+                    player.attachViews(this, null, true, false)
+                }
+            },
+            modifier = Modifier.fillMaxSize(),
+        )
+
+        // Tap anywhere to show or hide the controls.
+        Box(
+            Modifier.fillMaxSize().pointerInput(Unit) {
+                detectTapGestures(onTap = { controlsVisible = !controlsVisible })
+            }
+        )
+
+        if (currentText.isNotBlank()) {
+            Text(
+                text = currentText,
+                color = Color.White,
+                style = MaterialTheme.typography.titleLarge,
+                textAlign = TextAlign.Center,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .background(Color.Black),
+                    .align(Alignment.BottomCenter)
+                    .padding(start = 16.dp, end = 16.dp, bottom = if (controlsVisible) 120.dp else 32.dp)
+                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
             )
-            Surface(tonalElevation = 2.dp, modifier = Modifier.fillMaxWidth()) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.heightIn(min = 96.dp).padding(16.dp),
+        }
+
+        if (controlsVisible) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .background(Color.Black.copy(alpha = 0.6f))
+                    .padding(4.dp),
+            ) {
+                IconButton(onClick = { if (fullscreen) fullscreen = false else onBack() }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                }
+                Text(
+                    source.title,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(32.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.align(Alignment.Center),
+            ) {
+                TextButton(onClick = { seekTo(player.time - SKIP_MS); touch() }) {
+                    Text("−10s", color = Color.White)
+                }
+                IconButton(
+                    onClick = {
+                        if (player.isPlaying) player.pause() else player.play()
+                        touch()
+                    },
+                    modifier = Modifier.size(72.dp),
                 ) {
+                    Icon(
+                        if (isPlaying) PlayerIcons.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (isPlaying) "Pause" else "Play",
+                        tint = Color.White,
+                        modifier = Modifier.size(56.dp),
+                    )
+                }
+                TextButton(onClick = { seekTo(player.time + SKIP_MS); touch() }) {
+                    Text("+10s", color = Color.White)
+                }
+            }
+
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .background(Color.Black.copy(alpha = 0.6f))
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val shownMs = seekFraction?.let { (it * lengthMs).toLong() } ?: timeMs
+                    Text(formatTime(shownMs), color = Color.White, style = MaterialTheme.typography.labelMedium)
+                    Slider(
+                        value = seekFraction ?: if (lengthMs > 0) (timeMs.toFloat() / lengthMs).coerceIn(0f, 1f) else 0f,
+                        onValueChange = {
+                            seekFraction = it
+                            touch()
+                        },
+                        onValueChangeFinished = {
+                            seekFraction?.let { seekTo((it * lengthMs).toLong()) }
+                            seekFraction = null
+                        },
+                        enabled = lengthMs > 0,
+                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+                    )
+                    Text(formatTime(lengthMs), color = Color.White, style = MaterialTheme.typography.labelMedium)
+                }
+                Row(Modifier.horizontalScroll(rememberScrollState())) {
+                    ControlButton("Aspect: ${SCALES[scaleIndex].second}") {
+                        scaleIndex = (scaleIndex + 1) % SCALES.size
+                        player.setVideoScale(SCALES[scaleIndex].first)
+                        touch()
+                    }
+                    ControlButton("Audio") { trackDialog = TrackKind.Audio; touch() }
+                    ControlButton("Subtitles") { trackDialog = TrackKind.Subtitle; touch() }
+                    ControlButton("Load subtitle file") { subtitlePicker.launch(arrayOf("*/*")); touch() }
+                    ControlButton(if (fullscreen) "Exit full screen" else "Full screen") {
+                        fullscreen = !fullscreen
+                        touch()
+                    }
+                }
+                externalName?.let {
                     Text(
-                        text = currentText,
-                        style = MaterialTheme.typography.titleLarge,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth(),
+                        "Subtitle file: $it",
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            ) {
-                OutlinedButton(
-                    onClick = { subtitlePicker.launch(arrayOf("*/*")) },
-                    modifier = Modifier.weight(1f),
-                ) { Text("Load subtitles") }
-                Button(
-                    onClick = ::onSaveClicked,
-                    modifier = Modifier.weight(1f),
-                ) { Text(if (savingCount > 0) "Saving…" else "Save line") }
-            }
-            externalName?.let {
-                Text(
-                    "Subtitles: $it",
-                    style = MaterialTheme.typography.labelSmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
-                )
-            }
         }
+
+        ExtendedFloatingActionButton(
+            onClick = ::onSaveClicked,
+            icon = { Icon(Icons.Default.Add, contentDescription = null) },
+            text = { Text(if (savingCount > 0) "Saving…" else "Save") },
+            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 16.dp),
+        )
+
+        SnackbarHost(snackbar, Modifier.align(Alignment.TopCenter).padding(top = 56.dp))
+    }
+
+    rangeDraft?.let { (start, end) ->
+        RangeSaveDialog(
+            initialStartMs = start,
+            initialEndMs = end,
+            currentTime = { player.time },
+            onPreview = { s, e ->
+                player.setTime(s)
+                player.play()
+                previewEndMs = e
+            },
+            onDismiss = {
+                rangeDraft = null
+                previewEndMs = null
+            },
+            onSave = { s, e, text ->
+                rangeDraft = null
+                previewEndMs = null
+                player.pause()
+                saveClip(s, e, text)
+            },
+        )
+    }
+
+    trackDialog?.let { kind ->
+        TrackDialog(
+            title = if (kind == TrackKind.Audio) "Audio track" else "Subtitle track",
+            tracks = (if (kind == TrackKind.Audio) player.audioTracks else player.spuTracks)
+                ?.map { it.id to it.name }
+                .orEmpty(),
+            selectedId = if (kind == TrackKind.Audio) player.audioTrack else player.spuTrack,
+            onSelect = { id ->
+                if (kind == TrackKind.Audio) {
+                    player.setAudioTrack(id)
+                } else {
+                    player.setSpuTrack(id)
+                    if (id != -1) {
+                        externalLines = null
+                        externalName = null
+                    }
+                }
+                trackDialog = null
+            },
+            onDismiss = { trackDialog = null },
+        )
+    }
+}
+
+@Composable
+private fun ControlButton(label: String, onClick: () -> Unit) {
+    TextButton(onClick = onClick) { Text(label, color = Color.White) }
+}
+
+@Composable
+private fun TrackDialog(
+    title: String,
+    tracks: List<Pair<Int, String>>,
+    selectedId: Int,
+    onSelect: (Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            if (tracks.isEmpty()) {
+                Text("No tracks available.")
+            } else {
+                Column {
+                    tracks.forEach { (id, name) ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth().clickable { onSelect(id) },
+                        ) {
+                            RadioButton(selected = id == selectedId, onClick = { onSelect(id) })
+                            Text(name)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+    )
+}
+
+private fun Context.findActivity(): Activity? {
+    var current: Context = this
+    while (current is ContextWrapper) {
+        if (current is Activity) return current
+        current = current.baseContext
+    }
+    return null
+}
+
+private fun setFullscreen(activity: Activity, on: Boolean) {
+    activity.requestedOrientation = if (on) {
+        ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+    } else {
+        ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+    }
+    val controller = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
+    if (on) {
+        controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        controller.hide(WindowInsetsCompat.Type.systemBars())
+    } else {
+        controller.show(WindowInsetsCompat.Type.systemBars())
     }
 }

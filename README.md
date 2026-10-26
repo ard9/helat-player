@@ -2,12 +2,14 @@
 
 An Android video player for language learning.
 
-- Plays local video/audio files and direct links or streams (MP4, MKV, WebM, HLS `.m3u8`, DASH `.mpd`).
+- Plays local files and direct links or streams in every format VLC supports (powered by libVLC).
+- Aspect ratio modes (best fit, fit screen, fill, 16:9, 4:3, original), full screen, audio and subtitle track selection.
 - Shows subtitles from an external file (SRT or VTT) or from a subtitle track inside the video.
-- **Save line**: saves the sentence being spoken as a card with its audio clip and subtitle text.
+- **Save**: with a subtitle file, saves the sentence being spoken as a card with its audio clip and text.
+  Without one, pick a start and end time by hand (with preview and an optional note).
 - **Learning box**: a 5-box Leitner system for reviewing saved sentences.
 
-Built with Kotlin, Jetpack Compose and Media3 (ExoPlayer + Transformer).
+Built with Kotlin, Jetpack Compose, libVLC (playback) and Media3 (audio clipping).
 
 ## Install
 
@@ -18,10 +20,10 @@ Every push to `main` builds an APK with GitHub Actions and publishes it on the
 ## How to use
 
 1. Open a video file, or paste a link and tap **Play link**.
-2. Tap **Load subtitles** to pick an `.srt` or `.vtt` file, or choose a built-in subtitle
-   track with the CC button in the player controls.
-3. When you hear a sentence you want to learn, tap **Save line**. Its audio is cut and saved
-   to Box 1.
+2. Tap the video to show controls. **Load subtitle file** picks an `.srt` or `.vtt` file;
+   **Subtitles** chooses a track inside the video.
+3. When you hear a sentence you want to learn, tap **Save**. With a subtitle file the current
+   line is saved directly; otherwise choose the start and end time. The audio goes to Box 1.
 4. From the home screen, tap **Review**. Listen, reveal the text, then answer:
    - **I knew it** moves the card up one box.
    - **Didn't know** moves it back to Box 1.
@@ -30,8 +32,9 @@ Review intervals: Box 1 every day, Box 2 every 2 days, Box 3 every 4, Box 4 ever
 
 ## Limitations
 
-- Old formats such as AVI are not supported.
-- AC3/DTS audio (found in some MKV files) only plays and clips on devices that have those decoders.
+- The APK is built for 64-bit ARM phones (arm64-v8a) only.
+- Text of subtitle tracks inside the video cannot be read by the app, so saving a line
+  automatically needs a separate subtitle file. Use the manual time range otherwise.
 
 ## Signing (for maintainers)
 

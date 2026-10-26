@@ -14,12 +14,12 @@ import androidx.media3.transformer.Transformer
 import java.io.File
 
 /**
- * Cuts a time range out of a video or audio source and saves only the audio as AAC (.m4a).
+ * Fast path: cuts a range with Media3 Transformer and keeps only the audio as AAC (.m4a).
+ * Works for common formats (MP4, MKV, WebM with AAC/MP3/Opus audio).
  * Must be called on the main thread; the callback is delivered on the main thread.
- * Lives at application scope so an export keeps running when the player screen closes.
  */
 @OptIn(UnstableApi::class)
-class AudioClipper(private val context: Context) {
+class TransformerClipper(private val context: Context) {
     private val active = mutableSetOf<Transformer>()
 
     fun clip(source: Uri, startMs: Long, endMs: Long, output: File, onDone: (Result<Unit>) -> Unit) {
@@ -57,6 +57,12 @@ class AudioClipper(private val context: Context) {
             })
             .build()
         active.add(transformer)
-        transformer.start(edited, output.absolutePath)
+        try {
+            transformer.start(edited, output.absolutePath)
+        } catch (e: Exception) {
+            active.remove(transformer)
+            output.delete()
+            onDone(Result.failure(e))
+        }
     }
 }

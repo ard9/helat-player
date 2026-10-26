@@ -98,8 +98,9 @@ private fun AppNavigation(app: LinguaApp, incoming: MutableState<PlaybackSource?
         is Screen.Player -> key(s.source) {
             PlayerScreen(
                 source = s.source,
+                libVlc = app.libVlc,
                 repository = app.cards,
-                clipper = app.clipper,
+                clips = app.clips,
                 onBack = { screen = Screen.Home },
             )
         }
