@@ -6,6 +6,7 @@ import android.content.ContextWrapper
 import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
 import android.net.Uri
+import android.view.View
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -100,6 +101,30 @@ private val SCALES = listOf(
 
 private enum class TrackKind { Audio, Subtitle }
 
+/** Starts playback once, after both the media is set and the video view is attached. */
+private class StartGate(private val start: () -> Unit) {
+    private var media = false
+    private var view = false
+    private var started = false
+
+    fun mediaReady() {
+        media = true
+        maybeStart()
+    }
+
+    fun viewReady() {
+        view = true
+        maybeStart()
+    }
+
+    private fun maybeStart() {
+        if (media && view && !started) {
+            started = true
+            start()
+        }
+    }
+}
+
 private data class SaveDraft(val startMs: Long, val endMs: Long, val text: String)
 
 @Composable
@@ -117,6 +142,7 @@ fun PlayerScreen(
 
     val opened = remember { runCatching { openVlcMedia(context, libVlc, source.uri) } }
     val player = remember { MediaPlayer(libVlc) }
+    val startGate = remember { StartGate { player.play() } }
 
     var timeMs by remember { mutableLongStateOf(0L) }
     var lengthMs by remember { mutableLongStateOf(0L) }
@@ -225,7 +251,7 @@ fun PlayerScreen(
             .onSuccess {
                 player.setMedia(it.media)
                 it.media.release()
-                player.play()
+                startGate.mediaReady()
             }
             .onFailure { message("Could not open: ${it.message}", sticky = true) }
         onDispose {
@@ -297,8 +323,19 @@ fun PlayerScreen(
             factory = { ctx ->
                 VLCVideoLayout(ctx).apply {
                     keepScreenOn = true
-                    player.attachViews(this, null, true, false)
                     videoLayout = this
+                    // Attach only once the view is in the window; attaching earlier sometimes
+                    // left the video black while the audio played.
+                    addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+                        override fun onViewAttachedToWindow(v: View) {
+                            player.attachViews(this@apply, null, true, false)
+                            startGate.viewReady()
+                        }
+
+                        override fun onViewDetachedFromWindow(v: View) {
+                            player.detachViews()
+                        }
+                    })
                 }
             },
             modifier = Modifier.fillMaxSize(),
