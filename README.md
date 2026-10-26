@@ -4,10 +4,12 @@ An Android video player for language learning.
 
 - Plays local files and direct links or streams in every format VLC supports (powered by libVLC).
 - Aspect ratio modes (best fit, fit screen, fill, 16:9, 4:3, original), full screen, audio and subtitle track selection.
-- Shows subtitles from an external file (SRT or VTT) or from a subtitle track inside the video.
+- Shows subtitles from an external file (SRT or VTT) or from a subtitle track inside the video,
+  in the colour and size you choose. The player follows the phone's rotation; landscape is full screen.
 - **Save**: with a subtitle file, saves the sentence being spoken as a card with its audio clip and text.
   Without one, pick a start and end time by hand (with preview and an optional note).
-- **Learning box**: a 5-box Leitner system for reviewing saved sentences.
+- **Cards**: each saved line keeps its audio, a frame of the video, the text and your meaning.
+  Tap a card to open it; review them as flashcards in a 5-box Leitner system.
 
 Built with Kotlin, Jetpack Compose, libVLC (playback) and Media3 (audio clipping).
 
@@ -35,6 +37,10 @@ Review intervals: Box 1 every day, Box 2 every 2 days, Box 3 every 4, Box 4 ever
 - The APK is built for 64-bit ARM phones (arm64-v8a) only.
 - Text of subtitle tracks inside the video cannot be read by the app, so saving a line
   automatically needs a separate subtitle file. Use the manual time range otherwise.
+
+## Fonts
+
+Archivo and Atkinson Hyperlegible are used under the SIL Open Font License (see `licenses/`).
 
 ## Signing (for maintainers)
 

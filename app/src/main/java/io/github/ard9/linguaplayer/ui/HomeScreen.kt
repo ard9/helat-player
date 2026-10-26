@@ -4,8 +4,10 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,24 +16,28 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,7 +56,6 @@ import io.github.ard9.linguaplayer.data.Leitner
 import io.github.ard9.linguaplayer.data.PlaybackSource
 import io.github.ard9.linguaplayer.data.SourceNames
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     recents: List<PlaybackSource>,
@@ -62,6 +67,7 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     var link by rememberSaveable { mutableStateOf("") }
+    var linkOpen by rememberSaveable { mutableStateOf(false) }
     var linkError by remember { mutableStateOf<String?>(null) }
     val dueCount = remember(cards) {
         val now = System.currentTimeMillis()
@@ -71,7 +77,7 @@ fun HomeScreen(
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             try {
-                // Keep access so the file can be reopened from "Recent".
+                // Keep access so the file can be reopened from the recent list.
                 context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
             } catch (e: SecurityException) {
                 // Some providers do not offer persistent access; playback still works now.
@@ -83,90 +89,171 @@ fun HomeScreen(
     fun openLink() {
         val uri = Uri.parse(link.trim())
         if (uri.scheme !in setOf("http", "https") || uri.host.isNullOrBlank()) {
-            linkError = "Enter a valid http:// or https:// link"
+            linkError = "Enter a link that starts with http:// or https://"
             return
         }
         linkError = null
         onOpen(PlaybackSource(uri, uri.lastPathSegment?.takeIf { it.isNotBlank() } ?: uri.host!!))
     }
 
-    Scaffold(
-        topBar = { CenterAlignedTopAppBar(title = { Text("Lingua Player") }) }
-    ) { padding ->
+    Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
         LazyColumn(
-            modifier = Modifier.padding(padding).fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.statusBarsPadding(),
         ) {
             item {
-                Button(
-                    onClick = { filePicker.launch(arrayOf("video/*", "audio/*")) },
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text("Open video file") }
-            }
-            item {
-                val error = linkError
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = link,
-                        onValueChange = { link = it; linkError = null },
-                        label = { Text("Direct link or stream URL") },
-                        singleLine = true,
-                        isError = error != null,
-                        supportingText = if (error != null) {
-                            { Text(error) }
-                        } else {
-                            null
-                        },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
-                        keyboardActions = KeyboardActions(onGo = { openLink() }),
-                        modifier = Modifier.fillMaxWidth(),
+                Column {
+                    Text("Lingua Player", style = MaterialTheme.typography.displaySmall)
+                    Text(
+                        "Watch, keep the lines you want to learn, review them later.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Cinema.Dim,
                     )
-                    FilledTonalButton(
-                        onClick = { openLink() },
-                        enabled = link.isNotBlank(),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text("Play link") }
                 }
             }
+
+            recents.firstOrNull()?.let { last ->
+                item { ContinueCard(last) { onOpen(last) } }
+            }
+
             item {
-                ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text("Learning box", style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            "${cards.size} cards · $dueCount due for review",
-                            style = MaterialTheme.typography.bodyMedium,
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Button(
+                        onClick = { filePicker.launch(arrayOf("video/*", "audio/*")) },
+                        modifier = Modifier.weight(1f),
+                    ) { Text("Open file") }
+                    OutlinedButton(
+                        onClick = { linkOpen = !linkOpen },
+                        modifier = Modifier.weight(1f),
+                    ) { Text(if (linkOpen) "Hide link" else "Paste link") }
+                }
+            }
+
+            if (linkOpen) {
+                item {
+                    val error = linkError
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = link,
+                            onValueChange = { link = it; linkError = null },
+                            label = { Text("Direct link or stream URL") },
+                            singleLine = true,
+                            isError = error != null,
+                            supportingText = if (error != null) {
+                                { Text(error) }
+                            } else {
+                                null
+                            },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
+                            keyboardActions = KeyboardActions(onGo = { openLink() }),
+                            modifier = Modifier.fillMaxWidth(),
                         )
-                        Spacer(Modifier.height(12.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = onOpenReview, enabled = dueCount > 0) { Text("Review") }
-                            FilledTonalButton(onClick = onOpenBox) { Text("Browse boxes") }
+                        Button(
+                            onClick = { openLink() },
+                            enabled = link.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Play link") }
+                    }
+                }
+            }
+
+            item {
+                Surface(
+                    color = Cinema.Seat,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("Your cards", style = MaterialTheme.typography.titleLarge)
+                        if (cards.isEmpty()) {
+                            Text(
+                                "While watching, tap the video and then Save to keep a line here.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Cinema.Dim,
+                            )
+                        } else {
+                            Text(
+                                when (dueCount) {
+                                    0 -> "Nothing to review today."
+                                    1 -> "1 card to review today."
+                                    else -> "$dueCount cards to review today."
+                                },
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                            BoxBars(counts = boxCounts(cards))
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Button(onClick = onOpenReview, enabled = dueCount > 0) { Text("Start review") }
+                                TextButton(onClick = onOpenBox) { Text("Browse cards") }
+                            }
                         }
                     }
                 }
             }
-            if (recents.isNotEmpty()) {
-                item { Text("Recent", style = MaterialTheme.typography.titleMedium) }
-                items(recents, key = { it.uri.toString() }) { source ->
+
+            val older = recents.drop(1)
+            if (older.isNotEmpty()) {
+                item {
+                    Text(
+                        "Recently played",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
+                items(older, key = { it.uri.toString() }) { source ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth().clickable { onOpen(source) },
                     ) {
-                        Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
-                            Text(source.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Column(Modifier.weight(1f).padding(vertical = 10.dp)) {
                             Text(
-                                if (source.uri.scheme == "content") "Local file" else source.uri.host ?: "",
-                                style = MaterialTheme.typography.bodySmall,
+                                source.title,
+                                style = MaterialTheme.typography.bodyLarge,
                                 maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
+                            Text(sourceKind(source), style = MaterialTheme.typography.bodySmall, color = Cinema.Dim)
                         }
                         IconButton(onClick = { onRemoveRecent(source) }) {
-                            Icon(Icons.Default.Close, contentDescription = "Remove from recent")
+                            Icon(Icons.Default.Close, contentDescription = "Remove from recent", tint = Cinema.Dim)
                         }
                     }
-                    HorizontalDivider()
+                    HorizontalDivider(color = Cinema.Aisle)
                 }
             }
         }
     }
 }
+
+@Composable
+private fun ContinueCard(source: PlaybackSource, onClick: () -> Unit) {
+    Surface(
+        color = Cinema.Aisle,
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth().clickable(onClickLabel = "Continue watching", onClick = onClick),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(16.dp)) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.size(52.dp).background(MaterialTheme.colorScheme.primary, CircleShape),
+            ) {
+                Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Cinema.Night, modifier = Modifier.size(32.dp))
+            }
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Continue watching", style = MaterialTheme.typography.labelMedium, color = Cinema.Dim)
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    source.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(sourceKind(source), style = MaterialTheme.typography.bodySmall, color = Cinema.Dim)
+            }
+        }
+    }
+}
+
+private fun sourceKind(source: PlaybackSource): String =
+    if (source.uri.scheme == "content") "File on this phone" else source.uri.host ?: "Link"

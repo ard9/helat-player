@@ -9,6 +9,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
@@ -20,6 +23,7 @@ import androidx.compose.runtime.setValue
 import io.github.ard9.linguaplayer.data.PlaybackSource
 import io.github.ard9.linguaplayer.data.SourceNames
 import io.github.ard9.linguaplayer.ui.BoxScreen
+import io.github.ard9.linguaplayer.ui.CardScreen
 import io.github.ard9.linguaplayer.ui.HomeScreen
 import io.github.ard9.linguaplayer.ui.LinguaTheme
 import io.github.ard9.linguaplayer.ui.PlayerScreen
@@ -33,7 +37,8 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) incoming.value = sourceFromIntent(intent)
         val app = application as LinguaApp
         setContent {
-            LinguaTheme {
+            val subtitleStyle by app.settings.subtitleStyle.collectAsState()
+            LinguaTheme(subtitleStyle) {
                 AppNavigation(app, incoming)
             }
         }
@@ -58,6 +63,7 @@ private sealed interface Screen {
     data object Home : Screen
     data class Player(val source: PlaybackSource) : Screen
     data object Box : Screen
+    data class CardDetail(val cardId: String) : Screen
     data object Review : Screen
 }
 
@@ -65,6 +71,7 @@ private sealed interface Screen {
 private fun AppNavigation(app: LinguaApp, incoming: MutableState<PlaybackSource?>) {
     var screen by remember { mutableStateOf<Screen>(Screen.Home) }
     var insecureSource by remember { mutableStateOf<PlaybackSource?>(null) }
+    var selectedBox by rememberSaveable { mutableIntStateOf(1) }
     val cards by app.cards.cards.collectAsState()
     val recents by app.recents.items.collectAsState()
 
@@ -84,7 +91,9 @@ private fun AppNavigation(app: LinguaApp, incoming: MutableState<PlaybackSource?
         }
     }
 
-    BackHandler(enabled = screen != Screen.Home) { screen = Screen.Home }
+    BackHandler(enabled = screen != Screen.Home) {
+        screen = if (screen is Screen.CardDetail) Screen.Box else Screen.Home
+    }
 
     when (val s = screen) {
         Screen.Home -> HomeScreen(
@@ -96,15 +105,34 @@ private fun AppNavigation(app: LinguaApp, incoming: MutableState<PlaybackSource?
             onOpenReview = { screen = Screen.Review },
         )
         is Screen.Player -> key(s.source) {
+            // One libVLC instance per playback, created with the current subtitle style.
+            val libVlc = remember { app.acquireLibVlc() }
+            DisposableEffect(libVlc) { onDispose { app.releaseLibVlc(libVlc) } }
             PlayerScreen(
                 source = s.source,
-                libVlc = app.libVlc,
+                libVlc = libVlc,
                 repository = app.cards,
                 clips = app.clips,
+                onSubtitleStyleChange = app.settings::setSubtitleStyle,
                 onBack = { screen = Screen.Home },
             )
         }
-        Screen.Box -> BoxScreen(cards, app.cards, onBack = { screen = Screen.Home })
+        Screen.Box -> BoxScreen(
+            cards = cards,
+            repository = app.cards,
+            selectedBox = selectedBox,
+            onSelectBox = { selectedBox = it },
+            onOpenCard = { screen = Screen.CardDetail(it.id) },
+            onBack = { screen = Screen.Home },
+        )
+        is Screen.CardDetail -> {
+            val card = cards.firstOrNull { it.id == s.cardId }
+            if (card == null) {
+                LaunchedEffect(Unit) { screen = Screen.Box }
+            } else {
+                CardScreen(card, app.cards, onBack = { screen = Screen.Box })
+            }
+        }
         Screen.Review -> ReviewScreen(cards, app.cards, onBack = { screen = Screen.Home })
     }
 

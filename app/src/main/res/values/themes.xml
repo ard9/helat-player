@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.LinguaPlayer" parent="android:Theme.Material.Light.NoActionBar" />
-    <color name="ic_launcher_background">#3949AB</color>
+    <color name="ic_launcher_background">#14203A</color>
+    <color name="night">#14203A</color>
+
+    <style name="Theme.LinguaPlayer" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/night</item>
+        <item name="android:statusBarColor">@color/night</item>
+        <item name="android:navigationBarColor">@color/night</item>
+    </style>
 </resources>

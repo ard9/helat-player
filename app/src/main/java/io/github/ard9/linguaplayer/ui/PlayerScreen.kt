@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.net.Uri
 import android.view.View
@@ -54,6 +55,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -70,6 +72,7 @@ import io.github.ard9.linguaplayer.data.Card
 import io.github.ard9.linguaplayer.data.CardRepository
 import io.github.ard9.linguaplayer.data.PlaybackSource
 import io.github.ard9.linguaplayer.data.SourceNames
+import io.github.ard9.linguaplayer.data.SubtitleStyle
 import io.github.ard9.linguaplayer.data.formatTime
 import io.github.ard9.linguaplayer.player.FrameGrabber
 import io.github.ard9.linguaplayer.player.openVlcMedia
@@ -133,6 +136,7 @@ fun PlayerScreen(
     libVlc: LibVLC,
     repository: CardRepository,
     clips: ClipService,
+    onSubtitleStyleChange: (SubtitleStyle) -> Unit,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -149,7 +153,10 @@ fun PlayerScreen(
     var isPlaying by remember { mutableStateOf(false) }
     var controlsVisible by remember { mutableStateOf(true) }
     var interaction by remember { mutableIntStateOf(0) }
-    var fullscreen by remember { mutableStateOf(false) }
+    // Follows the phone's sensor; the full-screen button can lock one orientation.
+    var orientationLock by remember { mutableStateOf(OrientationLock.None) }
+    val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    var styleDialog by remember { mutableStateOf(false) }
     var scaleIndex by remember { mutableIntStateOf(0) }
     var seekFraction by remember { mutableStateOf<Float?>(null) }
     var externalLines by remember { mutableStateOf<List<SubtitleLine>?>(null) }
@@ -273,8 +280,23 @@ fun PlayerScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    LaunchedEffect(fullscreen) { activity?.let { setFullscreen(it, fullscreen) } }
-    DisposableEffect(activity) { onDispose { activity?.let { setFullscreen(it, false) } } }
+    LaunchedEffect(orientationLock) {
+        activity?.requestedOrientation = when (orientationLock) {
+            OrientationLock.None -> ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR
+            OrientationLock.Landscape -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            OrientationLock.Portrait -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+        }
+    }
+    // Landscape is full screen: hide the system bars.
+    LaunchedEffect(landscape) { activity?.let { setSystemBarsHidden(it, landscape) } }
+    DisposableEffect(activity) {
+        onDispose {
+            activity?.let {
+                it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                setSystemBarsHidden(it, false)
+            }
+        }
+    }
 
     LaunchedEffect(controlsVisible, isPlaying, interaction) {
         if (controlsVisible && isPlaying) {
@@ -292,7 +314,7 @@ fun PlayerScreen(
     }
 
     BackHandler {
-        if (fullscreen) fullscreen = false else onBack()
+        if (orientationLock == OrientationLock.Landscape) orientationLock = OrientationLock.None else onBack()
     }
 
     val subtitlePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
@@ -349,16 +371,11 @@ fun PlayerScreen(
         )
 
         if (currentText.isNotBlank()) {
-            Text(
+            SubtitleText(
                 text = currentText,
-                color = Color.White,
-                style = MaterialTheme.typography.titleLarge,
-                textAlign = TextAlign.Center,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(start = 16.dp, end = 16.dp, bottom = if (controlsVisible) 120.dp else 32.dp)
-                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                    .padding(start = 24.dp, end = 24.dp, bottom = if (controlsVisible) 128.dp else 28.dp),
             )
         }
 
@@ -371,7 +388,7 @@ fun PlayerScreen(
                     .background(Color.Black.copy(alpha = 0.6f))
                     .padding(4.dp),
             ) {
-                IconButton(onClick = { if (fullscreen) fullscreen = false else onBack() }) {
+                IconButton(onClick = onBack) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                 }
                 Text(
@@ -451,9 +468,13 @@ fun PlayerScreen(
                     ControlButton("Audio") { trackDialog = TrackKind.Audio; touch() }
                     ControlButton("Subtitles") { trackDialog = TrackKind.Subtitle; touch() }
                     ControlButton("Load subtitle file") { subtitlePicker.launch(arrayOf("*/*")); touch() }
-                    ControlButton(if (fullscreen) "Exit full screen" else "Full screen") {
-                        fullscreen = !fullscreen
+                    ControlButton("Subtitle style") { styleDialog = true; touch() }
+                    ControlButton(if (landscape) "Portrait" else "Full screen") {
+                        orientationLock = if (landscape) OrientationLock.Portrait else OrientationLock.Landscape
                         touch()
+                    }
+                    if (orientationLock != OrientationLock.None) {
+                        ControlButton("Auto-rotate") { orientationLock = OrientationLock.None; touch() }
                     }
                 }
                 externalName?.let {
@@ -497,6 +518,14 @@ fun PlayerScreen(
                 player.pause()
                 saveClip(s, e, text, meaning, image)
             },
+        )
+    }
+
+    if (styleDialog) {
+        SubtitleStyleDialog(
+            current = LocalSubtitleStyle.current,
+            onChange = onSubtitleStyleChange,
+            onDismiss = { styleDialog = false },
         )
     }
 
@@ -570,14 +599,11 @@ private fun Context.findActivity(): Activity? {
     return null
 }
 
-private fun setFullscreen(activity: Activity, on: Boolean) {
-    activity.requestedOrientation = if (on) {
-        ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-    } else {
-        ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-    }
+private enum class OrientationLock { None, Landscape, Portrait }
+
+private fun setSystemBarsHidden(activity: Activity, hidden: Boolean) {
     val controller = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
-    if (on) {
+    if (hidden) {
         controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         controller.hide(WindowInsetsCompat.Type.systemBars())
     } else {

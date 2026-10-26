@@ -16,13 +16,19 @@ import java.util.Locale
  * mono WAV file. Slower than Transformer, but reads every format VLC can play.
  * Must be called on the main thread; the callback is delivered on the main thread.
  */
-class VlcClipper(private val context: Context, private val libVlc: () -> LibVLC) {
+class VlcClipper(
+    private val context: Context,
+    private val acquire: () -> LibVLC,
+    private val release: (LibVLC) -> Unit,
+) {
     private val handler = Handler(Looper.getMainLooper())
 
     fun clip(source: Uri, startMs: Long, endMs: Long, output: File, onDone: (Result<Unit>) -> Unit) {
+        val libVlc = acquire()
         val opened = try {
-            openVlcMedia(context, libVlc(), source)
+            openVlcMedia(context, libVlc, source)
         } catch (e: Exception) {
+            release(libVlc)
             onDone(Result.failure(e))
             return
         }
@@ -36,7 +42,7 @@ class VlcClipper(private val context: Context, private val libVlc: () -> LibVLC)
                 ":std{access=file,mux=wav,dst=${output.absolutePath}}"
         )
 
-        val player = MediaPlayer(libVlc())
+        val player = MediaPlayer(libVlc)
         player.setMedia(media)
         media.release()
 
@@ -52,6 +58,7 @@ class VlcClipper(private val context: Context, private val libVlc: () -> LibVLC)
                 player.stop()
                 player.release()
                 opened.close()
+                release(libVlc)
                 if (error == null && output.length() > MIN_WAV_BYTES) {
                     onDone(Result.success(Unit))
                 } else {
