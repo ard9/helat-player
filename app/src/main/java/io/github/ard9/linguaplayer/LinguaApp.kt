@@ -9,6 +9,7 @@ import io.github.ard9.linguaplayer.data.CardRepository
 import io.github.ard9.linguaplayer.data.RecentRepository
 import io.github.ard9.linguaplayer.data.SettingsRepository
 import io.github.ard9.linguaplayer.data.SubtitleStyle
+import io.github.ard9.linguaplayer.speech.SpeechFinder
 import org.videolan.libvlc.LibVLC
 
 class LinguaApp : Application() {
@@ -19,6 +20,8 @@ class LinguaApp : Application() {
     lateinit var settings: SettingsRepository
         private set
     lateinit var clips: ClipService
+        private set
+    lateinit var speechFinder: SpeechFinder
         private set
 
     // libVLC reads subtitle colour and size only when an instance is created, so a new
@@ -32,11 +35,13 @@ class LinguaApp : Application() {
         cards = CardRepository(this)
         recents = RecentRepository(this)
         settings = SettingsRepository(this)
+        val vlcClipper = VlcClipper(this, ::acquireLibVlc, ::releaseLibVlc)
         clips = ClipService(
             transformer = TransformerClipper(this),
-            vlc = VlcClipper(this, ::acquireLibVlc, ::releaseLibVlc),
+            vlc = vlcClipper,
             outputFor = cards::newClipFile,
         )
+        speechFinder = SpeechFinder(this, vlcClipper)
     }
 
     /** Returns a libVLC instance for the current subtitle style; pair with [releaseLibVlc]. */

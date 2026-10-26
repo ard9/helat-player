@@ -86,6 +86,9 @@ dependencies {
     // Reads built-in subtitle text on the device (bundled model, no Play services needed).
     implementation("com.google.mlkit:text-recognition:16.0.1")
 
+    // Finds sentence boundaries by detecting speech (Silero VAD model in assets).
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.20.0")
+
     // Audio clipping (fast path) and playing saved clips.
     implementation("androidx.media3:media3-exoplayer:$media3")
     implementation("androidx.media3:media3-transformer:$media3")

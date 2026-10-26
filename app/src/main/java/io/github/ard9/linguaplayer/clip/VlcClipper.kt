@@ -23,7 +23,14 @@ class VlcClipper(
 ) {
     private val handler = Handler(Looper.getMainLooper())
 
-    fun clip(source: Uri, startMs: Long, endMs: Long, output: File, onDone: (Result<Unit>) -> Unit) {
+    fun clip(
+        source: Uri,
+        startMs: Long,
+        endMs: Long,
+        output: File,
+        sampleRate: Int = 22_050,
+        onDone: (Result<Unit>) -> Unit,
+    ) {
         val libVlc = acquire()
         val opened = try {
             openVlcMedia(context, libVlc, source)
@@ -38,7 +45,7 @@ class VlcClipper(
         media.addOption(":no-sout-video")
         media.addOption(":no-sout-spu")
         media.addOption(
-            ":sout=#transcode{vcodec=none,scodec=none,acodec=s16l,channels=1,samplerate=22050}" +
+            ":sout=#transcode{vcodec=none,scodec=none,acodec=s16l,channels=1,samplerate=$sampleRate}" +
                 ":std{access=file,mux=wav,dst=${output.absolutePath}}"
         )
 

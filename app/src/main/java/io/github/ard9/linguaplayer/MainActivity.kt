@@ -113,6 +113,7 @@ private fun AppNavigation(app: LinguaApp, incoming: MutableState<PlaybackSource?
                 libVlc = libVlc,
                 repository = app.cards,
                 clips = app.clips,
+                speechFinder = app.speechFinder,
                 onSubtitleStyleChange = app.settings::setSubtitleStyle,
                 onBack = { screen = Screen.Home },
             )

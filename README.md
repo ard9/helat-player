@@ -38,10 +38,14 @@ Review intervals: Box 1 every day, Box 2 every 2 days, Box 3 every 4, Box 4 ever
 - For subtitle tracks inside the video, the app times each line from when it appears and
   disappears on screen, and reads its text with on-device text recognition (ML Kit).
   The recognised text can contain small mistakes; check it before saving.
+- Without any subtitles, Save looks at the audio from 8 s before to 6 s after the moment you
+  tap it and finds the pauses around the sentence with Silero VAD (on the device). Speech
+  without pauses, or very long sentences, may need the times adjusted by hand.
 
 ## Fonts
 
-Archivo and Atkinson Hyperlegible are used under the SIL Open Font License (see `licenses/`).
+Archivo and Atkinson Hyperlegible are used under the SIL Open Font License, and the Silero VAD
+model under the MIT License (see `licenses/`).
 
 ## Signing (for maintainers)
 

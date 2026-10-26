@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -46,6 +48,11 @@ fun CardEditorDialog(
     /** Text read from the subtitle picture; fills the Text field if it is still empty. */
     detectedText: String,
     readingText: Boolean,
+    /** Start and end found from the pauses around the sentence; replaces the times when it arrives. */
+    detectedRange: Pair<Long, Long>?,
+    findingSentence: Boolean,
+    /** A short explanation of how the times were found, or why they were not. */
+    timeNote: String?,
     image: Bitmap?,
     currentTime: () -> Long,
     onPreview: (startMs: Long, endMs: Long) -> Unit,
@@ -58,6 +65,12 @@ fun CardEditorDialog(
     var meaning by remember { mutableStateOf("") }
     LaunchedEffect(detectedText) {
         if (text.isBlank() && detectedText.isNotBlank()) text = detectedText
+    }
+    LaunchedEffect(detectedRange) {
+        detectedRange?.let { (s, e) ->
+            startText = formatClock(s)
+            endText = formatClock(e)
+        }
     }
 
     val start = parseClock(startText)
@@ -90,6 +103,14 @@ fun CardEditorDialog(
                         contentScale = ContentScale.Fit,
                         modifier = Modifier.fillMaxWidth().heightIn(max = 140.dp),
                     )
+                }
+                if (findingSentence) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Text("Finding where the sentence starts and ends…", style = MaterialTheme.typography.bodySmall)
+                    }
+                } else if (timeNote != null) {
+                    Text(timeNote, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 TimeRow("Start", startText, { startText = it }) { startText = formatClock(currentTime()) }
                 TimeRow("End", endText, { endText = it }) { endText = formatClock(currentTime()) }

@@ -78,6 +78,7 @@ import io.github.ard9.linguaplayer.player.FrameGrabber
 import io.github.ard9.linguaplayer.player.SubtitleOcr
 import io.github.ard9.linguaplayer.player.SubtitleWatcher
 import io.github.ard9.linguaplayer.player.openVlcMedia
+import io.github.ard9.linguaplayer.speech.SpeechFinder
 import io.github.ard9.linguaplayer.subtitle.SubtitleLine
 import io.github.ard9.linguaplayer.subtitle.SubtitleLookup
 import io.github.ard9.linguaplayer.subtitle.SubtitleParser
@@ -138,6 +139,7 @@ fun PlayerScreen(
     libVlc: LibVLC,
     repository: CardRepository,
     clips: ClipService,
+    speechFinder: SpeechFinder,
     onSubtitleStyleChange: (SubtitleStyle) -> Unit,
     onBack: () -> Unit,
 ) {
@@ -170,6 +172,10 @@ fun PlayerScreen(
     var detectedText by remember { mutableStateOf("") }
     var readingText by remember { mutableStateOf(false) }
     var waitingForLine by remember { mutableStateOf(false) }
+    var detectedRange by remember { mutableStateOf<Pair<Long, Long>?>(null) }
+    var findingSentence by remember { mutableStateOf(false) }
+    var timeNote by remember { mutableStateOf<String?>(null) }
+    var draftId by remember { mutableIntStateOf(0) }
     // Times built-in subtitles from the moment they appear and disappear on screen.
     val watcher = remember {
         SubtitleWatcher(
@@ -239,9 +245,13 @@ fun PlayerScreen(
         }
     }
 
-    fun openDraft(startMs: Long, endMs: Long, text: String, subtitleImage: Bitmap?) {
+    fun openDraft(startMs: Long, endMs: Long, text: String, subtitleImage: Bitmap?, note: String? = null) {
         player.pause()
+        draftId++
         draft = SaveDraft(startMs, endMs, text)
+        detectedRange = null
+        findingSentence = false
+        timeNote = note
         draftImage = null
         detectedText = ""
         readingText = subtitleImage != null
@@ -259,7 +269,34 @@ fun PlayerScreen(
         line.endMs + CLIP_PADDING_MS,
         "",
         line.image,
+        "Times come from when the subtitle appeared and disappeared.",
     )
+
+    /** No subtitles: open the dialog now and fill in the times once the pauses are found. */
+    fun openDraftWithSpeechSearch(now: Long) {
+        openDraft(max(0L, now - 5_000L), now, "", null)
+        val id = draftId
+        findingSentence = true
+        speechFinder.find(scope, source.uri, now) { result ->
+            if (id != draftId) return@find
+            findingSentence = false
+            result
+                .onSuccess { found ->
+                    if (found == null) {
+                        timeNote = "No speech found near this moment. Set the times by hand."
+                    } else {
+                        detectedRange = found.startMs to found.endMs
+                        timeNote = when {
+                            found.cutAtStart && found.cutAtEnd -> "Found speech, but it is longer than the part checked. Check both times."
+                            found.cutAtStart -> "The sentence may start earlier. Check the start time."
+                            found.cutAtEnd -> "The sentence may continue. Check the end time."
+                            else -> "Times found from the pauses around the sentence."
+                        }
+                    }
+                }
+                .onFailure { timeNote = "Could not check the audio: ${it.message}. Set the times by hand." }
+        }
+    }
 
     fun onSaveClicked() {
         if (waitingForLine) return
@@ -277,7 +314,7 @@ fun PlayerScreen(
                 if (!player.isPlaying) player.play()
                 message("Saving when this line ends…")
             }
-            SubtitleWatcher.SaveTarget.NoLine -> openDraft(max(0L, now - 5_000L), now, "", null)
+            SubtitleWatcher.SaveTarget.NoLine -> openDraftWithSpeechSearch(now)
         }
     }
 
@@ -563,6 +600,9 @@ fun PlayerScreen(
             initialText = current.text,
             detectedText = detectedText,
             readingText = readingText,
+            detectedRange = detectedRange,
+            findingSentence = findingSentence,
+            timeNote = timeNote,
             image = draftImage,
             currentTime = { player.time },
             onPreview = { s, e ->
@@ -572,11 +612,13 @@ fun PlayerScreen(
                 previewEndMs = e
             },
             onDismiss = {
+                draftId++
                 draft = null
                 draftImage = null
                 previewEndMs = null
             },
             onSave = { s, e, text, meaning ->
+                draftId++
                 val image = draftImage
                 draft = null
                 draftImage = null
