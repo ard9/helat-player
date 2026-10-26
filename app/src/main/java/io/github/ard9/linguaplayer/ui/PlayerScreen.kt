@@ -22,6 +22,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -52,7 +53,10 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.exoplayer.ExoPlaybackException
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.mediacodec.MediaCodecRenderer
 import androidx.media3.ui.PlayerView
 import io.github.ard9.linguaplayer.clip.AudioClipper
 import io.github.ard9.linguaplayer.data.Card
@@ -73,6 +77,31 @@ import kotlin.math.max
 /** Extra audio kept before and after each line so words are not cut off. */
 private const val CLIP_PADDING_MS = 250L
 
+/** Turns a playback error into a message that names the failing track and codec. */
+@androidx.annotation.OptIn(UnstableApi::class)
+private fun describePlaybackError(error: PlaybackException): String {
+    val format = (error as? ExoPlaybackException)?.rendererFormat
+    val decoderInfo = generateSequence(error.cause) { it.cause }
+        .filterIsInstance<MediaCodecRenderer.DecoderInitializationException>()
+        .firstOrNull()
+    val mimeType = format?.sampleMimeType ?: decoderInfo?.mimeType
+    return buildString {
+        append("Playback error: ${error.errorCodeName}")
+        if (mimeType != null) {
+            val kind = when {
+                mimeType.startsWith("audio/") -> "audio"
+                mimeType.startsWith("video/") -> "video"
+                else -> "track"
+            }
+            append("\nThis device can't decode the $kind format: $mimeType")
+            format?.codecs?.let { append(" ($it)") }
+            if (kind == "video" && format != null && format.width > 0) {
+                append(", ${format.width}x${format.height}")
+            }
+        }
+    }
+}
+
 @androidx.annotation.OptIn(UnstableApi::class)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,7 +116,9 @@ fun PlayerScreen(
     val snackbar = remember { SnackbarHostState() }
 
     val player = remember {
-        ExoPlayer.Builder(context).build().apply {
+        // If the preferred (usually hardware) decoder fails, try the device's other decoders.
+        val renderers = DefaultRenderersFactory(context).setEnableDecoderFallback(true)
+        ExoPlayer.Builder(context, renderers).build().apply {
             trackSelectionParameters = trackSelectionParameters.buildUpon()
                 .setPreferredTextLanguage("en")
                 .setSelectUndeterminedTextLanguage(true)
@@ -104,10 +135,14 @@ fun PlayerScreen(
     var savingCount by remember { mutableIntStateOf(0) }
     var saveWhenLineEnds by remember { mutableStateOf(false) }
 
-    fun message(text: String) {
+    fun message(text: String, sticky: Boolean = false) {
         scope.launch {
             snackbar.currentSnackbarData?.dismiss()
-            snackbar.showSnackbar(text)
+            snackbar.showSnackbar(
+                message = text,
+                withDismissAction = sticky,
+                duration = if (sticky) SnackbarDuration.Indefinite else SnackbarDuration.Short,
+            )
         }
     }
 
@@ -186,7 +221,7 @@ fun PlayerScreen(
             }
 
             override fun onPlayerError(error: PlaybackException) {
-                message("Playback error: ${error.errorCodeName}")
+                message(describePlaybackError(error), sticky = true)
             }
         }
         player.addListener(listener)
