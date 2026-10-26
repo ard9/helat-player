@@ -57,7 +57,7 @@ jobs:
         if: failure()
         run: |
           # Put the compiler errors in one annotation so they show on the run summary page.
-          summary=$(grep -E "^e: |What went wrong|^> |error:" -A2 build.log | grep -v "^--$" | head -60 \
+          summary=$(grep -E "^e: |What went wrong|error:" -A12 build.log | grep -v "^--$" | head -60 \
             | sed -e 's/%/%25/g' -e 's/\r//g' | sed ':a;N;$!ba;s/\n/%0A/g')
           echo "::error title=Build errors::${summary:-No error lines found in build.log}"
 
