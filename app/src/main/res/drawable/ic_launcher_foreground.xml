@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Play triangle above two subtitle lines. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M46,30 L68,44 L46,58 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M34,66 h40 v5 h-40 z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M42,76 h24 v5 h-24 z" />
+</vector>
