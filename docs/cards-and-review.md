@@ -35,6 +35,15 @@ passed.
   card audio. One file, `cacheDir/practice/voice.wav`, deleted when the card changes or the
   screen closes. Microphone permission is asked on first use. Not verified on a device.
 
+## Daily review reminder (`reminder/`)
+
+- Off by default; Settings turns it on (asking for `POST_NOTIFICATIONS` on Android 13+) and
+  sets the time (20:00 at first). Stored as `reminder_on` / `reminder_minutes`.
+- `ReviewReminder.schedule` enqueues one WorkManager job for the next time
+  (`ReminderTime.delayUntilNext`, pure and tested). `ReminderWorker` posts a notification if
+  cards are due, in the app's language (`inAppLanguage`), then schedules the next day.
+  WorkManager keeps the job across phone restarts. Not verified on a device.
+
 ## Backup and restore (`CardBackup`)
 
 - ZIP with `cards.json` first (`{"format":1,"cards":[...]}`), then `clips/` and `images/`.

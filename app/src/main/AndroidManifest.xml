@@ -4,6 +4,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Role-play records the user's voice; recordings stay in the app's cache. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- The optional daily review reminder; asked only when the user turns it on. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!--
         allowBackup is off because saved cards and recent items can contain

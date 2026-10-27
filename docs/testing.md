@@ -17,6 +17,7 @@ calls. CI runs them before every build (`gradle testDebugUnitTest`); there is no
 | `data/CardSearchTest` | Card search: words, case, meaning and film, Persian letter forms. |
 | `data/CardBackupTest` | Backup round trip, skipping existing cards, hostile backups (paths outside the folders, overwriting files, other ZIPs, damaged or newer data). |
 | `player/LineLoopTest` | Loop jumps: waiting for the old position after a jump, repeating, early landing, giving up waiting, never ending by itself. |
+| `reminder/ReminderTimeTest` | When the next daily reminder is due (later today, tomorrow, on time, around midnight). |
 | `data/ResumePolicyTest` | Which playback positions are worth resuming. |
 | `roleplay/RolePlayLogicTest` | Alternating roles, scene time range checks, end-of-speech detection, where speech began, WAV writing. |
 | `StringsTranslationTest` | Every English string has a Persian translation with the same placeholders, and no stale ones. |

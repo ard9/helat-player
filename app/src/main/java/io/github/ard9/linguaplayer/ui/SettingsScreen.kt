@@ -1,5 +1,21 @@
 package io.github.ard9.linguaplayer.ui
 
+import io.github.ard9.linguaplayer.reminder.ReviewReminder
+import io.github.ard9.linguaplayer.data.ReminderPrefs
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.material3.rememberTimePickerState
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.Switch
+import androidx.compose.material3.AlertDialog
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
+import android.os.Build
+import android.Manifest
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -41,6 +57,8 @@ import io.github.ard9.linguaplayer.data.AppLanguage
 fun SettingsScreen(
     language: AppLanguage,
     onLanguageChange: (AppLanguage) -> Unit,
+    reminder: ReminderPrefs,
+    onReminderChange: (ReminderPrefs) -> Unit,
     onOpenGuide: () -> Unit,
     onBack: () -> Unit,
 ) {
@@ -85,6 +103,8 @@ fun SettingsScreen(
                 }
             }
 
+            ReminderSection(reminder, onReminderChange)
+
             Surface(
                 color = Cinema.Seat,
                 shape = RoundedCornerShape(16.dp),
@@ -126,5 +146,72 @@ private fun LanguageRow(label: String, selected: Boolean, onSelect: () -> Unit) 
     ) {
         RadioButton(selected = selected, onClick = null)
         Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(start = 16.dp))
+    }
+}
+
+/** The daily review reminder: a switch and the time of day. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ReminderSection(reminder: ReminderPrefs, onChange: (ReminderPrefs) -> Unit) {
+    val context = LocalContext.current
+    var denied by remember { mutableStateOf(false) }
+    var pickTime by remember { mutableStateOf(false) }
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        denied = !granted
+        if (granted) onChange(reminder.copy(enabled = true))
+    }
+    fun turnOn() {
+        if (ReviewReminder.canNotify(context) || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            onChange(reminder.copy(enabled = true))
+        } else {
+            permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    Surface(color = Cinema.Seat, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.reminder), style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.reminder_text), style = MaterialTheme.typography.bodySmall, color = Cinema.Dim)
+                }
+                Switch(
+                    checked = reminder.enabled,
+                    onCheckedChange = { on -> if (on) turnOn() else onChange(reminder.copy(enabled = false)) },
+                )
+            }
+            if (reminder.enabled) {
+                TextButton(onClick = { pickTime = true }) {
+                    Text(
+                        stringResource(
+                            R.string.reminder_at,
+                            stringResource(R.string.time_of_day, reminder.minutesOfDay / 60, reminder.minutesOfDay % 60),
+                        )
+                    )
+                }
+            }
+            if (denied) {
+                Text(stringResource(R.string.reminder_denied), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            }
+        }
+    }
+
+    if (pickTime) {
+        val state = rememberTimePickerState(
+            initialHour = reminder.minutesOfDay / 60,
+            initialMinute = reminder.minutesOfDay % 60,
+            is24Hour = true,
+        )
+        AlertDialog(
+            onDismissRequest = { pickTime = false },
+            text = { TimePicker(state = state) },
+            confirmButton = {
+                TextButton(onClick = {
+                    pickTime = false
+                    onChange(reminder.copy(minutesOfDay = state.hour * 60 + state.minute))
+                }) { Text(stringResource(R.string.done)) }
+            },
+            dismissButton = { TextButton(onClick = { pickTime = false }) { Text(stringResource(R.string.cancel)) } },
+        )
     }
 }

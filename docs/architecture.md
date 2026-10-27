@@ -19,6 +19,8 @@ Kotlin, Jetpack Compose (Material 3), one activity. Package `io.github.ard9.ling
 | `clip/` | Audio cutting: `ClipService` → `TransformerClipper` (Media3, m4a), fallback `VlcClipper` + `WavTrim`. | `saving-lines.md` |
 | `speech/` | No-subtitle fallback: `SpeechFinder`, `SileroVad`, `SentenceFinder`, `WavReader`. | `saving-lines.md` |
 | `roleplay/` | `RolePlayLogic` (pure), `VoiceRecorder`, `RolePlaySession`. | `roleplay.md` |
+| `reminder/` | Daily review reminder: `ReminderTime` (pure), `ReviewReminder` + `ReminderWorker` (WorkManager, notification). | `cards-and-review.md` |
+| `AppLocale.kt` | `withLanguage` / `inAppLanguage`: a context in the chosen language (activity and notifications). | `i18n.md` |
 | `res/values*/strings.xml` | All UI text, English and Persian. | `i18n.md` |
 | `assets/silero_vad.onnx` | Speech detection model (MIT). | |
 | `res/font/` | Atkinson Hyperlegible, Archivo Condensed, Vazirmatn (OFL, see `licenses/`). | |

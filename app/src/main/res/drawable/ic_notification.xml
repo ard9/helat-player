@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Status bar icon: the launcher shapes (play triangle above two subtitle lines), in white. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="56"
+    android:viewportHeight="56">
+    <group android:translateX="-26" android:translateY="-28">
+        <path android:fillColor="#FFFFFFFF" android:pathData="M46,30 L68,44 L46,58 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M34,66 h40 v5 h-40 z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M42,76 h24 v5 h-24 z" />
+    </group>
+</vector>

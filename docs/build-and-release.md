@@ -52,7 +52,7 @@ libVLC 3.7 requires: AGP 8.11.1, Kotlin 2.2.10 (with the Compose plugin of the s
 `kotlin { compilerOptions { jvmTarget } }`.
 
 Main libraries: `org.videolan.android:libvlc-all` 3.7.x, Media3 1.5.1 (exoplayer,
-transformer), ONNX Runtime Android 1.20.0, Compose BOM 2024.12.01, `material-icons-core`
+transformer), ONNX Runtime Android 1.20.0, WorkManager 2.10.1 (review reminder), Compose BOM 2024.12.01, `material-icons-core`
 (not the extended set, to keep the APK small; extra icons are drawn in `ui/PlayerIcons.kt`).
 
 The APK is **arm64-v8a only** to limit size (~80 MB: libVLC, ONNX Runtime, Media3).

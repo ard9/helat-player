@@ -46,6 +46,13 @@ data class RolePlayPrefs(
     }
 }
 
+/** The daily review reminder: on or off, and the time of day in minutes (0–1439). */
+data class ReminderPrefs(val enabled: Boolean, val minutesOfDay: Int) {
+    companion object {
+        val DEFAULT = ReminderPrefs(enabled = false, minutesOfDay = 20 * 60)
+    }
+}
+
 /** How subtitles look, in the player and on cards. [color] is 0xRRGGBB. */
 data class SubtitleStyle(val color: Int, val size: SubtitleSize)
 
@@ -84,6 +91,20 @@ class SettingsRepository(context: Context) {
     fun setClipSpeed(value: Float) {
         prefs.edit().putFloat(KEY_CLIP_SPEED, value).apply()
         _clipSpeed.value = value
+    }
+
+    private val _reminder = MutableStateFlow(
+        ReminderPrefs(
+            prefs.getBoolean(KEY_REMINDER_ON, ReminderPrefs.DEFAULT.enabled),
+            prefs.getInt(KEY_REMINDER_TIME, ReminderPrefs.DEFAULT.minutesOfDay).takeIf { it in 0 until 24 * 60 }
+                ?: ReminderPrefs.DEFAULT.minutesOfDay,
+        )
+    )
+    val reminder: StateFlow<ReminderPrefs> = _reminder
+
+    fun setReminder(value: ReminderPrefs) {
+        prefs.edit().putBoolean(KEY_REMINDER_ON, value.enabled).putInt(KEY_REMINDER_TIME, value.minutesOfDay).apply()
+        _reminder.value = value
     }
 
     private val _welcomeDismissed = MutableStateFlow(prefs.getBoolean(KEY_WELCOME, false))
@@ -151,6 +172,8 @@ class SettingsRepository(context: Context) {
         private const val KEY_LANGUAGE = "language"
         private const val KEY_WELCOME = "welcome_dismissed"
         private const val KEY_CLIP_SPEED = "clip_speed"
+        private const val KEY_REMINDER_ON = "reminder_on"
+        private const val KEY_REMINDER_TIME = "reminder_minutes"
         private val CLIP_SPEED_RANGE = 0.25f..2f
 
         /** The chosen language, read before the app's singletons exist (activity start). */

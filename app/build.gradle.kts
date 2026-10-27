@@ -90,6 +90,9 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-core")
 
+    // The optional daily review reminder (survives restarts of the phone).
+    implementation("androidx.work:work-runtime-ktx:2.10.1")
+
     // Video playback (all formats VLC supports).
     implementation("org.videolan.android:libvlc-all:3.7.6")
 

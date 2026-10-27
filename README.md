@@ -26,6 +26,8 @@ An Android video player for language learning.
 - **English and Persian**: the app follows the phone's language, or choose one under Settings
   (gear icon on the home screen). Persian uses a right-to-left layout and the Vazirmatn font.
 - **Guide**: the "?" icon on the home screen opens a step-by-step guide to every feature.
+- **Daily reminder** (Settings, off by default): a notification at the time you choose when
+  cards are due.
 - **Backup**: Back up saves all cards in one ZIP file; Restore adds the cards from such a file.
   Cards are otherwise kept only on the phone.
 

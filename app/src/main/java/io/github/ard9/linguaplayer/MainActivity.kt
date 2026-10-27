@@ -1,9 +1,8 @@
 package io.github.ard9.linguaplayer
 
+import io.github.ard9.linguaplayer.reminder.ReviewReminder
 import android.content.Context
 import android.content.Intent
-import android.content.res.Configuration
-import java.util.Locale
 import io.github.ard9.linguaplayer.data.AppLanguage
 import io.github.ard9.linguaplayer.data.SettingsRepository
 import io.github.ard9.linguaplayer.ui.GuideScreen
@@ -87,16 +86,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/**
- * [base] with [language] as its locale. Only the locale (and with it the layout direction) is
- * overridden, so orientation and other changes still come from the system.
- */
-private fun withLanguage(base: Context, language: AppLanguage): Context {
-    if (language == AppLanguage.System) return base
-    val config = Configuration().apply { setLocale(Locale.forLanguageTag(language.tag)) }
-    return base.createConfigurationContext(config)
-}
-
 private fun toast(context: Context, text: String) = Toast.makeText(context, text, Toast.LENGTH_LONG).show()
 
 private sealed interface Screen {
@@ -146,6 +135,7 @@ private fun AppNavigation(
     val positions by app.recents.positions.collectAsState()
     val rolePlayPrefs by app.settings.rolePlay.collectAsState()
     val clipSpeed by app.settings.clipSpeed.collectAsState()
+    val reminder by app.settings.reminder.collectAsState()
 
     fun play(source: PlaybackSource) {
         app.recents.add(source)
@@ -278,6 +268,11 @@ private fun AppNavigation(
         Screen.Settings -> SettingsScreen(
             language = language,
             onLanguageChange = onLanguageChange,
+            reminder = reminder,
+            onReminderChange = { value ->
+                app.settings.setReminder(value)
+                if (value.enabled) ReviewReminder.schedule(context, value.minutesOfDay) else ReviewReminder.cancel(context)
+            },
             onOpenGuide = { screen = Screen.Guide(fromSettings = true) },
             onBack = { screen = Screen.Home },
         )

@@ -8,6 +8,7 @@ working agreement in `AGENTS.md`).
 - Permissions: `INTERNET`; `RECORD_AUDIO`, asked at runtime only when role-play or
   pronunciation practice starts. Recordings are written to `cacheDir/roleplay/…` and
   `cacheDir/practice/` and deleted when the session or card is closed.
+  `POST_NOTIFICATIONS` (Android 13+), asked only when the daily reminder is turned on.
 - No analytics, no own server. Network use: playing links and HTTP Range reads of the same
   links for subtitles.
 - All data is app-private and excluded from Android backup (`allowBackup=false`, data
