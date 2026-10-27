@@ -2,7 +2,7 @@
 
 Current state of the project. Update at the end of every task.
 
-Last update: 2026-10-27, loop fix and clearing history (release after build-42).
+Last update: 2026-10-27, release `build-43`.
 
 ## Features
 
@@ -18,8 +18,8 @@ Last update: 2026-10-27, loop fix and clearing history (release after build-42).
 | Blurred review (tap to reveal) | | **No** |
 | Backup and restore (ZIP) | | No report |
 | Resume where left, Repeat, Speed | | No report |
-| Loop button on the video (reworked: instant feedback, waits after jumps, no silent stop) | build-43+ | **No** (the first version did not work well online) |
-| Clear history; remove the Continue card | build-43+ | **No** |
+| Loop button on the video (reworked: instant feedback, waits after jumps, no silent stop) | build-43 | **No** (the first version did not work well online) |
+| Clear history; remove the Continue card | build-43 | **No** |
 | Version on the home screen | | No report |
 | Role-play (record, pause/real-time, playback, compare) | | **No** |
 | Role-play scene by time range (From/To) | build-41 | **No** |
