@@ -18,6 +18,15 @@ data class ClipMargins(val beforeMs: Long, val afterMs: Long) {
     }
 }
 
+/** The last role-play choices, offered again next time. */
+data class RolePlayPrefs(val lineCount: Int, val pauseForMe: Boolean, val showMyText: Boolean) {
+    companion object {
+        const val MIN_LINES = 2
+        const val MAX_LINES = 200
+        val DEFAULT = RolePlayPrefs(lineCount = 10, pauseForMe = true, showMyText = true)
+    }
+}
+
 /** How subtitles look, in the player and on cards. [color] is 0xRRGGBB. */
 data class SubtitleStyle(val color: Int, val size: SubtitleSize)
 
@@ -49,6 +58,24 @@ class SettingsRepository(context: Context) {
     )
     val clipMargins: StateFlow<ClipMargins> = _clipMargins
 
+    private val _rolePlay = MutableStateFlow(
+        RolePlayPrefs(
+            prefs.getInt(KEY_RP_COUNT, RolePlayPrefs.DEFAULT.lineCount).coerceIn(RolePlayPrefs.MIN_LINES, RolePlayPrefs.MAX_LINES),
+            prefs.getBoolean(KEY_RP_PAUSE, RolePlayPrefs.DEFAULT.pauseForMe),
+            prefs.getBoolean(KEY_RP_TEXT, RolePlayPrefs.DEFAULT.showMyText),
+        )
+    )
+    val rolePlay: StateFlow<RolePlayPrefs> = _rolePlay
+
+    fun setRolePlay(value: RolePlayPrefs) {
+        prefs.edit()
+            .putInt(KEY_RP_COUNT, value.lineCount)
+            .putBoolean(KEY_RP_PAUSE, value.pauseForMe)
+            .putBoolean(KEY_RP_TEXT, value.showMyText)
+            .apply()
+        _rolePlay.value = value
+    }
+
     fun setClipMargins(margins: ClipMargins) {
         prefs.edit().putLong(KEY_BEFORE, margins.beforeMs).putLong(KEY_AFTER, margins.afterMs).apply()
         _clipMargins.value = margins
@@ -74,5 +101,8 @@ class SettingsRepository(context: Context) {
         const val KEY_SIZE = "subtitle_size"
         const val KEY_BEFORE = "clip_before_ms"
         const val KEY_AFTER = "clip_after_ms"
+        const val KEY_RP_COUNT = "roleplay_lines"
+        const val KEY_RP_PAUSE = "roleplay_pause"
+        const val KEY_RP_TEXT = "roleplay_show_text"
     }
 }

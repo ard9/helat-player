@@ -67,6 +67,12 @@ class SubtitleLookupTest {
     }
 
     @Test
+    fun `a scene starts with the line on screen`() {
+        assertEquals(listOf("overlap", "later"), SubtitleLookup.scene(lines, 3_500, 5).map { it.text })
+        assertEquals(listOf("first"), SubtitleLookup.scene(lines, 0, 1).map { it.text })
+    }
+
+    @Test
     fun `overlapping finds the translation`() {
         val translation = listOf(SubtitleLine(950, 3_050, "اول"), SubtitleLine(9_900, 12_100, "بعد"))
         assertEquals("بعد", SubtitleLookup.overlapping(translation, lines[2]))

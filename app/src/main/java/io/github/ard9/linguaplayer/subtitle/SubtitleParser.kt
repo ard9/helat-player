@@ -136,6 +136,10 @@ object SubtitleLookup {
         return lines.lastOrNull { it.endMs <= positionMs && positionMs - it.endMs <= 5_000 }
     }
 
+    /** Up to [count] lines that are on screen at [fromMs] or come after it, in time order. */
+    fun scene(lines: List<SubtitleLine>, fromMs: Long, count: Int): List<SubtitleLine> =
+        lines.filter { it.endMs > fromMs }.sortedBy { it.startMs }.take(count)
+
     /** Text of the lines that overlap [line] in time (e.g. its translation), or null. */
     fun overlapping(lines: List<SubtitleLine>, line: SubtitleLine): String? {
         val mid = (line.startMs + line.endMs) / 2

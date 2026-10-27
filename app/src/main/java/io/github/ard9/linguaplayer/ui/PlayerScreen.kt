@@ -1,5 +1,6 @@
 package io.github.ard9.linguaplayer.ui
 
+import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -67,6 +68,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
@@ -93,6 +95,13 @@ import io.github.ard9.linguaplayer.data.CardRepository
 import io.github.ard9.linguaplayer.data.PlaybackSource
 import io.github.ard9.linguaplayer.data.SourceNames
 import io.github.ard9.linguaplayer.data.ClipMargins
+import io.github.ard9.linguaplayer.data.RolePlayPrefs
+import io.github.ard9.linguaplayer.roleplay.RoleLine
+import io.github.ard9.linguaplayer.roleplay.RolePlaySession
+import io.github.ard9.linguaplayer.roleplay.Roles
+import io.github.ard9.linguaplayer.roleplay.ScenePlayer
+import io.github.ard9.linguaplayer.roleplay.VoiceRecorder
+import java.io.File
 import io.github.ard9.linguaplayer.data.SubtitleStyle
 import io.github.ard9.linguaplayer.data.formatTime
 import io.github.ard9.linguaplayer.player.FrameGrabber
@@ -348,6 +357,8 @@ fun PlayerScreen(
     onSubtitleStyleChange: (SubtitleStyle) -> Unit,
     clipMargins: ClipMargins,
     onClipMarginsChange: (ClipMargins) -> Unit,
+    rolePlayPrefs: RolePlayPrefs,
+    onRolePlayPrefsChange: (RolePlayPrefs) -> Unit,
     /** Where to continue from, if this video was left part way. */
     resumeAtMs: Long?,
     onSavePosition: (positionMs: Long, lengthMs: Long) -> Unit,
@@ -384,6 +395,27 @@ fun PlayerScreen(
     // Lines saved while this video is open, to skip a second tap on the same line.
     val savedRanges = remember { mutableListOf<Pair<Long, Long>>() }
     val view = LocalView.current
+    // Role-play: setup dialog state and the running session.
+    val recorder = remember { VoiceRecorder(context.applicationContext) }
+    var rolePlaySetup by remember { mutableStateOf(false) }
+    var sceneFrom by remember { mutableLongStateOf(0L) }
+    var sceneLines by remember { mutableStateOf<List<SubtitleLine>?>(null) }
+    var iStart by remember { mutableStateOf(false) }
+    val sceneMine = remember { mutableStateListOf<Boolean>() }
+    var session by remember { mutableStateOf<RolePlaySession?>(null) }
+    val scenePlayer = remember {
+        object : ScenePlayer {
+            override val timeMs: Long get() = player.time
+            override fun play() = player.play()
+            override fun pause() = player.pause()
+            override fun seekTo(ms: Long) {
+                player.setTime(ms)
+            }
+            override fun setMuted(muted: Boolean) {
+                player.setVolume(if (muted) 0 else 100)
+            }
+        }
+    }
     // Applied once playback has started; until then the saved position must not be overwritten.
     var resumePending by remember { mutableStateOf(resumeAtMs) }
     val savePosition by rememberUpdatedState(onSavePosition)
@@ -574,6 +606,53 @@ fun PlayerScreen(
         return null
     }
 
+    /** Up to [count] subtitle lines from [fromMs] on, from the subtitle file or the best text track. */
+    suspend fun sceneLinesFrom(fromMs: Long, count: Int): List<SubtitleLine> {
+        externalLines?.let { return SubtitleLookup.scene(it, fromMs, count) }
+        val index = builtIn.await() ?: return emptyList()
+        val tracks = index.textTracks
+        if (tracks.isEmpty()) return emptyList()
+        val track = tracks[preferredOrder(tracks, shownTrack(index)).first()]
+        return withContext(Dispatchers.IO) {
+            runCatching { index.linesFrom(fromMs, track.number, count) }
+                .onFailure { Log.w(TAG, "Could not read the scene", it) }
+                .getOrDefault(emptyList())
+        }
+    }
+
+    fun openRolePlay() {
+        player.pause()
+        loopRange = null
+        sceneFrom = player.time
+        sceneLines = null
+        rolePlaySetup = true
+    }
+
+    fun startRolePlay() {
+        val lines = sceneLines ?: return
+        val roles = lines.mapIndexed { i, line -> RoleLine(line.startMs, line.endMs, line.text, sceneMine.getOrElse(i) { false }) }
+        rolePlaySetup = false
+        controlsVisible = false
+        session?.close()
+        val started = RolePlaySession(
+            lines = roles,
+            pauseForMe = rolePlayPrefs.pauseForMe,
+            showMyText = rolePlayPrefs.showMyText,
+            folder = File(context.cacheDir, "roleplay/${System.currentTimeMillis()}"),
+            player = scenePlayer,
+            recorder = recorder,
+            scope = scope,
+        )
+        session = started
+        @Suppress("MissingPermission") // Checked in onStartRolePlay.
+        started.start()
+    }
+
+    fun closeRolePlay() {
+        session?.close()
+        session = null
+    }
+
     /** Plays the current line again (or the last 5 seconds without subtitles). */
     fun repeatLine() {
         val now = player.time
@@ -701,6 +780,7 @@ fun PlayerScreen(
             }
             .onFailure { message("Could not open: ${it.message}", sticky = true) }
         onDispose {
+            session?.close()
             if (resumePending == null) savePosition(player.time, player.length)
             player.setEventListener(null)
             player.stop()
@@ -732,6 +812,7 @@ fun PlayerScreen(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_STOP) {
+                session?.stop()
                 player.pause()
                 if (resumePending == null) savePosition(player.time, player.length)
             }
@@ -774,7 +855,7 @@ fun PlayerScreen(
     }
 
     BackHandler {
-        if (orientationLock == OrientationLock.Landscape) orientationLock = OrientationLock.None else onBack()
+        if (session != null) closeRolePlay() else if (orientationLock == OrientationLock.Landscape) orientationLock = OrientationLock.None else onBack()
     }
 
     val subtitlePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
@@ -826,7 +907,7 @@ fun PlayerScreen(
         // Tap anywhere to show or hide the controls.
         Box(
             Modifier.fillMaxSize().pointerInput(Unit) {
-                detectTapGestures(onTap = { controlsVisible = !controlsVisible })
+                detectTapGestures(onTap = { if (session == null) controlsVisible = !controlsVisible })
             }
         )
 
@@ -840,7 +921,7 @@ fun PlayerScreen(
             )
         }
 
-        if (controlsVisible) {
+        if (controlsVisible && session == null) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -934,6 +1015,7 @@ fun PlayerScreen(
                         player.setRate(RATES[rateIndex].first)
                         touch()
                     }
+                    ControlButton("Role-play") { openRolePlay(); touch() }
                     ControlButton("Clip margins") { marginsDialog = true; touch() }
                     ControlButton(if (landscape) "Portrait" else "Full screen") {
                         orientationLock = if (landscape) OrientationLock.Portrait else OrientationLock.Landscape
@@ -955,8 +1037,10 @@ fun PlayerScreen(
             }
         }
 
+        session?.let { RolePlayOverlay(it, onClose = ::closeRolePlay) }
+
         // The loop button sits just above the save button, in the same quiet style.
-        LoopButton(
+        if (session == null) LoopButton(
             active = loopRange != null,
             onClick = ::toggleLoop,
             modifier = Modifier
@@ -965,7 +1049,7 @@ fun PlayerScreen(
                 .padding(end = 12.dp, bottom = 112.dp),
         )
 
-        QuickSaveButton(
+        if (session == null) QuickSaveButton(
             busy = quickBusy > 0,
             notice = notice,
             onTap = ::quickSave,
@@ -1032,6 +1116,43 @@ fun PlayerScreen(
                     message(if (card != null) "Saved to Box 1" else "Could not cut the audio", sticky = card == null)
                 }
             },
+        )
+    }
+
+    val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) startRolePlay() else message("Role-play needs the microphone to record your voice.", sticky = true)
+    }
+
+    // Reads the scene's lines when the setup opens and when the number of lines changes.
+    LaunchedEffect(rolePlaySetup, rolePlayPrefs.lineCount, sceneFrom) {
+        if (!rolePlaySetup) return@LaunchedEffect
+        sceneLines = null
+        delay(300) // Wait for typing to settle.
+        val lines = sceneLinesFrom(sceneFrom, rolePlayPrefs.lineCount)
+        sceneLines = lines
+        sceneMine.clear()
+        sceneMine.addAll(Roles.alternate(lines, iStart).map { it.mine })
+    }
+
+    if (rolePlaySetup) {
+        RolePlaySetupDialog(
+            lines = sceneLines,
+            mine = sceneMine,
+            prefs = rolePlayPrefs,
+            iStart = iStart,
+            onPrefsChange = onRolePlayPrefsChange,
+            onIStartChange = { value ->
+                iStart = value
+                sceneLines?.let { lines ->
+                    sceneMine.clear()
+                    sceneMine.addAll(Roles.alternate(lines, value).map { it.mine })
+                }
+            },
+            onToggle = { i -> if (i in sceneMine.indices) sceneMine[i] = !sceneMine[i] },
+            onStart = {
+                if (recorder.hasPermission()) startRolePlay() else micPermission.launch(Manifest.permission.RECORD_AUDIO)
+            },
+            onDismiss = { rolePlaySetup = false },
         )
     }
 

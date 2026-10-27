@@ -10,6 +10,8 @@ import java.io.InputStream
  * file cannot make it read (or download) without end.
  */
 class EbmlReader(input: InputStream, start: Long, private val budget: Long) {
+    class ReadLimitException : IOException("Read limit reached")
+
     class Header(val id: Long, val size: Long, val start: Long, val payload: Long)
 
     private val input = input.buffered(64 * 1024)
@@ -20,7 +22,7 @@ class EbmlReader(input: InputStream, start: Long, private val budget: Long) {
 
     private fun spend(n: Long) {
         position += n
-        if (position - origin > budget) throw IOException("Read limit reached")
+        if (position - origin > budget) throw ReadLimitException()
     }
 
     fun byte(): Int {

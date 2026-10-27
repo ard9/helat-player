@@ -109,6 +109,32 @@ class MkvSubtitlesTest {
     }
 
     @Test
+    fun `a scene starts with the lines from the moment on`() {
+        val scene = open("subs.mkv").linesFrom(0, track = 2, count = 3)
+        assertEquals(listOf(2_000L, 5_000L, 20_100L), scene.map { it.startMs })
+        assertEquals("I'll be right back.\nWait for me.", scene[2].text)
+    }
+
+    @Test
+    fun `a scene includes the line on screen`() {
+        val scene = open("subs.mkv").linesFrom(6_000, track = 2, count = 2)
+        assertEquals(listOf("How are you doing today?", "I'll be right back.\nWait for me."), scene.map { it.text })
+    }
+
+    @Test
+    fun `a scene near the end has fewer lines`() {
+        val scene = open("no-cues.mkv").linesFrom(30_000, track = 2, count = 10)
+        assertEquals(listOf("The end & more."), scene.map { it.text })
+    }
+
+    @Test
+    fun `a scene from another track and from WebM`() {
+        assertEquals(3, open("subs.mkv").linesFrom(0, track = 3, count = 10).size)
+        assertEquals(4, open("subs.webm").linesFrom(0, track = 2, count = 10).size)
+        assertTrue(open("subs.mkv").linesFrom(0, track = 99, count = 10).isEmpty())
+    }
+
+    @Test
     fun `other files are not Matroska`() {
         val notMkv = object : ByteSource {
             override val isRemote = false

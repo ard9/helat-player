@@ -127,33 +127,70 @@ class MkvSubtitles private constructor(
     fun linesAround(atMs: Long): Map<Long, List<SubtitleLine>> {
         val wanted = textTracks.associateBy { it.number }
         if (wanted.isEmpty()) return emptyMap()
-        val from = cues.lastOrNull { it.first <= atMs - BEFORE_MS }?.let { segmentStart + it.second }
-            ?: firstCluster
-            ?: cues.firstOrNull()?.let { segmentStart + it.second }
-            ?: return emptyMap()
-        val stopMs = atMs + AFTER_MS
+        val from = clusterBefore(atMs - BEFORE_MS) ?: return emptyMap()
         val raw = wanted.keys.associateWith { mutableListOf<RawLine>() }
-        val budget = if (source.isRemote) REMOTE_CLUSTER_BUDGET else LOCAL_CLUSTER_BUDGET
-
-        source.open(from).use { stream ->
-            val r = EbmlReader(stream, from, budget)
-            r.children(end = null, topLevel = true) { top ->
-                when {
-                    top.id != ID_CLUSTER -> top.size != EbmlReader.UNKNOWN_SIZE
-                    else -> readCluster(r, top, stopMs, wanted, raw)
-                }
-            }
-        }
+        scan(from, atMs + AFTER_MS, wanted, raw, partialOk = false) { false }
         return raw.mapValues { (_, lines) -> finish(lines) }
     }
 
-    /** Returns false once past [stopMs]. */
+    /**
+     * Up to [count] lines of text track [track] that are on screen at [fromMs] or come after it,
+     * reading at most [MAX_SCENE_MS] ahead. If the read limit is reached, the lines found so far
+     * are returned.
+     */
+    fun linesFrom(fromMs: Long, track: Long, count: Int): List<SubtitleLine> {
+        val wanted = textTracks.filter { it.number == track }.associateBy { it.number }
+        if (wanted.isEmpty() || count <= 0) return emptyList()
+        val from = clusterBefore(fromMs - BEFORE_MS) ?: return emptyList()
+        val lines = mutableListOf<RawLine>()
+        // One extra line, so a line without a stored duration can end where the next begins.
+        scan(from, fromMs + MAX_SCENE_MS, wanted, mapOf(track to lines), partialOk = true) {
+            lines.count { it.startMs >= fromMs } > count
+        }
+        return finish(lines).filter { it.endMs > fromMs }.take(count)
+    }
+
+    /** File position of the cluster to start reading from for [ms]. */
+    private fun clusterBefore(ms: Long): Long? =
+        cues.lastOrNull { it.first <= ms }?.let { segmentStart + it.second }
+            ?: firstCluster
+            ?: cues.firstOrNull()?.let { segmentStart + it.second }
+
+    /** Reads clusters from [from] until past [stopMs] or [done] says enough was found. */
+    private fun scan(
+        from: Long,
+        stopMs: Long,
+        wanted: Map<Long, MkvSubtitleTrack>,
+        raw: Map<Long, MutableList<RawLine>>,
+        partialOk: Boolean,
+        done: () -> Boolean,
+    ) {
+        val budget = if (source.isRemote) REMOTE_CLUSTER_BUDGET else LOCAL_CLUSTER_BUDGET
+        try {
+            source.open(from).use { stream ->
+                val r = EbmlReader(stream, from, if (partialOk && source.isRemote) REMOTE_SCENE_BUDGET else budget)
+                r.children(end = null, topLevel = true) { top ->
+                    when {
+                        top.id != ID_CLUSTER -> top.size != EbmlReader.UNKNOWN_SIZE
+                        else -> readCluster(r, top, stopMs, wanted, raw, done)
+                    }
+                }
+            }
+        } catch (e: EbmlReader.ReadLimitException) {
+            if (!partialOk) throw e
+        } catch (e: java.io.EOFException) {
+            if (!partialOk) throw e
+        }
+    }
+
+    /** Returns false once past [stopMs] or when [done]. */
     private fun readCluster(
         r: EbmlReader,
         cluster: EbmlReader.Header,
         stopMs: Long,
         wanted: Map<Long, MkvSubtitleTrack>,
         raw: Map<Long, MutableList<RawLine>>,
+        done: () -> Boolean,
     ): Boolean {
         var clusterTicks = 0L
         val end = if (cluster.size == EbmlReader.UNKNOWN_SIZE) null else cluster.payload + cluster.size
@@ -161,7 +198,7 @@ class MkvSubtitles private constructor(
             when (child.id) {
                 ID_CLUSTER_TIMESTAMP -> {
                     clusterTicks = r.uint(child.size)
-                    toMs(clusterTicks) <= stopMs
+                    toMs(clusterTicks) <= stopMs && !done()
                 }
                 ID_SIMPLE_BLOCK -> {
                     readBlock(r, child.payload + child.size, wanted)?.let { (track, rel, data) ->
@@ -241,6 +278,9 @@ class MkvSubtitles private constructor(
         private const val HEADER_BUDGET = 8L * 1024 * 1024
         private const val MAX_ELEMENT = 16 * 1024 * 1024
         private const val REMOTE_CLUSTER_BUDGET = 64L * 1024 * 1024
+        /** A scene can be a few minutes of an online film. */
+        private const val REMOTE_SCENE_BUDGET = 256L * 1024 * 1024
+        private const val MAX_SCENE_MS = 15L * 60 * 1000
         private const val LOCAL_CLUSTER_BUDGET = 16L * 1024 * 1024 * 1024
 
         /** Reads the file's headers. Null if it is not a Matroska/WebM file. */

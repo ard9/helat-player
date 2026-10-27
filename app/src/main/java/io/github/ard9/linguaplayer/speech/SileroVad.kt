@@ -12,7 +12,8 @@ import java.nio.FloatBuffer
  */
 object SileroVad {
     const val SAMPLE_RATE = 16_000
-    private const val CHUNK = 512
+    /** Samples per probability (32 ms). */
+    const val CHUNK = 512
     private const val CONTEXT = 64
     private const val STATE_SIZE = 128
 
@@ -24,25 +25,38 @@ object SileroVad {
         OrtEnvironment.getEnvironment().createSession(model, OrtSession.SessionOptions()).also { session = it }
     }
 
-    @Suppress("UNCHECKED_CAST")
+    /** One probability per [CHUNK] samples of [samples]. */
     fun probabilities(context: Context, samples: FloatArray): FloatArray {
-        val env = OrtEnvironment.getEnvironment()
-        val model = session(context)
+        val stream = Stream(context)
         val frames = samples.size / CHUNK
-        val result = FloatArray(frames)
-        val input = FloatArray(CONTEXT + CHUNK)
-        val contextSamples = FloatArray(CONTEXT)
-        var state = FloatArray(2 * STATE_SIZE)
+        val chunk = FloatArray(CHUNK)
+        return FloatArray(frames) { frame ->
+            System.arraycopy(samples, frame * CHUNK, chunk, 0, CHUNK)
+            stream.next(chunk)
+        }
+    }
 
-        OnnxTensor.createTensor(env, SAMPLE_RATE.toLong()).use { rate ->
-            for (frame in 0 until frames) {
-                // The model expects the last 64 samples of the previous chunk before each chunk.
-                System.arraycopy(contextSamples, 0, input, 0, CONTEXT)
-                System.arraycopy(samples, frame * CHUNK, input, CONTEXT, CHUNK)
+    /** Speech probabilities for audio that arrives piece by piece (e.g. from the microphone). */
+    class Stream(context: Context) {
+        private val env = OrtEnvironment.getEnvironment()
+        private val model = session(context)
+        private val input = FloatArray(CONTEXT + CHUNK)
+        private val contextSamples = FloatArray(CONTEXT)
+        private var state = FloatArray(2 * STATE_SIZE)
+
+        /** Probability of speech in the next [CHUNK] samples. */
+        @Suppress("UNCHECKED_CAST")
+        fun next(chunk: FloatArray): Float {
+            require(chunk.size == CHUNK)
+            // The model expects the last 64 samples of the previous chunk before each chunk.
+            System.arraycopy(contextSamples, 0, input, 0, CONTEXT)
+            System.arraycopy(chunk, 0, input, CONTEXT, CHUNK)
+            var probability = 0f
+            OnnxTensor.createTensor(env, SAMPLE_RATE.toLong()).use { rate ->
                 OnnxTensor.createTensor(env, FloatBuffer.wrap(input), longArrayOf(1, input.size.toLong())).use { x ->
                     OnnxTensor.createTensor(env, FloatBuffer.wrap(state), longArrayOf(2, 1, STATE_SIZE.toLong())).use { s ->
                         model.run(mapOf("input" to x, "state" to s, "sr" to rate)).use { outputs ->
-                            result[frame] = (outputs.get(0).value as Array<FloatArray>)[0][0]
+                            probability = (outputs.get(0).value as Array<FloatArray>)[0][0]
                             val next = outputs.get(1).value as Array<Array<FloatArray>>
                             state = FloatArray(2 * STATE_SIZE).also {
                                 System.arraycopy(next[0][0], 0, it, 0, STATE_SIZE)
@@ -51,9 +65,9 @@ object SileroVad {
                         }
                     }
                 }
-                System.arraycopy(samples, frame * CHUNK + CHUNK - CONTEXT, contextSamples, 0, CONTEXT)
             }
+            System.arraycopy(chunk, CHUNK - CONTEXT, contextSamples, 0, CONTEXT)
+            return probability
         }
-        return result
     }
 }

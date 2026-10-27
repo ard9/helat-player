@@ -90,6 +90,7 @@ private fun AppNavigation(app: LinguaApp, incoming: MutableState<PlaybackSource?
     val recents by app.recents.items.collectAsState()
     val clipMargins by app.settings.clipMargins.collectAsState()
     val positions by app.recents.positions.collectAsState()
+    val rolePlayPrefs by app.settings.rolePlay.collectAsState()
 
     fun play(source: PlaybackSource) {
         app.recents.add(source)
@@ -177,6 +178,8 @@ private fun AppNavigation(app: LinguaApp, incoming: MutableState<PlaybackSource?
                 onSubtitleStyleChange = app.settings::setSubtitleStyle,
                 clipMargins = clipMargins,
                 onClipMarginsChange = app.settings::setClipMargins,
+                rolePlayPrefs = rolePlayPrefs,
+                onRolePlayPrefsChange = app.settings::setRolePlay,
                 resumeAtMs = remember { app.recents.positions.value[s.source.uri.toString()] },
                 onSavePosition = { position, length -> app.recents.savePosition(s.source.uri, position, length) },
                 onBack = { screen = Screen.Home },
