@@ -72,6 +72,7 @@ fun HomeScreen(
     cards: List<Card>,
     onOpen: (PlaybackSource) -> Unit,
     onRemoveRecent: (PlaybackSource) -> Unit,
+    onClearRecents: () -> Unit,
     onOpenBox: () -> Unit,
     onOpenReview: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -86,6 +87,7 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     var confirmBackup by remember { mutableStateOf(false) }
+    var confirmClear by remember { mutableStateOf(false) }
     val backupTarget = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
         if (uri != null) onBackup(uri)
     }
@@ -162,7 +164,9 @@ fun HomeScreen(
             }
 
             recents.firstOrNull()?.let { last ->
-                item { ContinueCard(last, positions[last.uri.toString()]) { onOpen(last) } }
+                item {
+                    ContinueCard(last, positions[last.uri.toString()], onRemove = { onRemoveRecent(last) }) { onOpen(last) }
+                }
             }
 
             item {
@@ -257,14 +261,19 @@ fun HomeScreen(
             }
 
             val older = recents.drop(1)
-            if (older.isNotEmpty()) {
+            if (recents.isNotEmpty()) {
                 item {
-                    Text(
-                        stringResource(R.string.recently_played),
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+                        Text(
+                            stringResource(if (older.isNotEmpty()) R.string.recently_played else R.string.history),
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(onClick = { confirmClear = true }) { Text(stringResource(R.string.clear_history)) }
+                    }
                 }
+            }
+            if (older.isNotEmpty()) {
                 items(older, key = { it.uri.toString() }) { source ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -287,6 +296,21 @@ fun HomeScreen(
                 }
             }
         }
+    }
+
+    if (confirmClear) {
+        AlertDialog(
+            onDismissRequest = { confirmClear = false },
+            title = { Text(stringResource(R.string.clear_history_title)) },
+            text = { Text(stringResource(R.string.clear_history_text)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmClear = false
+                    onClearRecents()
+                }) { Text(stringResource(R.string.clear_history)) }
+            },
+            dismissButton = { TextButton(onClick = { confirmClear = false }) { Text(stringResource(R.string.cancel)) } },
+        )
     }
 
     if (confirmBackup) {
@@ -327,7 +351,7 @@ private fun WelcomeCard(onOpenGuide: () -> Unit, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun ContinueCard(source: PlaybackSource, resumeAtMs: Long?, onClick: () -> Unit) {
+private fun ContinueCard(source: PlaybackSource, resumeAtMs: Long?, onRemove: () -> Unit, onClick: () -> Unit) {
     val context = LocalContext.current
     Surface(
         color = Cinema.Aisle,
@@ -360,6 +384,9 @@ private fun ContinueCard(source: PlaybackSource, resumeAtMs: Long?, onClick: () 
                     style = MaterialTheme.typography.bodySmall,
                     color = Cinema.Dim,
                 )
+            }
+            IconButton(onClick = onRemove) {
+                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.remove_recent), tint = Cinema.Dim)
             }
         }
     }

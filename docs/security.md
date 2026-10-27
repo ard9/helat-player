@@ -15,6 +15,8 @@ working agreement in `AGENTS.md`).
 - The user's own card backup includes `sourceUri`; the app tells them to keep it private.
 - `usesCleartextTraffic=true` so http streams play; the app warns before opening any http link.
 - "Open with" accepts only `content`, `http` and `https` URIs.
+- Lasting read access to local files is taken only to reopen them from the recent list and is
+  released when they are removed from it or the history is cleared.
 
 ## Untrusted input
 

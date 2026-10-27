@@ -2,7 +2,7 @@
 
 Current state of the project. Update at the end of every task.
 
-Last update: 2026-10-27, release `build-41`.
+Last update: 2026-10-27, loop fix and clearing history (release after build-42).
 
 ## Features
 
@@ -18,7 +18,8 @@ Last update: 2026-10-27, release `build-41`.
 | Blurred review (tap to reveal) | | **No** |
 | Backup and restore (ZIP) | | No report |
 | Resume where left, Repeat, Speed | | No report |
-| Loop button on the video | | **No** |
+| Loop button on the video (reworked: instant feedback, waits after jumps, no silent stop) | build-43+ | **No** (the first version did not work well online) |
+| Clear history; remove the Continue card | build-43+ | **No** |
 | Version on the home screen | | No report |
 | Role-play (record, pause/real-time, playback, compare) | | **No** |
 | Role-play scene by time range (From/To) | build-41 | **No** |
@@ -39,6 +40,9 @@ Last update: 2026-10-27, release `build-41`.
 - Move logic out of `ui/PlayerScreen.kt` (~1270 lines) into a testable class without changing
   behaviour (see `docs/architecture.md`).
 - Online subtitle search (OpenSubtitles); the owner said "not now".
+- Read subtitle lines ahead while playing, so Loop/Repeat are instant on online films.
+  Approved at first, then put back to the owner: over HTTP the reader downloads whole clusters
+  (video included), so it roughly doubles the data used while watching.
 
 ## CI warnings to handle before they break the build
 

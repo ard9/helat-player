@@ -177,6 +177,7 @@ private fun AppNavigation(
             cards = cards,
             onOpen = ::open,
             onRemoveRecent = { app.recents.remove(it) },
+            onClearRecents = { app.recents.clear() },
             onOpenBox = { screen = Screen.Box },
             onOpenReview = { screen = Screen.Review },
             onOpenSettings = { screen = Screen.Settings },

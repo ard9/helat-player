@@ -40,8 +40,20 @@ the orientation and system bars. The activity handles orientation changes itself
 
 - **Repeat**: jumps to the start of the current line (`lineRangeAt`: subtitle file, else the
   best built-in text track), or 5 s back without subtitles.
-- **Loop**: repeats that range until tapped again; seeking far away ends it.
+- **Loop**: the button lights up at once (with a spinner while the line is found, which reads
+  the file and can take seconds on online links), then repeats that range. `player/LineLoop`
+  (pure, tested) decides when to jump back: after each jump it waits until libVLC reports a
+  time near the start again (or 4 s pass), because libVLC may still report the old position.
+  The loop never ends by itself; it ends on the button, a user seek (seek bar, ±10s, Repeat),
+  opening the editor or role-play, or the end of the film, each with "Loop off" (role-play
+  silently).
 - **Speed**: 1×, 0.75×, 0.5×, 1.25× (`RATES`).
+
+## History
+
+Home lists recent videos (`RecentRepository`, max 10). ✕ removes one, Clear history (with a
+confirmation) removes all items and resume positions. Removing also releases the lasting read
+access to local files that was taken to reopen them. Cards are not affected.
 
 ## Resume
 

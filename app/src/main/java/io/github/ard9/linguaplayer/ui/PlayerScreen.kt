@@ -1,5 +1,8 @@
 package io.github.ard9.linguaplayer.ui
 
+import kotlinx.coroutines.Job
+import android.os.SystemClock
+import io.github.ard9.linguaplayer.player.LineLoop
 import io.github.ard9.linguaplayer.data.parseClock
 import io.github.ard9.linguaplayer.data.formatClock
 import io.github.ard9.linguaplayer.roleplay.SceneRange
@@ -253,7 +256,7 @@ private fun overlapShare(aStart: Long, aEnd: Long, bStart: Long, bEnd: Long): Do
 
 /** Small, faint button that turns repeating the current line on and off. */
 @Composable
-private fun LoopButton(active: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun LoopButton(active: Boolean, busy: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val accent = MaterialTheme.colorScheme.primary
     val label = stringResource(if (active) R.string.loop_stop else R.string.loop_start)
     Box(
@@ -270,6 +273,9 @@ private fun LoopButton(active: Boolean, onClick: () -> Unit, modifier: Modifier 
             tint = if (active) Cinema.Night else Color.White.copy(alpha = 0.6f),
             modifier = Modifier.size(22.dp),
         )
+        if (busy) {
+            CircularProgressIndicator(color = Cinema.Night, strokeWidth = 2.dp, modifier = Modifier.size(40.dp))
+        }
     }
 }
 
@@ -443,6 +449,8 @@ fun PlayerScreen(
     var rateIndex by remember { mutableIntStateOf(0) }
     // Repeats this range while set (start to end of the current line, with margins).
     var loopRange by remember { mutableStateOf<Pair<Long, Long>?>(null) }
+    // Set while the line to loop is being found (the button already shows it is on).
+    var loopJob by remember { mutableStateOf<Job?>(null) }
     // Subtitle lines read for repeat/loop, reused while playback stays near them.
     var lineCache by remember { mutableStateOf<BuiltInSearch?>(null) }
     var draft by remember { mutableStateOf<SaveDraft?>(null) }
@@ -481,7 +489,18 @@ fun PlayerScreen(
         interaction++
     }
 
+    /** Ends the loop (also one still being set up); [announce] shows "Loop off". */
+    fun stopLoop(announce: Boolean = true) {
+        if (loopRange == null && loopJob == null) return
+        loopJob?.cancel()
+        loopJob = null
+        loopRange = null
+        if (announce) message(context.getString(R.string.loop_off))
+    }
+
+    /** A jump chosen by the user; it ends the loop. */
     fun seekTo(ms: Long) {
+        stopLoop()
         val upper = if (lengthMs > 0) lengthMs else Long.MAX_VALUE
         player.setTime(ms.coerceIn(0L, upper))
     }
@@ -658,7 +677,7 @@ fun PlayerScreen(
 
     fun openRolePlay() {
         player.pause()
-        loopRange = null
+        stopLoop(announce = false)
         sceneFrom = player.time
         rangeFromText = formatClock(sceneFrom)
         rangeToText = formatClock(sceneFrom + SceneRange.DEFAULT_MS)
@@ -693,6 +712,7 @@ fun PlayerScreen(
 
     /** Plays the current line again (or the last 5 seconds without subtitles). */
     fun repeatLine() {
+        stopLoop()
         val now = player.time
         scope.launch {
             val start = lineRangeAt(now)?.first ?: max(0L, now - REPEAT_FALLBACK_MS)
@@ -702,23 +722,24 @@ fun PlayerScreen(
     }
 
     fun toggleLoop() {
-        if (loopRange != null) {
-            loopRange = null
-            message(context.getString(R.string.loop_off))
+        if (loopRange != null || loopJob != null) {
+            stopLoop()
             return
         }
         val now = player.time
-        scope.launch {
+        // The button turns on at once; finding the line can take a moment on online files.
+        loopJob = scope.launch {
             val range = lineRangeAt(now) ?: (max(0L, now - REPEAT_FALLBACK_MS) to now)
+            loopJob = null
             loopRange = range
-            player.setTime(range.first)
-            if (!player.isPlaying) player.play()
             message(context.getString(R.string.loop_on))
         }
     }
 
     /** Long press: pause and open the editor, filling it in as the line is found. */
     fun openEditor() {
+        // The editor's Preview plays the range, which a running loop would fight with.
+        stopLoop()
         val now = player.time
         player.pause()
         draftId++
@@ -800,7 +821,7 @@ fun PlayerScreen(
                 MediaPlayer.Event.Paused, MediaPlayer.Event.Stopped -> isPlaying = false
                 MediaPlayer.Event.EndReached -> {
                     isPlaying = false
-                    loopRange = null
+                    stopLoop()
                     savePosition(player.length, player.length)
                     controlsVisible = true
                 }
@@ -828,19 +849,14 @@ fun PlayerScreen(
         }
     }
 
-    // While looping, jump back at the end of the line; seeking far away ends the loop.
+    // While looping, jump back to the start at the end of the line (see LineLoop).
     LaunchedEffect(loopRange) {
         val (start, end) = loopRange ?: return@LaunchedEffect
+        player.setTime(start)
+        if (!player.isPlaying) player.play()
+        val loop = LineLoop(start, end, jumpedAtMs = SystemClock.elapsedRealtime())
         while (true) {
-            val t = player.time
-            if (t < start - 2_000 || t > end + 3_000) {
-                loopRange = null
-                break
-            }
-            if (t >= end) {
-                player.setTime(start)
-                delay(300) // Let the jump take effect before checking again.
-            }
+            if (loop.next(player.time, SystemClock.elapsedRealtime())) player.setTime(start)
             delay(50)
         }
     }
@@ -1096,7 +1112,8 @@ fun PlayerScreen(
 
         // The loop button sits just above the save button, in the same quiet style.
         if (session == null) LoopButton(
-            active = loopRange != null,
+            active = loopRange != null || loopJob != null,
+            busy = loopJob != null,
             onClick = ::toggleLoop,
             modifier = Modifier
                 .align(Alignment.CenterEnd)

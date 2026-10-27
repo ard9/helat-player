@@ -15,6 +15,7 @@ calls. CI runs them before every build (`gradle testDebugUnitTest`); there is no
 | `clip/WavTest` | `WavTrim` (VLC start-time bug) and `WavReader` (downmix, resample, limits). |
 | `data/CardTest` | Leitner scheduling, card JSON round trip and older cards, clock text (ASCII also on a Persian phone). |
 | `data/CardBackupTest` | Backup round trip, skipping existing cards, hostile backups (paths outside the folders, overwriting files, other ZIPs, damaged or newer data). |
+| `player/LineLoopTest` | Loop jumps: waiting for the old position after a jump, repeating, early landing, giving up waiting, never ending by itself. |
 | `data/ResumePolicyTest` | Which playback positions are worth resuming. |
 | `roleplay/RolePlayLogicTest` | Alternating roles, scene time range checks, end-of-speech detection, where speech began, WAV writing. |
 | `StringsTranslationTest` | Every English string has a Persian translation with the same placeholders, and no stale ones. |
@@ -30,6 +31,6 @@ Recreate with `tools/make-test-media.sh` (needs ffmpeg). Their subtitle lines ar
 
 - Change logic in a tested area together with its tests; add a test for every bug fixed.
 - Keep logic that can be tested out of Android classes, so it can be covered here.
-- Not covered: libVLC playback, UI, Media3/VLC clipping, the Silero model itself, microphone
+- Not covered: libVLC playback (the loop's jumps themselves), UI, Media3/VLC clipping, the Silero model itself, microphone
   recording. For those, say exactly what was and was not verified on a device, and record it
   in `status.md`.

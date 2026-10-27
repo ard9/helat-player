@@ -1,5 +1,6 @@
 package io.github.ard9.linguaplayer.data
 
+import android.content.Intent
 import android.content.Context
 import android.net.Uri
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -9,6 +10,7 @@ import org.json.JSONObject
 
 /** The last few files and links the user opened, and where playback stopped in each. */
 class RecentRepository(context: Context) {
+    private val resolver = context.applicationContext.contentResolver
     private val prefs = context.getSharedPreferences("recents", Context.MODE_PRIVATE)
 
     private val _items = MutableStateFlow(load())
@@ -24,6 +26,26 @@ class RecentRepository(context: Context) {
     fun remove(source: PlaybackSource) {
         save(_items.value.filterNot { it.uri == source.uri })
         savePositions(_positions.value - source.uri.toString())
+        releaseAccess(listOf(source))
+    }
+
+    /** Forgets every recent video and every saved position. */
+    fun clear() {
+        val removed = _items.value
+        save(emptyList())
+        savePositions(emptyMap())
+        releaseAccess(removed)
+    }
+
+    /** Gives back the lasting read access to forgotten local files (kept only to reopen them). */
+    private fun releaseAccess(sources: List<PlaybackSource>) {
+        sources.filter { it.uri.scheme == "content" }.forEach { source ->
+            try {
+                resolver.releasePersistableUriPermission(source.uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            } catch (e: SecurityException) {
+                // There was no lasting access (e.g. opened with "Open with").
+            }
+        }
     }
 
     /** Remembers where playback stopped; forgets it near the start or the end. */
