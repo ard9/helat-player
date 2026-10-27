@@ -590,9 +590,9 @@ fun PlayerScreen(
             speechFinder.find(scope, source.uri, now) { continuation.resume(it) }
         }
         val outcome = result.getOrElse {
-            return LineResult.None(context.getString(R.string.audio_check_failed, it.message.orEmpty()))
+            return LineResult.None(context.getString(R.string.audio_check_failed, context.describe(it)))
         }
-        val found = outcome.found ?: return LineResult.None(context.getString(R.string.no_speech, outcome.details))
+        val found = outcome.found ?: return LineResult.None(context.getString(R.string.no_speech).also { Log.i(TAG, "No speech: ${outcome.details}") })
         return LineResult.Speech(
             max(0L, found.startMs - margins.beforeMs),
             found.endMs + margins.afterMs,
@@ -837,7 +837,7 @@ fun PlayerScreen(
                 it.media.release()
                 startGate.mediaReady()
             }
-            .onFailure { message(context.getString(R.string.open_failed, it.message.orEmpty()), sticky = true) }
+            .onFailure { message(context.getString(R.string.open_failed, context.describe(it)), sticky = true) }
         onDispose {
             session?.close()
             if (resumePending == null) savePosition(player.time, player.length)
@@ -931,7 +931,7 @@ fun PlayerScreen(
                         message(context.resources.getQuantityString(R.plurals.loaded_sub_lines, lines.size, lines.size))
                     }
                 }
-                .onFailure { message(context.getString(R.string.read_sub_failed, it.message.orEmpty())) }
+                .onFailure { message(context.getString(R.string.read_sub_failed, context.describe(it))) }
         }
     }
 

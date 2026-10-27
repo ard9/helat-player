@@ -21,6 +21,9 @@ object SubtitleParser {
     private val HTML_TAG = Regex("<[^>]*>")
     private val ASS_TAG = Regex("""\{\\[^}]*\}""")
 
+    /** A subtitle file over [MAX_BYTES]. */
+    class TooLargeException : IOException("File is larger than 5 MB")
+
     /** Reads a subtitle file, refusing files that are too large to be real subtitles. */
     fun readLimited(resolver: ContentResolver, uri: Uri): ByteArray {
         val input = resolver.openInputStream(uri) ?: throw IOException("Cannot open the file")
@@ -32,7 +35,7 @@ object SubtitleParser {
                 val n = it.read(buffer)
                 if (n < 0) break
                 total += n
-                if (total > MAX_BYTES) throw IOException("File is larger than 5 MB")
+                if (total > MAX_BYTES) throw TooLargeException()
                 out.write(buffer, 0, n)
             }
             return out.toByteArray()

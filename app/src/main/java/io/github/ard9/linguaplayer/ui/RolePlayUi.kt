@@ -1,5 +1,6 @@
 package io.github.ard9.linguaplayer.ui
 
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import io.github.ard9.linguaplayer.data.formatClock
@@ -316,7 +317,7 @@ fun BoxScope.RolePlayOverlay(session: RolePlaySession, onClose: () -> Unit) {
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(16.dp)) {
                 Text(stringResource(R.string.rp_finished), style = MaterialTheme.typography.titleLarge)
-                session.error?.let { Text(stringResource(R.string.rp_stopped, it.ifBlank { stringResource(R.string.rp_error) }), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                session.error?.let { Text(stringResource(R.string.rp_stopped, LocalContext.current.describe(it)), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                 val said = session.recordings.size
                 val mineCount = session.lines.count { it.mine }
                 Text(

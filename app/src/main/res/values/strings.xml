@@ -57,6 +57,19 @@
     </plurals>
     <string name="restore_failed">Could not restore: %s</string>
 
+    <!-- Error explanations (ErrorText.describe) -->
+    <string name="err_not_backup">this is not a Lingua Player backup</string>
+    <string name="err_backup_damaged">the backup is damaged</string>
+    <string name="err_backup_newer">the backup is from a newer version of the app; update the app first</string>
+    <string name="err_backup_too_large">a file in the backup is too large</string>
+    <string name="err_subtitle_too_large">the file is larger than 5 MB</string>
+    <string name="err_no_range">the server does not allow reading part of the file</string>
+    <string name="err_microphone">the microphone is not available</string>
+    <string name="err_network">network problem; check the connection or the link</string>
+    <string name="err_no_access">the file cannot be opened (moved, deleted or no permission)</string>
+    <string name="err_io">the file could not be read or written</string>
+    <string name="err_unexpected">something went wrong</string>
+
     <!-- http warning -->
     <string name="http_title">Unencrypted link</string>
     <string name="http_text">This link uses http://, so anyone on your network can see or change what is streamed. Play it anyway?</string>
@@ -190,7 +203,7 @@
     <string name="note_subtitle_file">Times and text from the subtitle file.</string>
     <string name="finding_sentence">Finding where the sentence starts and ends…</string>
     <string name="audio_check_failed">Could not check the audio: %s.</string>
-    <string name="no_speech">No speech found near this moment (%s).</string>
+    <string name="no_speech">No speech found near this moment.</string>
     <string name="speech_cut_both">Found speech, but it is longer than the part checked. Check both times.</string>
     <string name="speech_cut_start">The sentence may start earlier. Check the start time.</string>
     <string name="speech_cut_end">The sentence may continue. Check the end time.</string>
@@ -269,7 +282,6 @@
     <string name="rp_skip">Skip</string>
     <string name="rp_finished">Scene finished</string>
     <string name="rp_stopped">Stopped: %s</string>
-    <string name="rp_error">something went wrong</string>
     <plurals name="rp_said">
         <item quantity="one">You said %1$d of your %2$d line.</item>
         <item quantity="other">You said %1$d of your %2$d lines.</item>

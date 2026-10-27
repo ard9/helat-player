@@ -54,6 +54,19 @@
     </plurals>
     <string name="restore_failed">بازیابی انجام نشد: %s</string>
 
+    <!-- Error explanations (ErrorText.describe) -->
+    <string name="err_not_backup">این فایل پشتیبان Lingua Player نیست</string>
+    <string name="err_backup_damaged">فایل پشتیبان خراب است</string>
+    <string name="err_backup_newer">این پشتیبان با نسخه‌ی جدیدتر برنامه ساخته شده؛ اول برنامه را به‌روز کنید</string>
+    <string name="err_backup_too_large">یکی از فایل‌های پشتیبان بیش از حد بزرگ است</string>
+    <string name="err_subtitle_too_large">فایل بزرگ‌تر از ۵ مگابایت است</string>
+    <string name="err_no_range">سرور اجازه‌ی خواندن بخشی از فایل را نمی‌دهد</string>
+    <string name="err_microphone">میکروفون در دسترس نیست</string>
+    <string name="err_network">مشکل اینترنت؛ اتصال یا لینک را بررسی کنید</string>
+    <string name="err_no_access">فایل باز نمی‌شود (جابه‌جا یا حذف شده، یا اجازه نیست)</string>
+    <string name="err_io">فایل خوانده یا نوشته نشد</string>
+    <string name="err_unexpected">مشکلی پیش آمد</string>
+
     <!-- http warning -->
     <string name="http_title">لینک رمزنگاری‌نشده</string>
     <string name="http_text">این لینک با http://‎ است، پس هر کسی در شبکه‌ی شما می‌تواند آنچه پخش می‌شود را ببیند یا تغییر دهد. باز هم پخش شود؟</string>
@@ -186,7 +199,7 @@
     <string name="note_subtitle_file">زمان‌ها و متن از فایل زیرنویس.</string>
     <string name="finding_sentence">در حال پیدا کردن شروع و پایان جمله…</string>
     <string name="audio_check_failed">بررسی صدا ممکن نشد: %s.</string>
-    <string name="no_speech">نزدیک این لحظه گفتاری پیدا نشد (%s).</string>
+    <string name="no_speech">نزدیک این لحظه گفتاری پیدا نشد.</string>
     <string name="speech_cut_both">گفتار پیدا شد، ولی از بخشی که بررسی شد بلندتر است. هر دو زمان را بررسی کنید.</string>
     <string name="speech_cut_start">شاید جمله زودتر شروع شده باشد. زمان شروع را بررسی کنید.</string>
     <string name="speech_cut_end">شاید جمله ادامه داشته باشد. زمان پایان را بررسی کنید.</string>
@@ -265,7 +278,6 @@
     <string name="rp_skip">رد کردن</string>
     <string name="rp_finished">صحنه تمام شد</string>
     <string name="rp_stopped">متوقف شد: %s</string>
-    <string name="rp_error">مشکلی پیش آمد</string>
     <plurals name="rp_said">
         <item quantity="one">%1$d جمله از %2$d جمله‌ی خودتان را گفتید.</item>
         <item quantity="other">%1$d جمله از %2$d جمله‌ی خودتان را گفتید.</item>

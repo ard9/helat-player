@@ -16,6 +16,9 @@ import java.io.IOException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
+/** The microphone could not be used. */
+class MicrophoneException(message: String) : IOException(message)
+
 /** Records the user's voice to WAV, optionally stopping by itself when they stop speaking. */
 class VoiceRecorder(private val context: Context) {
     /** [speechStartMs]: where the user started speaking in the recording (0 if not heard). */
@@ -32,7 +35,7 @@ class VoiceRecorder(private val context: Context) {
     fun record(file: File, stopWhenSilent: Boolean, maxMs: Long, shouldStop: () -> Boolean): Recording {
         val rate = SileroVad.SAMPLE_RATE
         val minBuffer = AudioRecord.getMinBufferSize(rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
-        if (minBuffer <= 0) throw IOException("The microphone cannot record at $rate Hz")
+        if (minBuffer <= 0) throw MicrophoneException("The microphone cannot record at $rate Hz")
         val recorder = AudioRecord(
             MediaRecorder.AudioSource.MIC,
             rate,
@@ -42,7 +45,7 @@ class VoiceRecorder(private val context: Context) {
         )
         if (recorder.state != AudioRecord.STATE_INITIALIZED) {
             recorder.release()
-            throw IOException("The microphone is not available")
+            throw MicrophoneException("The microphone is not available")
         }
         val vad = SileroVad.Stream(context)
         val detector = SpeechEndDetector(maxMs = maxMs)
@@ -55,7 +58,7 @@ class VoiceRecorder(private val context: Context) {
                     var filled = 0
                     while (filled < chunk.size) {
                         val n = recorder.read(chunk, filled, chunk.size - filled)
-                        if (n < 0) throw IOException("Recording failed ($n)")
+                        if (n < 0) throw MicrophoneException("Recording failed ($n)")
                         filled += n
                     }
                     wav.write(chunk)

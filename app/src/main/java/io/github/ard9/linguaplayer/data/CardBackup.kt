@@ -21,7 +21,10 @@ object CardBackup {
     private const val MAX_CARDS_JSON = 20L * 1024 * 1024
     private const val MAX_FILE = 64L * 1024 * 1024
 
-    class InvalidBackupException(message: String) : IOException(message)
+    /** Why a file cannot be restored; the UI turns [reason] into a message. */
+    enum class Reason { NotABackup, Damaged, Newer, TooLarge }
+
+    class InvalidBackupException(val reason: Reason) : IOException(reason.name)
 
     /** [added] are new cards whose files were restored; [skipped] were already present or incomplete. */
     class ImportResult(val added: List<Card>, val skipped: Int)
@@ -58,7 +61,7 @@ object CardBackup {
             ZipInputStream(input).use { zip ->
                 val first = zip.nextEntry
                 if (first == null || first.name != CARDS_ENTRY) {
-                    throw InvalidBackupException("This is not a Lingua Player backup")
+                    throw InvalidBackupException(Reason.NotABackup)
                 }
                 val all = parseCards(String(readLimited(zip, MAX_CARDS_JSON), Charsets.UTF_8))
                 val candidates = all.filter { it.id !in existingIds }.distinctBy { it.id }
@@ -102,13 +105,13 @@ object CardBackup {
             }
         } catch (e: Exception) {
             written.forEach { it.delete() }
-            throw if (e is IOException) e else InvalidBackupException("The backup is damaged")
+            throw if (e is IOException) e else InvalidBackupException(Reason.Damaged)
         }
     }
 
     private fun parseCards(json: String): List<Card> {
         val root = JSONObject(json)
-        if (root.optInt("format", 0) !in 1..FORMAT) throw InvalidBackupException("This backup is from a newer version")
+        if (root.optInt("format", 0) !in 1..FORMAT) throw InvalidBackupException(Reason.Newer)
         val array = root.getJSONArray("cards")
         return List(array.length()) { Card.fromJson(array.getJSONObject(it)) }
     }
@@ -134,7 +137,7 @@ object CardBackup {
             val n = input.read(buffer)
             if (n < 0) break
             total += n
-            if (total > max) throw InvalidBackupException("A file in the backup is too large")
+            if (total > max) throw InvalidBackupException(Reason.TooLarge)
             out.write(buffer, 0, n)
         }
     }

@@ -1,5 +1,7 @@
 package io.github.ard9.linguaplayer
 
+import io.github.ard9.linguaplayer.ui.describe
+import io.github.ard9.linguaplayer.ui.UserMessageException
 import io.github.ard9.linguaplayer.data.BackupReminder
 import io.github.ard9.linguaplayer.reminder.ReviewReminder
 import android.content.Context
@@ -16,7 +18,6 @@ import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.IOException
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -189,7 +190,7 @@ private fun AppNavigation(
                     val result = withContext(Dispatchers.IO) {
                         runCatching {
                             val out = context.contentResolver.openOutputStream(uri, "wt")
-                                ?: throw IOException(context.getString(R.string.backup_cannot_write))
+                                ?: throw UserMessageException(context.getString(R.string.backup_cannot_write))
                             out.use { app.cards.exportTo(it) }
                         }
                     }
@@ -201,7 +202,7 @@ private fun AppNavigation(
                         if (result.isSuccess) {
                             context.resources.getQuantityString(R.plurals.backup_saved, cards.size, cards.size)
                         } else {
-                            context.getString(R.string.backup_failed, result.exceptionOrNull()?.message.orEmpty())
+                            context.getString(R.string.backup_failed, result.exceptionOrNull()?.let(context::describe).orEmpty())
                         },
                     )
                 }
@@ -212,7 +213,7 @@ private fun AppNavigation(
                     val result = withContext(Dispatchers.IO) {
                         runCatching {
                             val input = context.contentResolver.openInputStream(uri)
-                                ?: throw IOException(context.getString(R.string.backup_cannot_open))
+                                ?: throw UserMessageException(context.getString(R.string.backup_cannot_open))
                             input.use { app.cards.importFrom(it) }
                         }
                     }
@@ -230,7 +231,7 @@ private fun AppNavigation(
                                     else -> context.resources.getQuantityString(R.plurals.restored, r.added.size, r.added.size)
                                 }
                             },
-                            onFailure = { context.getString(R.string.restore_failed, it.message.orEmpty()) },
+                            onFailure = { context.getString(R.string.restore_failed, context.describe(it)) },
                         ),
                     )
                 }

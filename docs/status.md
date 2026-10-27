@@ -43,12 +43,6 @@ Last update: 2026-10-27, release `build-43`.
   Approved at first, then put back to the owner: over HTTP the reader downloads whole clusters
   (video included), so it roughly doubles the data used while watching.
 
-## Known gaps
-
-- Error details that come from exceptions stay in English inside translated messages, e.g.
-  "Could not restore: This backup is from a newer version" (`CardBackup`), I/O and libVLC
-  errors. Not yet proposed as a change.
-
 ## Known limitations
 
 See `README.md` (Limitations) and `docs/saving-lines.md`.
