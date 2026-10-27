@@ -55,6 +55,16 @@ android {
         compose = true
     }
 
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+        unitTests.all { test ->
+            test.testLogging {
+                events("failed")
+                exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+            }
+        }
+    }
+
     lint {
         checkReleaseBuilds = false
         abortOnError = false
@@ -89,4 +99,8 @@ dependencies {
     // Audio clipping (fast path) and playing saved clips.
     implementation("androidx.media3:media3-exoplayer:$media3")
     implementation("androidx.media3:media3-transformer:$media3")
+
+    testImplementation("junit:junit:4.13.2")
+    // The real org.json; Android's copy is only a stub in local unit tests.
+    testImplementation("org.json:json:20240303")
 }

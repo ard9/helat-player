@@ -67,9 +67,7 @@ data class MkvSubtitleTrack(
     /** A short name for choosing a track, e.g. "English" or "Persian (Forced)". */
     val label: String
         get() {
-            val lang = language.substringBefore('-').let { code ->
-                if (code == "und" || code.isBlank()) "" else Locale(code).getDisplayLanguage(Locale.ENGLISH)
-            }
+            val lang = languageName(language)
             return when {
                 name.isNotBlank() && lang.isNotBlank() && !name.contains(lang, ignoreCase = true) -> "$lang ($name)"
                 name.isNotBlank() -> name
@@ -81,6 +79,27 @@ data class MkvSubtitleTrack(
     private companion object {
         val TEXT_CODECS = setOf("S_TEXT/UTF8", "S_TEXT/ASS", "S_TEXT/SSA", "S_TEXT/WEBVTT", "D_WEBVTT/SUBTITLES")
         val PERSIAN_CODES = setOf("per", "fas", "fa")
+
+        /** Matroska uses ISO 639-2 codes; the "bibliographic" ones differ from Java's. */
+        private val BIBLIOGRAPHIC = mapOf(
+            "per" to "fa", "ger" to "de", "fre" to "fr", "chi" to "zh", "cze" to "cs", "dut" to "nl",
+            "gre" to "el", "rum" to "ro", "slo" to "sk", "alb" to "sq", "arm" to "hy", "baq" to "eu",
+            "bur" to "my", "geo" to "ka", "ice" to "is", "mac" to "mk", "may" to "ms", "wel" to "cy",
+        )
+
+        private val THREE_TO_TWO: Map<String, String> by lazy {
+            Locale.getISOLanguages().associateBy { two ->
+                runCatching { Locale(two).isO3Language }.getOrDefault("")
+            } + BIBLIOGRAPHIC
+        }
+
+        /** "eng", "per", "fa-IR" → "English", "Persian"; "" for unknown. */
+        fun languageName(code: String): String {
+            val base = code.substringBefore('-').lowercase(Locale.ROOT)
+            if (base.isBlank() || base == "und") return ""
+            val two = if (base.length == 3) THREE_TO_TWO[base] ?: return base else base
+            return Locale(two).getDisplayLanguage(Locale.ENGLISH).ifBlank { base }
+        }
     }
 }
 
