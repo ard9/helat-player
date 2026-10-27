@@ -49,6 +49,13 @@ Actions pinned by SHA on `ubuntu-24.04` since build-45; no deprecation warnings 
 
 - Leave stream URLs (`sourceUri`) out of card backups, or offer it as a choice.
 - Online subtitle search (OpenSubtitles); the owner said "not now".
+- New name, logo and animated splash (paused 2026-10-27 until the owner has tested build-54).
+  The owner rejected three icon concepts and wants a name first: a Kurdish (Kurmanji) word in
+  Latin letters, logo drawn from the name. Shortlist offered: Hevok (sentence, preferred),
+  Bibêje (say it!), Ziman, Deng, Dengbêj, Dîmen (meaning not yet confirmed). "Cuecard" is taken.
+  Keep `applicationId` unchanged when renaming, or the update will not install over the old app.
+  Design review findings to address then: text-only player controls, home emphasis on today's
+  review, default dialogs, plain empty states, 44 dp buttons on the video, no screen transitions.
 - YouTube links (2026-10-27): the owner said "not now". Options were NewPipe Extractor
   (GPLv3, breaks when YouTube changes, against YouTube's terms) or yt-dlp (~30 MB). Meanwhile
   a downloaded file plus an SRT works with every feature.
