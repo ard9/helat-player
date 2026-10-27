@@ -183,11 +183,15 @@ class MkvSubtitles private constructor(
     }
 
     private fun add(raw: Map<Long, MutableList<RawLine>>, track: MkvSubtitleTrack, ticks: Long, duration: Long?, data: ByteArray) {
-        val payload = when (track.compression) {
-            null -> data
-            0 -> inflate(data)
-            3 -> track.compressionSettings + data
-            else -> return
+        val payload = try {
+            when (track.compression) {
+                null -> data
+                0 -> inflate(data)
+                3 -> track.compressionSettings + data
+                else -> return
+            }
+        } catch (e: Exception) {
+            return // A damaged block loses one line, not the whole search.
         }
         val text = SubtitleTextCleaner.clean(track.codec, String(payload, Charsets.UTF_8))
         if (text.isEmpty()) return
