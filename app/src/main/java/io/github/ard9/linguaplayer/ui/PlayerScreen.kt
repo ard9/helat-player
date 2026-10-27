@@ -17,6 +17,12 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.plus
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -95,7 +101,7 @@ import org.videolan.libvlc.util.VLCVideoLayout
 import kotlin.math.max
 
 /** Extra audio kept before and after each subtitle line so words are not cut off. */
-private const val CLIP_PADDING_MS = 250L
+private const val CLIP_PADDING_MS = 450L
 private const val SKIP_MS = 10_000L
 private const val CONTROLS_TIMEOUT_MS = 4_000L
 
@@ -516,6 +522,7 @@ fun PlayerScreen(
                 text = currentText,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
+                    .windowInsetsPadding(WindowInsets.safeDrawing)
                     .padding(start = 24.dp, end = 24.dp, bottom = if (controlsVisible) 128.dp else 28.dp),
             )
         }
@@ -527,6 +534,8 @@ fun PlayerScreen(
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
                     .background(Color.Black.copy(alpha = 0.6f))
+                    // Keep the controls clear of the status bar, camera cutout and navigation bar.
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
                     .padding(4.dp),
             ) {
                 IconButton(onClick = onBack) {
@@ -545,7 +554,10 @@ fun PlayerScreen(
                 onClick = ::onSaveClicked,
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
                 text = { Text(if (savingCount > 0) "Saving…" else "Save") },
-                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 16.dp),
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .windowInsetsPadding(WindowInsets.safeDrawing)
+                    .padding(end = 16.dp),
             )
 
             Row(
@@ -580,6 +592,7 @@ fun PlayerScreen(
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .background(Color.Black.copy(alpha = 0.6f))
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
                     .padding(horizontal = 12.dp, vertical = 4.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -631,7 +644,10 @@ fun PlayerScreen(
         }
 
 
-        SnackbarHost(snackbar, Modifier.align(Alignment.TopCenter).padding(top = 56.dp))
+        SnackbarHost(
+            snackbar,
+            Modifier.align(Alignment.TopCenter).windowInsetsPadding(WindowInsets.safeDrawing).padding(top = 56.dp),
+        )
     }
 
     draft?.let { current ->

@@ -82,6 +82,6 @@ class SpeechFinder(private val context: Context, private val vlc: VlcClipper) {
     private companion object {
         const val BEFORE_MS = 8_000L
         const val AFTER_MS = 6_000L
-        const val PADDING_MS = 150L
+        const val PADDING_MS = 350L
     }
 }
