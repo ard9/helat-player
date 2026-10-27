@@ -20,9 +20,13 @@ class UserMessageException(message: String) : IOException(message)
  * A short explanation of [error] for the user, in the app's language. Technical messages
  * (English, for the log) are never shown.
  */
-fun Context.describe(error: Throwable): String = getString(
+fun Context.describe(error: Throwable): String {
+    if (error is UserMessageException) return error.message.orEmpty()
+    return getString(describeRes(error))
+}
+
+private fun describeRes(error: Throwable): Int =
     when (error) {
-        is UserMessageException -> return error.message.orEmpty()
         is CardBackup.InvalidBackupException -> when (error.reason) {
             CardBackup.Reason.NotABackup -> R.string.err_not_backup
             CardBackup.Reason.Damaged -> R.string.err_backup_damaged
@@ -37,4 +41,3 @@ fun Context.describe(error: Throwable): String = getString(
         is IOException -> R.string.err_io
         else -> R.string.err_unexpected
     }
-)
