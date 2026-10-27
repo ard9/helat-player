@@ -34,7 +34,8 @@ Every push to `main` builds an APK with GitHub Actions and publishes it on the
 3. When you hear a sentence you want to learn, tap the small bookmark button on the right.
    The line is saved in the background while the film keeps playing (Undo is offered for a
    moment). Hold the button instead to pause and check the times, text and meaning first.
-4. From the home screen, tap **Review**. Listen, reveal the text, then answer:
+4. From the home screen, tap **Review**. The picture, text and meaning start blurred: listen
+   first, tap each part to reveal it (or Show all), then answer:
    - **I knew it** moves the card up one box.
    - **Didn't know** moves it back to Box 1.
 

@@ -1,6 +1,15 @@
 package io.github.ard9.linguaplayer.ui
 
+import android.os.Build
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Surface
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -43,12 +52,14 @@ fun ReviewScreen(cards: List<Card>, repository: CardRepository, onBack: () -> Un
     val sessionStart = remember { System.currentTimeMillis() }
     val due = cards.filter { Leitner.isDue(it, sessionStart) }.sortedBy { it.nextReviewAt }
     val card = due.firstOrNull()
-    var revealed by remember(card?.id) { mutableStateOf(false) }
+    // Everything starts hidden: listen first, then reveal each part.
+    var showPicture by remember(card?.id) { mutableStateOf(false) }
+    var showText by remember(card?.id) { mutableStateOf(false) }
+    var showMeaning by remember(card?.id) { mutableStateOf(false) }
     val audio = rememberClipAudioPlayer()
     val audioFile = card?.let { repository.audioFile(it) }
     val hasAudio = audioFile?.exists() == true
     val picture = rememberCardImage(card?.let { repository.imageFile(it) }, maxWidthPx = 1080)
-    val showAnswer = revealed || !hasAudio
 
     LaunchedEffect(card?.id) {
         if (audioFile != null && hasAudio) audio.play(audioFile)
@@ -94,19 +105,47 @@ fun ReviewScreen(cards: List<Card>, repository: CardRepository, onBack: () -> Un
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp, vertical = 8.dp),
             ) {
-                FilmFrame(
-                    image = picture,
-                    text = if (showAnswer) card.text.ifBlank { null } else null,
-                    hint = if (showAnswer) "No text" else "Listen",
-                )
+                val hasText = card.text.isNotBlank()
+                val hasMeaning = card.meaning.isNotBlank()
+                // Decided from the file, not the loaded image, so nothing flashes while it loads.
+                val hasPicture = repository.imageFile(card)?.exists() == true
+                // Without audio there is nothing to listen to, so the text is shown.
+                val textShown = showText || !hasAudio || !hasText
+                val allShown = (showPicture || !hasPicture) && textShown && (showMeaning || !hasMeaning)
+
+                if (hasPicture) {
+                    Hidden(revealed = showPicture, what = "picture", onReveal = { showPicture = true }) {
+                        FilmFrame(image = picture, text = null)
+                    }
+                }
+                Hidden(revealed = textShown, what = "text", onReveal = { showText = true }) {
+                    Surface(color = Cinema.Seat, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+                        Box(Modifier.padding(horizontal = 16.dp, vertical = 20.dp), contentAlignment = Alignment.Center) {
+                            if (hasText) {
+                                SubtitleText(card.text, modifier = Modifier.fillMaxWidth())
+                            } else {
+                                Text("No text", style = MaterialTheme.typography.bodyLarge, color = Cinema.Dim)
+                            }
+                        }
+                    }
+                }
+                if (hasMeaning) {
+                    Hidden(revealed = showMeaning, what = "meaning", onReveal = { showMeaning = true }) {
+                        Surface(color = Cinema.Seat, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                card.meaning,
+                                style = MaterialTheme.typography.bodyLarge,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
+                            )
+                        }
+                    }
+                }
                 Text(
                     "Box ${card.box} · ${card.sourceTitle}",
                     style = MaterialTheme.typography.bodySmall,
                     color = Cinema.Dim,
                 )
-                if (showAnswer && card.meaning.isNotBlank()) {
-                    Text(card.meaning, style = MaterialTheme.typography.bodyLarge)
-                }
                 if (!hasAudio) {
                     Text(
                         "The audio file for this card is missing.",
@@ -118,11 +157,16 @@ fun ReviewScreen(cards: List<Card>, repository: CardRepository, onBack: () -> Un
                     if (hasAudio && audioFile != null) {
                         OutlinedButton(onClick = { audio.play(audioFile) }) { Text("Play again") }
                     }
-                    if (!showAnswer) {
-                        Button(onClick = { revealed = true }) { Text("Show answer") }
+                    if (!allShown) {
+                        TextButton(onClick = {
+                            showPicture = true
+                            showText = true
+                            showMeaning = true
+                        }) { Text("Show all") }
                     }
                 }
-                if (showAnswer) {
+                // Answer once the text has been checked.
+                if (textShown) {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                         OutlinedButton(
                             onClick = { repository.update(Leitner.forgot(card, System.currentTimeMillis())) },
@@ -134,6 +178,39 @@ fun ReviewScreen(cards: List<Card>, repository: CardRepository, onBack: () -> Un
                         ) { Text("I knew it") }
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Blurs [content] until tapped, so the card can be listened to first. On Android 11 and older,
+ * where blur is not available, the content is covered instead.
+ */
+@Composable
+private fun Hidden(revealed: Boolean, what: String, onReveal: () -> Unit, content: @Composable () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(enabled = !revealed, onClickLabel = "Show $what", onClick = onReveal),
+    ) {
+        Box(
+            if (revealed) {
+                Modifier
+            } else {
+                // Screen readers must not read out what is hidden.
+                Modifier.blur(18.dp).clearAndSetSemantics { }
+            }
+        ) { content() }
+        if (!revealed) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(Cinema.Night.copy(alpha = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) 0.3f else 0.95f)),
+            ) {
+                Text("Tap to show $what", style = MaterialTheme.typography.labelLarge, color = Cinema.Screen)
             }
         }
     }
