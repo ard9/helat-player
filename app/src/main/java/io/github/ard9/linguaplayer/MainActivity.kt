@@ -89,6 +89,7 @@ private fun AppNavigation(app: LinguaApp, incoming: MutableState<PlaybackSource?
     val cards by app.cards.cards.collectAsState()
     val recents by app.recents.items.collectAsState()
     val clipMargins by app.settings.clipMargins.collectAsState()
+    val positions by app.recents.positions.collectAsState()
 
     fun play(source: PlaybackSource) {
         app.recents.add(source)
@@ -113,6 +114,7 @@ private fun AppNavigation(app: LinguaApp, incoming: MutableState<PlaybackSource?
     when (val s = screen) {
         Screen.Home -> HomeScreen(
             recents = recents,
+            positions = positions,
             cards = cards,
             onOpen = ::open,
             onRemoveRecent = { app.recents.remove(it) },
@@ -175,6 +177,8 @@ private fun AppNavigation(app: LinguaApp, incoming: MutableState<PlaybackSource?
                 onSubtitleStyleChange = app.settings::setSubtitleStyle,
                 clipMargins = clipMargins,
                 onClipMarginsChange = app.settings::setClipMargins,
+                resumeAtMs = remember { app.recents.positions.value[s.source.uri.toString()] },
+                onSavePosition = { position, length -> app.recents.savePosition(s.source.uri, position, length) },
                 onBack = { screen = Screen.Home },
             )
         }

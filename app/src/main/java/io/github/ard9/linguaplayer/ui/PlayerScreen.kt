@@ -57,6 +57,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -118,6 +119,7 @@ import kotlin.math.max
 
 /** Extra audio kept before and after each subtitle line so words are not cut off. */
 private const val SKIP_MS = 10_000L
+private const val REPEAT_FALLBACK_MS = 5_000L
 private const val CONTROLS_TIMEOUT_MS = 4_000L
 
 private val SCALES = listOf(
@@ -130,6 +132,8 @@ private val SCALES = listOf(
 )
 
 private enum class TrackKind { Audio, Subtitle }
+
+private val RATES = listOf(1f to "1×", 0.75f to "0.75×", 0.5f to "0.5×", 1.25f to "1.25×")
 
 /** Starts playback once, after both the media is set and the video view is attached. */
 private class StartGate(private val start: () -> Unit) {
@@ -323,6 +327,9 @@ fun PlayerScreen(
     onSubtitleStyleChange: (SubtitleStyle) -> Unit,
     clipMargins: ClipMargins,
     onClipMarginsChange: (ClipMargins) -> Unit,
+    /** Where to continue from, if this video was left part way. */
+    resumeAtMs: Long?,
+    onSavePosition: (positionMs: Long, lengthMs: Long) -> Unit,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -356,6 +363,14 @@ fun PlayerScreen(
     // Lines saved while this video is open, to skip a second tap on the same line.
     val savedRanges = remember { mutableListOf<Pair<Long, Long>>() }
     val view = LocalView.current
+    // Applied once playback has started; until then the saved position must not be overwritten.
+    var resumePending by remember { mutableStateOf(resumeAtMs) }
+    val savePosition by rememberUpdatedState(onSavePosition)
+    var rateIndex by remember { mutableIntStateOf(0) }
+    // Repeats this range while set (start to end of the current line, with margins).
+    var loopRange by remember { mutableStateOf<Pair<Long, Long>?>(null) }
+    // Subtitle lines read for repeat/loop, reused while playback stays near them.
+    var lineCache by remember { mutableStateOf<BuiltInSearch?>(null) }
     var draft by remember { mutableStateOf<SaveDraft?>(null) }
     var draftImage by remember { mutableStateOf<Bitmap?>(null) }
     var videoLayout by remember { mutableStateOf<VLCVideoLayout?>(null) }
@@ -513,6 +528,57 @@ fun PlayerScreen(
         }
     }
 
+    /**
+     * Start and end (with margins) of the subtitle line at [now], from the subtitle file or the
+     * video's own text tracks; null without subtitles.
+     */
+    suspend fun lineRangeAt(now: Long): Pair<Long, Long>? {
+        val margins = currentMargins.value
+        externalLines?.let { lines ->
+            return SubtitleLookup.nearMoment(lines, now)
+                ?.let { max(0L, it.startMs - margins.beforeMs) to it.endMs + margins.afterMs }
+        }
+        val index = builtIn.await() ?: return null
+        val textTracks = index.textTracks
+        if (textTracks.isEmpty()) return null
+        val search = lineCache?.takeIf { now <= it.atMs + 500 && now >= it.atMs - 6_000 }
+            ?: withContext(Dispatchers.IO) { runCatching { index.linesAround(now) }.getOrNull() }
+                ?.let { BuiltInSearch(now, it, textTracks) }
+                ?.also { lineCache = it }
+            ?: return null
+        for (i in preferredOrder(textTracks, shownTrack(index))) {
+            val line = SubtitleLookup.nearMoment(search.lines[textTracks[i].number].orEmpty(), now) ?: continue
+            return max(0L, line.startMs - margins.beforeMs) to line.endMs + margins.afterMs
+        }
+        return null
+    }
+
+    /** Plays the current line again (or the last 5 seconds without subtitles). */
+    fun repeatLine() {
+        val now = player.time
+        scope.launch {
+            val start = lineRangeAt(now)?.first ?: max(0L, now - REPEAT_FALLBACK_MS)
+            player.setTime(start)
+            if (!player.isPlaying) player.play()
+        }
+    }
+
+    fun toggleLoop() {
+        if (loopRange != null) {
+            loopRange = null
+            message("Loop off")
+            return
+        }
+        val now = player.time
+        scope.launch {
+            val range = lineRangeAt(now) ?: (max(0L, now - REPEAT_FALLBACK_MS) to now)
+            loopRange = range
+            player.setTime(range.first)
+            if (!player.isPlaying) player.play()
+            message("Repeating this line. Tap Loop again to stop.")
+        }
+    }
+
     /** Long press: pause and open the editor, filling it in as the line is found. */
     fun openEditor() {
         val now = player.time
@@ -577,10 +643,27 @@ fun PlayerScreen(
             when (event.type) {
                 MediaPlayer.Event.TimeChanged -> timeMs = event.timeChanged
                 MediaPlayer.Event.LengthChanged -> lengthMs = event.lengthChanged
-                MediaPlayer.Event.Playing -> isPlaying = true
+                MediaPlayer.Event.Playing -> {
+                    isPlaying = true
+                    resumePending?.let { position ->
+                        resumePending = null
+                        player.setTime(position)
+                        scope.launch {
+                            snackbar.currentSnackbarData?.dismiss()
+                            val result = snackbar.showSnackbar(
+                                message = "Continuing from ${formatTime(position)}",
+                                actionLabel = "Start over",
+                                duration = SnackbarDuration.Short,
+                            )
+                            if (result == SnackbarResult.ActionPerformed) player.setTime(0)
+                        }
+                    }
+                }
                 MediaPlayer.Event.Paused, MediaPlayer.Event.Stopped -> isPlaying = false
                 MediaPlayer.Event.EndReached -> {
                     isPlaying = false
+                    loopRange = null
+                    savePosition(player.length, player.length)
                     controlsVisible = true
                 }
                 MediaPlayer.Event.EncounteredError -> {
@@ -597,6 +680,7 @@ fun PlayerScreen(
             }
             .onFailure { message("Could not open: ${it.message}", sticky = true) }
         onDispose {
+            if (resumePending == null) savePosition(player.time, player.length)
             player.setEventListener(null)
             player.stop()
             player.detachViews()
@@ -605,11 +689,31 @@ fun PlayerScreen(
         }
     }
 
+    // While looping, jump back at the end of the line; seeking far away ends the loop.
+    LaunchedEffect(loopRange) {
+        val (start, end) = loopRange ?: return@LaunchedEffect
+        while (true) {
+            val t = player.time
+            if (t < start - 2_000 || t > end + 3_000) {
+                loopRange = null
+                break
+            }
+            if (t >= end) {
+                player.setTime(start)
+                delay(300) // Let the jump take effect before checking again.
+            }
+            delay(50)
+        }
+    }
+
     // Pause when the app goes to the background.
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_STOP) player.pause()
+            if (event == Lifecycle.Event.ON_STOP) {
+                player.pause()
+                if (resumePending == null) savePosition(player.time, player.length)
+            }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -743,6 +847,9 @@ fun PlayerScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.align(Alignment.Center),
             ) {
+                TextButton(onClick = { repeatLine(); touch() }) {
+                    Text("Repeat", color = Color.White)
+                }
                 TextButton(onClick = { seekTo(player.time - SKIP_MS); touch() }) {
                     Text("−10s", color = Color.White)
                 }
@@ -801,6 +908,12 @@ fun PlayerScreen(
                     ControlButton("Subtitles") { trackDialog = TrackKind.Subtitle; touch() }
                     ControlButton("Load subtitle file") { subtitlePicker.launch(arrayOf("*/*")); touch() }
                     ControlButton("Subtitle style") { styleDialog = true; touch() }
+                    ControlButton(if (loopRange != null) "Loop: on" else "Loop line") { toggleLoop(); touch() }
+                    ControlButton("Speed ${RATES[rateIndex].second}") {
+                        rateIndex = (rateIndex + 1) % RATES.size
+                        player.setRate(RATES[rateIndex].first)
+                        touch()
+                    }
                     ControlButton("Clip margins") { marginsDialog = true; touch() }
                     ControlButton(if (landscape) "Portrait" else "Full screen") {
                         orientationLock = if (landscape) OrientationLock.Portrait else OrientationLock.Landscape

@@ -57,11 +57,14 @@ import io.github.ard9.linguaplayer.data.Card
 import io.github.ard9.linguaplayer.data.Leitner
 import io.github.ard9.linguaplayer.data.PlaybackSource
 import io.github.ard9.linguaplayer.data.SourceNames
+import io.github.ard9.linguaplayer.data.formatTime
 import java.time.LocalDate
 
 @Composable
 fun HomeScreen(
     recents: List<PlaybackSource>,
+    /** Saved playback positions in ms, by URI string. */
+    positions: Map<String, Long>,
     cards: List<Card>,
     onOpen: (PlaybackSource) -> Unit,
     onRemoveRecent: (PlaybackSource) -> Unit,
@@ -128,7 +131,7 @@ fun HomeScreen(
             }
 
             recents.firstOrNull()?.let { last ->
-                item { ContinueCard(last) { onOpen(last) } }
+                item { ContinueCard(last, positions[last.uri.toString()]) { onOpen(last) } }
             }
 
             item {
@@ -278,7 +281,7 @@ fun HomeScreen(
 }
 
 @Composable
-private fun ContinueCard(source: PlaybackSource, onClick: () -> Unit) {
+private fun ContinueCard(source: PlaybackSource, resumeAtMs: Long?, onClick: () -> Unit) {
     Surface(
         color = Cinema.Aisle,
         shape = RoundedCornerShape(16.dp),
@@ -301,7 +304,11 @@ private fun ContinueCard(source: PlaybackSource, onClick: () -> Unit) {
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(sourceKind(source), style = MaterialTheme.typography.bodySmall, color = Cinema.Dim)
+                Text(
+                    if (resumeAtMs != null) "${sourceKind(source)} · from ${formatTime(resumeAtMs)}" else sourceKind(source),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Cinema.Dim,
+                )
             }
         }
     }
