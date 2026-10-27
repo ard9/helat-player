@@ -72,8 +72,8 @@ class SpeechFinder(private val context: Context, private val vlc: VlcClipper) {
 
     private fun found(span: SentenceFinder.Span, windowStart: Long, analysedMs: Double, edge: Double): Found {
         return Found(
-            startMs = max(0L, windowStart + span.startMs.roundToLong() - PADDING_MS),
-            endMs = windowStart + span.endMs.roundToLong() + PADDING_MS,
+            startMs = max(0L, windowStart + span.startMs.roundToLong()),
+            endMs = windowStart + span.endMs.roundToLong(),
             cutAtStart = windowStart > 0 && span.startMs <= edge,
             cutAtEnd = span.endMs >= analysedMs - edge,
         )
@@ -82,6 +82,5 @@ class SpeechFinder(private val context: Context, private val vlc: VlcClipper) {
     private companion object {
         const val BEFORE_MS = 8_000L
         const val AFTER_MS = 6_000L
-        const val PADDING_MS = 350L
     }
 }

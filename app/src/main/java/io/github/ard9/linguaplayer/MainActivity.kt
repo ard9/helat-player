@@ -74,6 +74,7 @@ private fun AppNavigation(app: LinguaApp, incoming: MutableState<PlaybackSource?
     var selectedBox by rememberSaveable { mutableIntStateOf(1) }
     val cards by app.cards.cards.collectAsState()
     val recents by app.recents.items.collectAsState()
+    val clipMargins by app.settings.clipMargins.collectAsState()
 
     fun play(source: PlaybackSource) {
         app.recents.add(source)
@@ -115,6 +116,8 @@ private fun AppNavigation(app: LinguaApp, incoming: MutableState<PlaybackSource?
                 clips = app.clips,
                 speechFinder = app.speechFinder,
                 onSubtitleStyleChange = app.settings::setSubtitleStyle,
+                clipMargins = clipMargins,
+                onClipMarginsChange = app.settings::setClipMargins,
                 onBack = { screen = Screen.Home },
             )
         }

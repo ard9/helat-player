@@ -67,6 +67,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -90,6 +91,7 @@ import io.github.ard9.linguaplayer.data.Card
 import io.github.ard9.linguaplayer.data.CardRepository
 import io.github.ard9.linguaplayer.data.PlaybackSource
 import io.github.ard9.linguaplayer.data.SourceNames
+import io.github.ard9.linguaplayer.data.ClipMargins
 import io.github.ard9.linguaplayer.data.SubtitleStyle
 import io.github.ard9.linguaplayer.data.formatTime
 import io.github.ard9.linguaplayer.player.FrameGrabber
@@ -115,7 +117,6 @@ import org.videolan.libvlc.util.VLCVideoLayout
 import kotlin.math.max
 
 /** Extra audio kept before and after each subtitle line so words are not cut off. */
-private const val CLIP_PADDING_MS = 450L
 private const val SKIP_MS = 10_000L
 private const val CONTROLS_TIMEOUT_MS = 4_000L
 
@@ -195,7 +196,7 @@ private val SAVED_HAPTIC = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
 }
 
 /** The line of track [index] at the saved moment, with its Persian translation as the meaning. */
-private fun lineFromTrack(search: BuiltInSearch, index: Int): LineResult.Subtitle? {
+private fun lineFromTrack(search: BuiltInSearch, index: Int, margins: ClipMargins): LineResult.Subtitle? {
     val track = search.tracks[index]
     val line = SubtitleLookup.nearMoment(search.lines[track.number].orEmpty(), search.atMs) ?: return null
     val meaning = if (track.isPersian) {
@@ -205,8 +206,8 @@ private fun lineFromTrack(search: BuiltInSearch, index: Int): LineResult.Subtitl
             ?.let { persian -> SubtitleLookup.overlapping(search.lines[persian.number].orEmpty(), line) }
     }
     return LineResult.Subtitle(
-        startMs = max(0L, line.startMs - CLIP_PADDING_MS),
-        endMs = line.endMs + CLIP_PADDING_MS,
+        startMs = max(0L, line.startMs - margins.beforeMs),
+        endMs = line.endMs + margins.afterMs,
         text = line.text,
         meaning = meaning ?: "",
         note = "Times and text from the subtitle track \"${track.label}\".",
@@ -320,6 +321,8 @@ fun PlayerScreen(
     clips: ClipService,
     speechFinder: SpeechFinder,
     onSubtitleStyleChange: (SubtitleStyle) -> Unit,
+    clipMargins: ClipMargins,
+    onClipMarginsChange: (ClipMargins) -> Unit,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -340,6 +343,9 @@ fun PlayerScreen(
     var orientationLock by remember { mutableStateOf(OrientationLock.None) }
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     var styleDialog by remember { mutableStateOf(false) }
+    var marginsDialog by remember { mutableStateOf(false) }
+    // Read when a line is found, so a change applies to the next save without reopening.
+    val currentMargins = rememberUpdatedState(clipMargins)
     var scaleIndex by remember { mutableIntStateOf(0) }
     var seekFraction by remember { mutableStateOf<Float?>(null) }
     var externalLines by remember { mutableStateOf<List<SubtitleLine>?>(null) }
@@ -445,11 +451,12 @@ fun PlayerScreen(
 
     /** Where the line around [now] starts and ends, and what it says, from the best source. */
     suspend fun findLine(now: Long, onStage: (String) -> Unit = {}): LineResult {
+        val margins = currentMargins.value
         externalLines?.let { lines ->
             SubtitleLookup.nearMoment(lines, now)?.let { line ->
                 return LineResult.Subtitle(
-                    max(0L, line.startMs - CLIP_PADDING_MS),
-                    line.endMs + CLIP_PADDING_MS,
+                    max(0L, line.startMs - margins.beforeMs),
+                    line.endMs + margins.afterMs,
                     line.text,
                     "",
                     "Times and text from the subtitle file.",
@@ -466,7 +473,7 @@ fun PlayerScreen(
             lines.getOrNull()?.let { found ->
                 val search = BuiltInSearch(now, found, textTracks)
                 for (i in preferredOrder(textTracks, shownTrack(index))) {
-                    lineFromTrack(search, i)?.let { return it }
+                    lineFromTrack(search, i, margins)?.let { return it }
                 }
             }
         }
@@ -479,8 +486,8 @@ fun PlayerScreen(
         }
         val found = outcome.found ?: return LineResult.None("No speech found near this moment (${outcome.details}).")
         return LineResult.Speech(
-            found.startMs,
-            found.endMs,
+            max(0L, found.startMs - margins.beforeMs),
+            found.endMs + margins.afterMs,
             when {
                 found.cutAtStart && found.cutAtEnd -> "Found speech, but it is longer than the part checked. Check both times."
                 found.cutAtStart -> "The sentence may start earlier. Check the start time."
@@ -794,6 +801,7 @@ fun PlayerScreen(
                     ControlButton("Subtitles") { trackDialog = TrackKind.Subtitle; touch() }
                     ControlButton("Load subtitle file") { subtitlePicker.launch(arrayOf("*/*")); touch() }
                     ControlButton("Subtitle style") { styleDialog = true; touch() }
+                    ControlButton("Clip margins") { marginsDialog = true; touch() }
                     ControlButton(if (landscape) "Portrait" else "Full screen") {
                         orientationLock = if (landscape) OrientationLock.Portrait else OrientationLock.Landscape
                         touch()
@@ -849,7 +857,7 @@ fun PlayerScreen(
             selectedTrack = selectedTrack,
             onSelectTrack = { index ->
                 val search = builtInSearch
-                val line = search?.let { lineFromTrack(it, index) }
+                val line = search?.let { lineFromTrack(it, index, currentMargins.value) }
                 if (line != null) {
                     applyToDialog(line)
                 } else {
@@ -881,6 +889,14 @@ fun PlayerScreen(
                     message(if (card != null) "Saved to Box 1" else "Could not cut the audio", sticky = card == null)
                 }
             },
+        )
+    }
+
+    if (marginsDialog) {
+        ClipMarginsDialog(
+            current = clipMargins,
+            onChange = onClipMarginsChange,
+            onDismiss = { marginsDialog = false },
         )
     }
 
