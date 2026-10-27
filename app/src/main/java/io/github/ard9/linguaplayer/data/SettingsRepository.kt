@@ -1,13 +1,26 @@
 package io.github.ard9.linguaplayer.data
 
 import android.content.Context
+import androidx.annotation.StringRes
+import io.github.ard9.linguaplayer.R
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-enum class SubtitleSize(val label: String, val sp: Int, val vlcScale: Int) {
-    Small("Small", 18, 80),
-    Medium("Medium", 22, 100),
-    Large("Large", 28, 130),
+enum class SubtitleSize(@StringRes val label: Int, val sp: Int, val vlcScale: Int) {
+    Small(R.string.size_small, 18, 80),
+    Medium(R.string.size_medium, 22, 100),
+    Large(R.string.size_large, 28, 130),
+}
+
+/** The app's language; [System] follows the phone. [tag] is stored in the settings. */
+enum class AppLanguage(val tag: String) {
+    System("system"),
+    English("en"),
+    Persian("fa");
+
+    companion object {
+        fun fromTag(tag: String?): AppLanguage = entries.firstOrNull { it.tag == tag } ?: System
+    }
 }
 
 /** Extra audio kept before and after each saved line, so first and last words are not cut. */
@@ -33,19 +46,37 @@ data class SubtitleStyle(val color: Int, val size: SubtitleSize)
 object SubtitleColors {
     const val YELLOW = 0xFFD84D
 
-    /** Name to 0xRRGGBB, in the order shown to the user. */
+    /** Name (string resource) to 0xRRGGBB, in the order shown to the user. */
     val presets = listOf(
-        "Yellow" to YELLOW,
-        "White" to 0xF4F6FA,
-        "Cyan" to 0x6FE3F2,
-        "Green" to 0x8BE38B,
-        "Orange" to 0xFFAA55,
-        "Pink" to 0xFF8FC7,
+        R.string.color_yellow to YELLOW,
+        R.string.color_white to 0xF4F6FA,
+        R.string.color_cyan to 0x6FE3F2,
+        R.string.color_green to 0x8BE38B,
+        R.string.color_orange to 0xFFAA55,
+        R.string.color_pink to 0xFF8FC7,
     )
 }
 
 class SettingsRepository(context: Context) {
-    private val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+
+    private val _language = MutableStateFlow(AppLanguage.fromTag(prefs.getString(KEY_LANGUAGE, null)))
+    val language: StateFlow<AppLanguage> = _language
+
+    /** Saved at once (commit), because the activity is recreated right after a change. */
+    fun setLanguage(value: AppLanguage) {
+        prefs.edit().putString(KEY_LANGUAGE, value.tag).commit()
+        _language.value = value
+    }
+
+    private val _welcomeDismissed = MutableStateFlow(prefs.getBoolean(KEY_WELCOME, false))
+    /** True once the first-launch welcome card on the home screen was closed. */
+    val welcomeDismissed: StateFlow<Boolean> = _welcomeDismissed
+
+    fun dismissWelcome() {
+        prefs.edit().putBoolean(KEY_WELCOME, true).apply()
+        _welcomeDismissed.value = true
+    }
 
     private val _subtitleStyle = MutableStateFlow(load())
     val subtitleStyle: StateFlow<SubtitleStyle> = _subtitleStyle
@@ -96,13 +127,22 @@ class SettingsRepository(context: Context) {
         return SubtitleStyle(color, size)
     }
 
-    private companion object {
-        const val KEY_COLOR = "subtitle_color"
-        const val KEY_SIZE = "subtitle_size"
-        const val KEY_BEFORE = "clip_before_ms"
-        const val KEY_AFTER = "clip_after_ms"
-        const val KEY_RP_COUNT = "roleplay_lines"
-        const val KEY_RP_PAUSE = "roleplay_pause"
-        const val KEY_RP_TEXT = "roleplay_show_text"
+    companion object {
+        private const val FILE = "settings"
+        private const val KEY_LANGUAGE = "language"
+        private const val KEY_WELCOME = "welcome_dismissed"
+
+        /** The chosen language, read before the app's singletons exist (activity start). */
+        fun language(context: Context): AppLanguage = AppLanguage.fromTag(
+            context.getSharedPreferences(FILE, Context.MODE_PRIVATE).getString(KEY_LANGUAGE, null)
+        )
+
+        private const val KEY_COLOR = "subtitle_color"
+        private const val KEY_SIZE = "subtitle_size"
+        private const val KEY_BEFORE = "clip_before_ms"
+        private const val KEY_AFTER = "clip_after_ms"
+        private const val KEY_RP_COUNT = "roleplay_lines"
+        private const val KEY_RP_PAUSE = "roleplay_pause"
+        private const val KEY_RP_TEXT = "roleplay_show_text"
     }
 }

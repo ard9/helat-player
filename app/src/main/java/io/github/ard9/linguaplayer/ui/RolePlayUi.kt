@@ -1,5 +1,8 @@
 package io.github.ard9.linguaplayer.ui
 
+import io.github.ard9.linguaplayer.R
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -66,17 +69,16 @@ fun RolePlaySetupDialog(
     var countText by remember(prefs.lineCount) { mutableStateOf(prefs.lineCount.toString()) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Role-play") },
+        title = { Text(stringResource(R.string.role_play)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    "You and the actor take turns. On your lines the film goes quiet and your voice is " +
-                        "recorded. Use headphones so the film is not recorded too.",
+                    stringResource(R.string.rp_intro),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Lines", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                    Text(stringResource(R.string.rp_lines), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
                     OutlinedButton(
                         onClick = { onPrefsChange(prefs.copy(lineCount = (prefs.lineCount - 1).coerceAtLeast(RolePlayPrefs.MIN_LINES))) },
                     ) { Text("−") }
@@ -97,18 +99,18 @@ fun RolePlaySetupDialog(
                     ) { Text("+") }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = !iStart, onClick = { onIStartChange(false) }, label = { Text("Actor starts") })
-                    FilterChip(selected = iStart, onClick = { onIStartChange(true) }, label = { Text("I start") })
+                    FilterChip(selected = !iStart, onClick = { onIStartChange(false) }, label = { Text(stringResource(R.string.rp_actor_starts)) })
+                    FilterChip(selected = iStart, onClick = { onIStartChange(true) }, label = { Text(stringResource(R.string.rp_i_start)) })
                 }
-                SwitchRow("Pause the film on my lines", prefs.pauseForMe) { onPrefsChange(prefs.copy(pauseForMe = it)) }
-                SwitchRow("Show my lines", prefs.showMyText) { onPrefsChange(prefs.copy(showMyText = it)) }
-                Text("Tap a line to change who says it.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                SwitchRow(stringResource(R.string.rp_pause_on_mine), prefs.pauseForMe) { onPrefsChange(prefs.copy(pauseForMe = it)) }
+                SwitchRow(stringResource(R.string.rp_show_mine), prefs.showMyText) { onPrefsChange(prefs.copy(showMyText = it)) }
+                Text(stringResource(R.string.rp_tap_line), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 when {
                     lines == null -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                        Text("Reading the subtitles…", style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.rp_reading), style = MaterialTheme.typography.bodySmall)
                     }
-                    lines.isEmpty() -> Text("No subtitle lines from here on.", style = MaterialTheme.typography.bodyMedium)
+                    lines.isEmpty() -> Text(stringResource(R.string.rp_no_lines), style = MaterialTheme.typography.bodyMedium)
                     else -> LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                         modifier = Modifier.heightIn(max = 280.dp),
@@ -124,9 +126,9 @@ fun RolePlaySetupDialog(
             TextButton(
                 onClick = onStart,
                 enabled = !lines.isNullOrEmpty() && mine.any { it },
-            ) { Text("Start") }
+            ) { Text(stringResource(R.string.start)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }
 
@@ -146,11 +148,11 @@ private fun LineRow(line: SubtitleLine, mine: Boolean, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .background(if (mine) accent.copy(alpha = 0.16f) else Color.Transparent, RoundedCornerShape(8.dp))
-            .clickable(onClickLabel = if (mine) "Give this line to the actor" else "Say this line myself", onClick = onClick)
+            .clickable(onClickLabel = stringResource(if (mine) R.string.rp_give_actor else R.string.rp_say_myself), onClick = onClick)
             .padding(horizontal = 8.dp, vertical = 6.dp),
     ) {
         Text(
-            if (mine) "Me" else "Actor",
+            stringResource(if (mine) R.string.rp_me else R.string.rp_actor),
             style = MaterialTheme.typography.labelLarge,
             color = if (mine) accent else Cinema.Dim,
             modifier = Modifier.widthIn(min = 48.dp),
@@ -182,15 +184,19 @@ fun BoxScope.RolePlayOverlay(session: RolePlaySession, onClose: () -> Unit) {
     ) {
         Text(
             when (session.phase) {
-                RolePlaySession.Phase.Acting -> if (current >= 0) "Role-play · line ${current + 1} of $total" else "Role-play · get ready"
-                RolePlaySession.Phase.PlayingBack -> "Playing your scene"
-                else -> "Role-play"
+                RolePlaySession.Phase.Acting -> if (current >= 0) {
+                    stringResource(R.string.rp_progress, current + 1, total)
+                } else {
+                    stringResource(R.string.rp_get_ready_title)
+                }
+                RolePlaySession.Phase.PlayingBack -> stringResource(R.string.rp_playing)
+                else -> stringResource(R.string.role_play)
             },
             color = Color.White,
             style = MaterialTheme.typography.titleSmall,
             modifier = Modifier.weight(1f),
         )
-        TextButton(onClick = onClose) { Text("Close", color = Color.White) }
+        TextButton(onClick = onClose) { Text(stringResource(R.string.close), color = Color.White) }
     }
 
     when (session.phase) {
@@ -200,7 +206,7 @@ fun BoxScope.RolePlayOverlay(session: RolePlaySession, onClose: () -> Unit) {
                 YourTurn(session, line.text)
             } else if (line != null && session.phase == RolePlaySession.Phase.Acting) {
                 Text(
-                    if (line.mine) "Get ready" else "Actor",
+                    stringResource(if (line.mine) R.string.rp_get_ready else R.string.rp_actor),
                     color = Color.White,
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier
@@ -215,7 +221,7 @@ fun BoxScope.RolePlayOverlay(session: RolePlaySession, onClose: () -> Unit) {
                 OutlinedButton(
                     onClick = { session.stop() },
                     modifier = Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.safeDrawing).padding(bottom = 16.dp),
-                ) { Text("Stop", color = Color.White) }
+                ) { Text(stringResource(R.string.stop), color = Color.White) }
             }
         }
         RolePlaySession.Phase.Finished, RolePlaySession.Phase.Comparing -> Results(session)
@@ -241,14 +247,14 @@ private fun BoxScope.YourTurn(session: RolePlaySession, text: String) {
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(Modifier.size(10.dp).background(Cinema.Exit, RoundedCornerShape(50)))
-                Text("Your turn: speak now", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                Text(stringResource(R.string.rp_your_turn), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
             }
             if (session.showMyText) {
                 SubtitleText(text, modifier = Modifier.fillMaxWidth())
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TextButton(onClick = { session.skip() }) { Text("Skip") }
-                Button(onClick = { session.done() }) { Text("Done") }
+                TextButton(onClick = { session.skip() }) { Text(stringResource(R.string.rp_skip)) }
+                Button(onClick = { session.done() }) { Text(stringResource(R.string.done)) }
             }
         }
     }
@@ -267,22 +273,22 @@ private fun BoxScope.Results(session: RolePlaySession) {
             .fillMaxWidth(),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(16.dp)) {
-            Text("Scene finished", style = MaterialTheme.typography.titleLarge)
-            session.error?.let { Text("Stopped: $it", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            Text(stringResource(R.string.rp_finished), style = MaterialTheme.typography.titleLarge)
+            session.error?.let { Text(stringResource(R.string.rp_stopped, it.ifBlank { stringResource(R.string.rp_error) }), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             val said = session.recordings.size
             val mineCount = session.lines.count { it.mine }
             Text(
-                "You said $said of your $mineCount lines.",
+                pluralStringResource(R.plurals.rp_said, mineCount, said, mineCount),
                 style = MaterialTheme.typography.bodyMedium,
                 color = Cinema.Dim,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { session.playBack() }, enabled = said > 0) { Text("Play my scene") }
+                Button(onClick = { session.playBack() }, enabled = said > 0) { Text(stringResource(R.string.rp_play_scene)) }
                 @Suppress("MissingPermission") // The permission was granted before the first start.
-                OutlinedButton(onClick = { session.start() }) { Text("Try again") }
+                OutlinedButton(onClick = { session.start() }) { Text(stringResource(R.string.rp_try_again)) }
             }
             if (said > 0) {
-                Text("Compare line by line", style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(R.string.rp_compare), style = MaterialTheme.typography.titleSmall)
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.heightIn(max = 220.dp)) {
                     itemsIndexed(session.lines) { i, line ->
                         if (!line.mine) return@itemsIndexed
@@ -297,8 +303,8 @@ private fun BoxScope.Results(session: RolePlaySession) {
                                 color = if (busy) MaterialTheme.colorScheme.primary else Cinema.Screen,
                                 modifier = Modifier.weight(1f),
                             )
-                            TextButton(onClick = { session.playActor(i) }) { Text("Actor") }
-                            TextButton(onClick = { session.playMine(i) }, enabled = session.recordings[i] != null) { Text("Mine") }
+                            TextButton(onClick = { session.playActor(i) }) { Text(stringResource(R.string.rp_actor)) }
+                            TextButton(onClick = { session.playMine(i) }, enabled = session.recordings[i] != null) { Text(stringResource(R.string.rp_mine)) }
                         }
                     }
                 }

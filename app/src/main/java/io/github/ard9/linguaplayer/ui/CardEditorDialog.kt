@@ -1,5 +1,9 @@
 package io.github.ard9.linguaplayer.ui
 
+import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.material3.LocalTextStyle
+import io.github.ard9.linguaplayer.R
+import androidx.compose.ui.res.stringResource
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -90,13 +94,13 @@ fun CardEditorDialog(
     val start = parseClock(startText)
     val end = parseClock(endText)
     val error = if (start == null) {
-        "Start time is not valid (use m:ss or m:ss.s)"
+        R.string.err_start_invalid
     } else if (end == null) {
-        "End time is not valid (use m:ss or m:ss.s)"
+        R.string.err_end_invalid
     } else if (end <= start) {
-        "End must be after start"
+        R.string.err_end_before_start
     } else if (end - start > MAX_CLIP_MS) {
-        "A clip can be at most 60 seconds"
+        R.string.err_too_long
     } else {
         null
     }
@@ -104,7 +108,7 @@ fun CardEditorDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("New card") },
+        title = { Text(stringResource(R.string.new_card)) },
         text = {
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -113,7 +117,7 @@ fun CardEditorDialog(
                 if (imageBitmap != null) {
                     Image(
                         bitmap = imageBitmap,
-                        contentDescription = "Video frame",
+                        contentDescription = stringResource(R.string.video_frame),
                         contentScale = ContentScale.Fit,
                         modifier = Modifier.fillMaxWidth().heightIn(max = 140.dp),
                     )
@@ -127,7 +131,7 @@ fun CardEditorDialog(
                     Text(timeNote, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (trackOptions.size > 1) {
-                    Text("Text from", style = MaterialTheme.typography.labelMedium)
+                    Text(stringResource(R.string.text_from), style = MaterialTheme.typography.labelMedium)
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -141,29 +145,29 @@ fun CardEditorDialog(
                         }
                     }
                 }
-                TimeRow("Start", startText, { startText = it }) { startText = formatClock(currentTime()) }
-                TimeRow("End", endText, { endText = it }) { endText = formatClock(currentTime()) }
+                TimeRow(stringResource(R.string.time_start), startText, { startText = it }) { startText = formatClock(currentTime()) }
+                TimeRow(stringResource(R.string.time_end), endText, { endText = it }) { endText = formatClock(currentTime()) }
                 OutlinedButton(
                     onClick = { if (start != null && end != null && error == null) onPreview(start, end) },
                     enabled = error == null,
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("Preview") }
+                ) { Text(stringResource(R.string.preview)) }
                 OutlinedTextField(
                     value = text,
                     onValueChange = { text = it },
-                    label = { Text("Text") },
-                    placeholder = { Text("What is said") },
+                    label = { Text(stringResource(R.string.text)) },
+                    placeholder = { Text(stringResource(R.string.text_placeholder)) },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = meaning,
                     onValueChange = { meaning = it },
-                    label = { Text("Meaning") },
-                    placeholder = { Text("Translation or note") },
+                    label = { Text(stringResource(R.string.meaning)) },
+                    placeholder = { Text(stringResource(R.string.meaning_placeholder)) },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 if (error != null) {
-                    Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(error), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
             }
         },
@@ -173,9 +177,9 @@ fun CardEditorDialog(
                     if (start != null && end != null && error == null) onSave(start, end, text.trim(), meaning.trim())
                 },
                 enabled = error == null,
-            ) { Text("Save") }
+            ) { Text(stringResource(R.string.save)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }
 
@@ -191,25 +195,25 @@ fun CardTextDialog(
     var meaning by remember { mutableStateOf(initialMeaning) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit card") },
+        title = { Text(stringResource(R.string.edit_card)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = text,
                     onValueChange = { text = it },
-                    label = { Text("Text") },
+                    label = { Text(stringResource(R.string.text)) },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = meaning,
                     onValueChange = { meaning = it },
-                    label = { Text("Meaning") },
+                    label = { Text(stringResource(R.string.meaning)) },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
         },
-        confirmButton = { TextButton(onClick = { onSave(text.trim(), meaning.trim()) }) { Text("Save") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = { TextButton(onClick = { onSave(text.trim(), meaning.trim()) }) { Text(stringResource(R.string.save)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }
 
@@ -221,9 +225,11 @@ private fun TimeRow(label: String, value: String, onChange: (String) -> Unit, on
             onValueChange = onChange,
             label = { Text(label) },
             singleLine = true,
+            // Times are typed as m:ss.s, left to right, also in Persian.
+            textStyle = LocalTextStyle.current.copy(textDirection = TextDirection.Ltr),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
             modifier = Modifier.weight(1f),
         )
-        OutlinedButton(onClick = onNow) { Text("Now") }
+        OutlinedButton(onClick = onNow) { Text(stringResource(R.string.now)) }
     }
 }

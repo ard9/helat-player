@@ -1,5 +1,7 @@
 package io.github.ard9.linguaplayer.ui
 
+import io.github.ard9.linguaplayer.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -48,7 +50,7 @@ fun FilmFrame(
         if (image != null) {
             Image(
                 bitmap = image,
-                contentDescription = "Video frame",
+                contentDescription = stringResource(R.string.video_frame),
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize(),
             )
@@ -97,7 +99,7 @@ fun BoxBars(
                 else -> Cinema.Aisle
             }
             val clickModifier = if (onSelect != null) {
-                Modifier.clickable(role = Role.Tab, onClickLabel = "Show box $box") { onSelect(box) }
+                Modifier.clickable(role = Role.Tab, onClickLabel = stringResource(R.string.show_box, box)) { onSelect(box) }
             } else {
                 Modifier
             }
@@ -107,7 +109,7 @@ fun BoxBars(
                 modifier = Modifier.weight(1f).fillMaxHeight().then(clickModifier),
             ) {
                 Text(
-                    "$count",
+                    stringResource(R.string.number, count),
                     style = MaterialTheme.typography.titleSmall,
                     color = if (isSelected || selected == null) Cinema.Screen else Cinema.Dim,
                 )
@@ -119,7 +121,7 @@ fun BoxBars(
                         .background(barColor, RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp)),
                 )
                 Text(
-                    "Box $box",
+                    stringResource(R.string.box_n, box),
                     style = MaterialTheme.typography.labelSmall,
                     color = if (isSelected) accent else Cinema.Dim,
                 )

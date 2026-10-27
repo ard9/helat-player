@@ -1,5 +1,7 @@
 package io.github.ard9.linguaplayer.ui
 
+import io.github.ard9.linguaplayer.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -63,7 +65,7 @@ fun SubtitleStyleDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Subtitle style") },
+        title = { Text(stringResource(R.string.subtitle_style)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Box(
@@ -73,9 +75,9 @@ fun SubtitleStyleDialog(
                         .background(Cinema.Night, RoundedCornerShape(8.dp))
                         .padding(vertical = 20.dp, horizontal = 8.dp),
                 ) {
-                    SubtitleText("I'll be right back.")
+                    SubtitleText(stringResource(R.string.style_sample))
                 }
-                Text("Colour", style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(R.string.colour), style = MaterialTheme.typography.titleSmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     SubtitleColors.presets.forEach { (name, rgb) ->
                         val selected = rgb == current.color
@@ -88,27 +90,27 @@ fun SubtitleStyleDialog(
                                     color = if (selected) Cinema.Screen else Cinema.Aisle,
                                     shape = CircleShape,
                                 )
-                                .clickable(onClickLabel = name) { onChange(current.copy(color = rgb)) }
+                                .clickable(onClickLabel = stringResource(name)) { onChange(current.copy(color = rgb)) }
                         )
                     }
                 }
-                Text("Size", style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(R.string.size), style = MaterialTheme.typography.titleSmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     SubtitleSize.entries.forEach { size ->
                         FilterChip(
                             selected = size == current.size,
                             onClick = { onChange(current.copy(size = size)) },
-                            label = { Text(size.label) },
+                            label = { Text(stringResource(size.label)) },
                         )
                     }
                 }
                 Text(
-                    "Built-in subtitle tracks use the new style the next time you open a video.",
+                    stringResource(R.string.style_note),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.done)) } },
     )
 }

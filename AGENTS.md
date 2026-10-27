@@ -26,6 +26,7 @@ These rules come from the owner and apply to every change:
    (Critical/High/Medium/Low, honestly), and the proposed fix. Do not change existing code to
    fix them without approval.
 5. **All file content is English**: code, comments, docs, commit messages, UI strings.
+   The one exception is the Persian translation, `res/values-fa/strings.xml`.
 6. **Commits**: authored as `ard9 <ard9@users.noreply.github.com>`. Do **not** add
    `Co-Authored-By`, session links or other tool trailers; the owner asked for them removed.
 
@@ -65,16 +66,32 @@ Package `io.github.ard9.linguaplayer` (`app/src/main/java/...`):
 | Path | Responsibility |
 | --- | --- |
 | `LinguaApp.kt` | App singletons: repositories, `ClipService`, `SpeechFinder`, libVLC instances (one per subtitle style, reference counted). |
-| `MainActivity.kt` | "Open with" intents, theme, simple state-based navigation (`Screen`), http warning dialog. |
-| `data/` | `Card` + `Leitner` scheduling, `CardRepository` (JSON file + clip/image files), `CardBackup` (ZIP export/import, treats imports as untrusted), `RecentRepository` (+ resume positions, `ResumePolicy`), `SettingsRepository` (subtitle style, clip margins). |
+| `MainActivity.kt` | "Open with" intents, app language (`attachBaseContext`), theme, simple state-based navigation (`Screen`), http warning dialog. |
+| `data/` | `Card` + `Leitner` scheduling, `CardRepository` (JSON file + clip/image files), `CardBackup` (ZIP export/import, treats imports as untrusted), `RecentRepository` (+ resume positions, `ResumePolicy`), `SettingsRepository` (language, subtitle style, clip margins, role-play choices, welcome card). |
 | `player/` | `VlcMedia` opens content:// via file descriptor or http(s) URL for libVLC; `FrameGrabber` copies the video surface (PixelCopy) for card pictures. |
 | `ui/PlayerScreen.kt` | The player: libVLC + `VLCVideoLayout`, controls, rotation/full screen, quick save button, save editor, line finding. The largest and most central file. |
-| `ui/` (others) | Home, cards list (`BoxScreen`), card detail, review, dialogs, theme ("cinema" palette, Atkinson Hyperlegible + Archivo fonts). |
+| `ui/` (others) | Home (with first-launch welcome card), cards list (`BoxScreen`), card detail, review, `SettingsScreen` (language), `GuideScreen` (user guide), dialogs, theme ("cinema" palette, Atkinson Hyperlegible + Archivo fonts; Vazirmatn in Persian). |
+| `res/values*/strings.xml` | All UI text: English in `values/`, Persian in `values-fa/`. |
 | `subtitle/SubtitleParser.kt` | External SRT/VTT parsing; `SubtitleLookup` (which line belongs to a moment, overlapping translation). |
 | `subtitle/mkv/` | Reads built-in subtitle tracks from MKV/WebM: `ByteSource` (local fd or HTTP Range), `EbmlReader` (streaming EBML with byte budget), `MkvSubtitles` (headers, cues, clusters around a moment, ASS/SRT/WebVTT text cleanup). |
 | `clip/` | Audio cutting. `ClipService` tries Media3 `TransformerClipper` (m4a) and falls back to `VlcClipper` (libVLC sout → wav) + `WavTrim`. |
 | `speech/` | No-subtitle fallback: `SpeechFinder` cuts 8 s before / 6 s after the moment, `SileroVad` (ONNX Runtime, model in `assets/silero_vad.onnx`; `Stream` for live audio), `SentenceFinder` (pure logic: hysteresis, gap merge, split long speech). |
 | `roleplay/` | Role-play (user and actor take turns): `RolePlayLogic` (roles, `SpeechEndDetector`, `WavWriter`; pure), `VoiceRecorder` (mic → WAV, stops on silence), `RolePlaySession` (drives the player through a `ScenePlayer` interface: mute/pause/seek, records, plays back). UI in `ui/RolePlayUi.kt`; scene lines from `MkvSubtitles.linesFrom` or `SubtitleLookup.scene`. |
+
+## Languages
+
+- UI text lives only in `res/values/strings.xml` (English, the default) and is translated in
+  `res/values-fa/strings.xml`. Every new UI string needs both; `StringsTranslationTest` fails
+  otherwise. Use `stringResource`/`pluralStringResource` in composables and
+  `context.getString` elsewhere (the activity context carries the chosen language).
+- The language is a setting (`AppLanguage`: System, English, Persian). `MainActivity`
+  overrides only the locale in `attachBaseContext`, so rotation still works, and recreates
+  itself when the language changes.
+- Persian is right to left. The seek bar and the −10s/+10s row in the player stay left to right.
+- Film times (`formatTime`, `formatClock`) always use ASCII digits because they are typed and
+  parsed in the editor. Other numbers come from string resources and use Persian digits in Persian.
+- User content (card text, meanings, subtitles, film names) is never translated.
+- The guide (`GuideScreen`) is part of the strings; update it when a feature changes.
 
 ## How saving a line works
 
@@ -122,9 +139,10 @@ because Android's is a stub). They cover the logic that can run without a device
 | `subtitle/SubtitleParserTest` | SRT/VTT parsing, encodings; `SubtitleLookup` (which line a tap belongs to, translations). |
 | `speech/SentenceFinderTest` | Sentence boundaries from speech probabilities (pauses, short gaps, long speech, noise). |
 | `clip/WavTest` | `WavTrim` (VLC start-time bug) and `WavReader` (downmix, resample, limits). |
-| `data/CardTest` | Leitner scheduling, card JSON round trip and loading cards from older versions, clock text. |
+| `data/CardTest` | Leitner scheduling, card JSON round trip and loading cards from older versions, clock text (ASCII also on a Persian phone). |
 | `data/CardBackupTest` | Backup round trip, skipping existing cards, and hostile backups (paths outside the folders, overwriting files, other ZIPs, damaged or newer data). |
 | `data/ResumePolicyTest` | Which playback positions are worth resuming. |
+| `StringsTranslationTest` | Every English string has a Persian translation with the same placeholders, and no stale ones. |
 | `roleplay/RolePlayLogicTest` | Alternating roles, end-of-speech detection, WAV writing. |
 
 Fixtures are in `app/src/test/resources/media/` (a few small files) and are recreated with

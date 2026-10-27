@@ -1,4 +1,294 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    All UI text. The Persian translation is in values-fa/strings.xml; every translatable
+    string here must also be there (checked by StringsTranslationTest).
+-->
 <resources>
-    <string name="app_name">Lingua Player</string>
+    <string name="app_name" translatable="false">Lingua Player</string>
+
+    <!-- Common -->
+    <string name="cancel">Cancel</string>
+    <string name="close">Close</string>
+    <string name="done">Done</string>
+    <string name="save">Save</string>
+    <string name="delete">Delete</string>
+    <string name="edit">Edit</string>
+    <string name="back">Back</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="start">Start</string>
+    <string name="stop">Stop</string>
+    <string name="undo">Undo</string>
+    <string name="box_n">Box %d</string>
+    <string name="number" translatable="false">%d</string>
+    <string name="no_text">No text</string>
+    <string name="video_frame">Video frame</string>
+    <string name="audio_missing">The audio file for this card is missing.</string>
+    <string name="text">Text</string>
+    <string name="meaning">Meaning</string>
+
+    <!-- Subtitle style values -->
+    <string name="size_small">Small</string>
+    <string name="size_medium">Medium</string>
+    <string name="size_large">Large</string>
+    <string name="color_yellow">Yellow</string>
+    <string name="color_white">White</string>
+    <string name="color_cyan">Cyan</string>
+    <string name="color_green">Green</string>
+    <string name="color_orange">Orange</string>
+    <string name="color_pink">Pink</string>
+
+    <!-- Backup and restore -->
+    <string name="backup_cannot_write">Cannot write to this place</string>
+    <string name="backup_cannot_open">Cannot open this file</string>
+    <plurals name="backup_saved">
+        <item quantity="one">Backup saved (%d card)</item>
+        <item quantity="other">Backup saved (%d cards)</item>
+    </plurals>
+    <string name="backup_failed">Could not save the backup: %s</string>
+    <string name="restore_all_present">All cards in this backup are already here</string>
+    <plurals name="restored_with_skipped">
+        <item quantity="one">Restored %1$d card (%2$d already here or incomplete)</item>
+        <item quantity="other">Restored %1$d cards (%2$d already here or incomplete)</item>
+    </plurals>
+    <plurals name="restored">
+        <item quantity="one">Restored %d card</item>
+        <item quantity="other">Restored %d cards</item>
+    </plurals>
+    <string name="restore_failed">Could not restore: %s</string>
+
+    <!-- http warning -->
+    <string name="http_title">Unencrypted link</string>
+    <string name="http_text">This link uses http://, so anyone on your network can see or change what is streamed. Play it anyway?</string>
+    <string name="http_play">Play anyway</string>
+
+    <!-- Home -->
+    <string name="home_tagline">Watch, keep the lines you want to learn, review them later.</string>
+    <string name="home_version">Version %s</string>
+    <string name="open_file">Open file</string>
+    <string name="paste_link">Paste link</string>
+    <string name="hide_link">Hide link</string>
+    <string name="link_label">Direct link or stream URL</string>
+    <string name="link_error">Enter a link that starts with http:// or https://</string>
+    <string name="play_link">Play link</string>
+    <string name="your_cards">Your cards</string>
+    <string name="cards_empty_hint">While watching, tap the bookmark button to keep a line here.</string>
+    <string name="due_none">Nothing to review today.</string>
+    <plurals name="due_count">
+        <item quantity="one">%d card to review today.</item>
+        <item quantity="other">%d cards to review today.</item>
+    </plurals>
+    <string name="start_review">Start review</string>
+    <string name="browse_cards">Browse cards</string>
+    <string name="backup_working">Working on the backup…</string>
+    <string name="cards_local_only">Cards are kept only on this phone.</string>
+    <string name="back_up">Back up</string>
+    <string name="restore">Restore</string>
+    <string name="recently_played">Recently played</string>
+    <string name="remove_recent">Remove from recent</string>
+    <string name="backup_title">Back up cards</string>
+    <string name="backup_text">Saves all cards, with their audio and pictures, in one file you can keep elsewhere and restore later. The file also lists the links of the videos the cards came from, so keep it private.</string>
+    <string name="backup_choose">Choose where to save</string>
+    <string name="continue_watching">Continue watching</string>
+    <string name="source_from">%1$s · from %2$s</string>
+    <string name="source_file">File on this phone</string>
+    <string name="source_link">Link</string>
+    <string name="settings">Settings</string>
+    <string name="guide">Guide</string>
+    <string name="welcome_title">Welcome to Lingua Player</string>
+    <string name="welcome_text">New here? The guide explains in a few minutes how to watch, save lines and review them.</string>
+    <string name="welcome_open">Open the guide</string>
+
+    <!-- Cards -->
+    <string name="cards_title">Cards</string>
+    <string name="box1_empty">New cards start here. Save a line while watching to add one.</string>
+    <string name="box_empty">Cards move here when you answer \"I knew it\" in review.</string>
+    <string name="open_card">Open card</string>
+    <string name="audio_only">Audio only</string>
+    <string name="show_box">Show box %d</string>
+    <string name="card_from">From %1$s at %2$s</string>
+    <string name="delete_title">Delete this card?</string>
+    <string name="delete_text">Its audio and picture are deleted too.</string>
+
+    <!-- Review -->
+    <string name="review_title">Review</string>
+    <string name="review_last">Last card</string>
+    <plurals name="review_left">
+        <item quantity="one">%d card left</item>
+        <item quantity="other">%d cards left</item>
+    </plurals>
+    <string name="review_done">All done for today. New reviews appear as cards come due.</string>
+    <string name="review_card_info">Box %1$d · %2$s</string>
+    <string name="play_again">Play again</string>
+    <string name="show_all">Show all</string>
+    <string name="didnt_know">Didn\'t know</string>
+    <string name="knew_it">I knew it</string>
+    <string name="what_picture">picture</string>
+    <string name="what_text">text</string>
+    <string name="what_meaning">meaning</string>
+    <string name="show_what">Show %s</string>
+    <string name="tap_to_show">Tap to show %s</string>
+
+    <!-- Card editor -->
+    <string name="err_start_invalid">Start time is not valid (use m:ss or m:ss.s)</string>
+    <string name="err_end_invalid">End time is not valid (use m:ss or m:ss.s)</string>
+    <string name="err_end_before_start">End must be after start</string>
+    <string name="err_too_long">A clip can be at most 60 seconds</string>
+    <string name="new_card">New card</string>
+    <string name="text_from">Text from</string>
+    <string name="time_start">Start</string>
+    <string name="time_end">End</string>
+    <string name="now">Now</string>
+    <string name="preview">Preview</string>
+    <string name="text_placeholder">What is said</string>
+    <string name="meaning_placeholder">Translation or note</string>
+    <string name="edit_card">Edit card</string>
+
+    <!-- Clip margins -->
+    <string name="clip_margins">Clip margins</string>
+    <string name="margins_text">Extra audio kept around each saved line, so the first and last words are not cut off.</string>
+    <string name="margins_before">Before the line</string>
+    <string name="margins_after">After the line</string>
+    <string name="reset_default">Reset to default</string>
+    <string name="margins_applies">Applies to the next lines you save.</string>
+    <string name="seconds_value">%.1f s</string>
+
+    <!-- Subtitle style -->
+    <string name="subtitle_style">Subtitle style</string>
+    <string name="style_sample" translatable="false">I\'ll be right back.</string>
+    <string name="colour">Colour</string>
+    <string name="size">Size</string>
+    <string name="style_note">Built-in subtitle tracks use the new style the next time you open a video.</string>
+
+    <!-- Player -->
+    <string name="scale_best_fit">Best fit</string>
+    <string name="scale_fit_screen">Fit screen</string>
+    <string name="scale_fill">Fill</string>
+    <string name="scale_original">Original</string>
+    <string name="note_track">Times and text from the subtitle track \"%s\".</string>
+    <string name="track_unnamed">Track %d</string>
+    <string name="note_subtitle_file">Times and text from the subtitle file.</string>
+    <string name="finding_sentence">Finding where the sentence starts and ends…</string>
+    <string name="audio_check_failed">Could not check the audio: %s.</string>
+    <string name="no_speech">No speech found near this moment (%s).</string>
+    <string name="speech_cut_both">Found speech, but it is longer than the part checked. Check both times.</string>
+    <string name="speech_cut_start">The sentence may start earlier. Check the start time.</string>
+    <string name="speech_cut_end">The sentence may continue. Check the end time.</string>
+    <string name="speech_found">Times found from the pauses around the sentence.</string>
+    <string name="set_by_hand">%s Set the times by hand.</string>
+    <string name="loop_start">Repeat this line</string>
+    <string name="loop_stop">Stop repeating this line</string>
+    <string name="loop_off">Loop off</string>
+    <string name="loop_on">Repeating this line. Tap Loop again to stop.</string>
+    <string name="save_line">Save this line</string>
+    <string name="save_with_options">Save with options</string>
+    <string name="looking_line">Looking for this line…</string>
+    <string name="quick_no_line">No line found. Hold the button to save by hand.</string>
+    <string name="quick_already">Already saved</string>
+    <string name="quick_failed">Could not save this line</string>
+    <string name="quick_saved">Saved</string>
+    <string name="quick_removed">Removed</string>
+    <string name="continuing_from">Continuing from %s</string>
+    <string name="start_over">Start over</string>
+    <string name="vlc_error">VLC could not play this media</string>
+    <string name="open_failed">Could not open: %s</string>
+    <string name="no_sub_lines">No subtitle lines found in this file (SRT or VTT expected)</string>
+    <plurals name="loaded_sub_lines">
+        <item quantity="one">Loaded %d subtitle line</item>
+        <item quantity="other">Loaded %d subtitle lines</item>
+    </plurals>
+    <string name="read_sub_failed">Could not read subtitles: %s</string>
+    <string name="repeat">Repeat</string>
+    <string name="skip_back">−10s</string>
+    <string name="skip_forward">+10s</string>
+    <string name="aspect">Aspect: %s</string>
+    <string name="audio">Audio</string>
+    <string name="subtitles">Subtitles</string>
+    <string name="load_sub_file">Load subtitle file</string>
+    <string name="speed">Speed %s</string>
+    <string name="role_play">Role-play</string>
+    <string name="portrait">Portrait</string>
+    <string name="full_screen">Full screen</string>
+    <string name="auto_rotate">Auto-rotate</string>
+    <string name="subtitle_file">Subtitle file: %s</string>
+    <string name="track_no_line">This track has no line at this moment.</string>
+    <string name="saved_box1">Saved to Box 1</string>
+    <string name="cut_failed">Could not cut the audio</string>
+    <string name="mic_needed">Role-play needs the microphone to record your voice.</string>
+    <string name="audio_track">Audio track</string>
+    <string name="subtitle_track">Subtitle track</string>
+    <string name="no_tracks">No tracks available.</string>
+
+    <!-- Role-play -->
+    <string name="rp_intro">You and the actor take turns. On your lines the film goes quiet and your voice is recorded. Use headphones so the film is not recorded too.</string>
+    <string name="rp_lines">Lines</string>
+    <string name="rp_actor_starts">Actor starts</string>
+    <string name="rp_i_start">I start</string>
+    <string name="rp_pause_on_mine">Pause the film on my lines</string>
+    <string name="rp_show_mine">Show my lines</string>
+    <string name="rp_tap_line">Tap a line to change who says it.</string>
+    <string name="rp_reading">Reading the subtitles…</string>
+    <string name="rp_no_lines">No subtitle lines from here on.</string>
+    <string name="rp_give_actor">Give this line to the actor</string>
+    <string name="rp_say_myself">Say this line myself</string>
+    <string name="rp_me">Me</string>
+    <string name="rp_actor">Actor</string>
+    <string name="rp_progress">Role-play · line %1$d of %2$d</string>
+    <string name="rp_get_ready_title">Role-play · get ready</string>
+    <string name="rp_playing">Playing your scene</string>
+    <string name="rp_get_ready">Get ready</string>
+    <string name="rp_your_turn">Your turn: speak now</string>
+    <string name="rp_skip">Skip</string>
+    <string name="rp_finished">Scene finished</string>
+    <string name="rp_stopped">Stopped: %s</string>
+    <string name="rp_error">something went wrong</string>
+    <plurals name="rp_said">
+        <item quantity="one">You said %1$d of your %2$d line.</item>
+        <item quantity="other">You said %1$d of your %2$d lines.</item>
+    </plurals>
+    <string name="rp_play_scene">Play my scene</string>
+    <string name="rp_try_again">Try again</string>
+    <string name="rp_compare">Compare line by line</string>
+    <string name="rp_mine">Mine</string>
+
+    <!-- Settings -->
+    <string name="language">Language</string>
+    <string name="lang_system">Phone\'s language</string>
+    <string name="lang_english" translatable="false">English</string>
+    <string name="lang_persian" translatable="false">فارسی</string>
+    <string name="settings_guide_text">How to use the app, step by step.</string>
+    <string name="settings_other">Clip margins and subtitle style are in the player menu.</string>
+
+    <!-- Guide -->
+    <string name="guide_intro">Lingua Player is a video player for learning a language from films. While you watch, save the lines you want to learn: each one becomes a card with its audio, a picture from the film, the text and your meaning. Then review the cards a little every day until you know them.</string>
+
+    <string name="guide_start_title">Getting started</string>
+    <string name="guide_start_body">• Open file: choose a video or audio file on your phone. You can also open a video from another app with \"Open with\".\n• Paste link: play a direct link or stream URL (http:// or https://). The app warns you before it opens an unencrypted http:// link.\n• Videos continue where you left them. The last one is at the top of the home screen; older ones are under Recently played.</string>
+
+    <string name="guide_subs_title">Subtitles</string>
+    <string name="guide_subs_body">• Most MKV and WebM films have subtitle tracks inside. Choose one with Subtitles in the player menu.\n• Load subtitle file: use an .srt or .vtt file from your phone instead.\n• Subtitle style: choose the colour and size. Built-in tracks use the new style the next time you open a video.\n• Saved lines take their text and exact times from the subtitles, so a film with subtitles gives the best cards. If the film also has a Persian track, it fills in the meaning.</string>
+
+    <string name="guide_player_title">Player controls</string>
+    <string name="guide_player_body">Tap the video to show or hide the controls.\n• −10s and +10s jump back or forward; the bar below shows where you are.\n• Repeat plays the current line again.\n• The small loop button at the side repeats the current line until you tap it again.\n• Speed: 1×, 0.75×, 0.5× or 1.25×. Slower speech is easier to follow.\n• Aspect changes how the picture fits the screen; Audio chooses the sound track.\n• The player turns with the phone, and landscape is full screen. Full screen and Portrait lock one direction; Auto-rotate unlocks it.</string>
+
+    <string name="guide_save_title">Saving a line</string>
+    <string name="guide_save_body">When you hear a sentence you want to learn, use the small bookmark button at the side of the video.\n• Tap: the line is saved in the background and the film keeps playing. A short message says Saved, with Undo for a moment.\n• Hold: the film pauses and an editor opens. Check the start and end times (Preview plays them), the text, the meaning and the picture. Text from switches between subtitle tracks.\n\nWhere the times and text come from, in this order:\n1. A subtitle file you loaded.\n2. A subtitle track inside the video (MKV or WebM).\n3. Without subtitles, the pauses in speech around the moment are found on the phone. The card then has no text; you can type it in the editor.\n\nClip margins (player menu) keep a little audio before and after each line, so the first and last words are not cut off.</string>
+
+    <string name="guide_cards_title">Cards and review</string>
+    <string name="guide_cards_body">Cards live in five boxes (the Leitner system). New cards start in Box 1.\n• Box 1 comes up every day, Box 2 every 2 days, Box 3 every 4, Box 4 every 8 and Box 5 every 16.\n• Start review on the home screen shows the cards due today. The audio plays first, while the picture, text and meaning are blurred. Listen, try to understand, then tap each part (or Show all) to check.\n• I knew it moves the card up one box. Didn\'t know sends it back to Box 1.\n• Browse cards shows every box. Open a card to play it, edit its text and meaning, or delete it.</string>
+
+    <string name="guide_roleplay_title">Role-play</string>
+    <string name="guide_roleplay_body">Say the lines of a scene in turn with the actor.\n1. Pause where the scene starts and choose Role-play in the player menu.\n2. Choose how many lines and who starts. Tap a line to change who says it.\n3. Pause the film on my lines: the film waits until you finish speaking. Turn it off to keep the film going in real time.\n4. On your lines the film goes quiet and your voice is recorded. Done ends your turn; Skip leaves the line to the actor.\n5. At the end, Play my scene plays the scene without pauses, with your voice in place of the actor\'s. Compare line by line plays the actor\'s line and yours.\n\nRole-play needs subtitles and the microphone. Use headphones so the film is not recorded with your voice. Recordings stay on the phone and are deleted when you close role-play.</string>
+
+    <string name="guide_backup_title">Backup and restore</string>
+    <string name="guide_backup_body">Cards are kept only on this phone; uninstalling the app deletes them.\n• Back up (home screen) saves all cards, with their audio and pictures, in one ZIP file wherever you choose, for example Google Drive.\n• Restore adds the cards from such a file. Cards that are already here are skipped.\n\nThe backup also lists the links of the videos the cards came from, so keep it private.</string>
+
+    <string name="guide_settings_title">Settings</string>
+    <string name="guide_settings_body">• Language (Settings on the home screen): the phone\'s language, English or Persian. Cards and subtitles are not translated.\n• Clip margins (player menu): how much audio is kept before and after each saved line, from 0 to 1.5 seconds. Applies to the next lines you save.\n• Subtitle style (player menu): colour and size of subtitles, also used for the text on cards.</string>
+
+    <string name="guide_tips_title">Tips</string>
+    <string name="guide_tips_body">• Use headphones for role-play and when you listen closely.\n• Watch with subtitles in the language you are learning; a Persian track fills in the meaning.\n• Save fewer but useful lines, and review a little every day.\n• For online films, a direct link to an MKV file works best: its subtitle tracks are read from the link too. A slow connection makes saving slower.\n• For hard sentences, lower the speed and use the loop button.</string>
+
+    <string name="guide_trouble_title">Troubleshooting</string>
+    <string name="guide_trouble_body">• Sound but a black picture: go back and open the video again.\n• \"VLC could not play this media\": the file may be damaged or the link may have expired. Try it in another player.\n• \"No line found\": there are no text subtitles near that moment and no clear speech was found. Hold the save button and set the times by hand.\n• The times are a little off: hold the button and adjust them, or change Clip margins.\n• Subtitles inside MP4 files and picture subtitles (PGS, VobSub) cannot be read as text. Load an .srt file instead.\n• The app runs on 64-bit phones only.</string>
 </resources>

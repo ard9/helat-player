@@ -1,5 +1,6 @@
 package io.github.ard9.linguaplayer.subtitle.mkv
 
+import java.util.Locale
 import io.github.ard9.linguaplayer.subtitle.SubtitleLine
 import io.github.ard9.linguaplayer.subtitle.SubtitleLookup
 import org.junit.Assert.assertEquals
@@ -29,6 +30,14 @@ class MkvSubtitlesTest {
         assertTrue(mkv.tracks.all { it.isText })
         assertEquals("Persian", mkv.tracks[1].label)
         assertEquals("English (Styled)", mkv.tracks[2].label)
+    }
+
+    @Test
+    fun `names track languages in the app's language`() {
+        val mkv = open("subs.mkv")
+        val persian = Locale.forLanguageTag("fa")
+        assertEquals("فارسی", mkv.tracks[1].label(persian, "?"))
+        assertEquals("انگلیسی", mkv.tracks[0].label(persian, "?"))
     }
 
     @Test

@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Persian translation of values/strings.xml. This file is the one place where file content
+    is not in English. Keep the same names and the same %s / %d placeholders as the English file.
+-->
+<resources>
+    <!-- Common -->
+    <string name="cancel">لغو</string>
+    <string name="close">بستن</string>
+    <string name="done">تمام</string>
+    <string name="save">ذخیره</string>
+    <string name="delete">حذف</string>
+    <string name="edit">ویرایش</string>
+    <string name="back">بازگشت</string>
+    <string name="play">پخش</string>
+    <string name="pause">مکث</string>
+    <string name="start">شروع</string>
+    <string name="stop">توقف</string>
+    <string name="undo">برگرداندن</string>
+    <string name="box_n">جعبه‌ی %d</string>
+    <string name="no_text">بدون متن</string>
+    <string name="video_frame">تصویری از فیلم</string>
+    <string name="audio_missing">فایل صدای این کارت پیدا نشد.</string>
+    <string name="text">متن</string>
+    <string name="meaning">معنی</string>
+
+    <!-- Subtitle style values -->
+    <string name="size_small">کوچک</string>
+    <string name="size_medium">متوسط</string>
+    <string name="size_large">بزرگ</string>
+    <string name="color_yellow">زرد</string>
+    <string name="color_white">سفید</string>
+    <string name="color_cyan">فیروزه‌ای</string>
+    <string name="color_green">سبز</string>
+    <string name="color_orange">نارنجی</string>
+    <string name="color_pink">صورتی</string>
+
+    <!-- Backup and restore -->
+    <string name="backup_cannot_write">در این مکان نمی‌توان نوشت</string>
+    <string name="backup_cannot_open">این فایل باز نمی‌شود</string>
+    <plurals name="backup_saved">
+        <item quantity="one">پشتیبان ذخیره شد (%d کارت)</item>
+        <item quantity="other">پشتیبان ذخیره شد (%d کارت)</item>
+    </plurals>
+    <string name="backup_failed">پشتیبان ذخیره نشد: %s</string>
+    <string name="restore_all_present">همه‌ی کارت‌های این پشتیبان از قبل این‌جا هستند</string>
+    <plurals name="restored_with_skipped">
+        <item quantity="one">%1$d کارت بازیابی شد (%2$d کارت از قبل بود یا ناقص بود)</item>
+        <item quantity="other">%1$d کارت بازیابی شد (%2$d کارت از قبل بود یا ناقص بود)</item>
+    </plurals>
+    <plurals name="restored">
+        <item quantity="one">%d کارت بازیابی شد</item>
+        <item quantity="other">%d کارت بازیابی شد</item>
+    </plurals>
+    <string name="restore_failed">بازیابی انجام نشد: %s</string>
+
+    <!-- http warning -->
+    <string name="http_title">لینک رمزنگاری‌نشده</string>
+    <string name="http_text">این لینک با http://‎ است، پس هر کسی در شبکه‌ی شما می‌تواند آنچه پخش می‌شود را ببیند یا تغییر دهد. باز هم پخش شود؟</string>
+    <string name="http_play">باز هم پخش کن</string>
+
+    <!-- Home -->
+    <string name="home_tagline">فیلم ببینید، جمله‌هایی را که می‌خواهید یاد بگیرید نگه دارید و بعداً مرور کنید.</string>
+    <string name="home_version">نسخه‌ی %s</string>
+    <string name="open_file">باز کردن فایل</string>
+    <string name="paste_link">وارد کردن لینک</string>
+    <string name="hide_link">بستن لینک</string>
+    <string name="link_label">لینک مستقیم یا آدرس استریم</string>
+    <string name="link_error">لینکی وارد کنید که با http://‎ یا https://‎ شروع شود</string>
+    <string name="play_link">پخش لینک</string>
+    <string name="your_cards">کارت‌های شما</string>
+    <string name="cards_empty_hint">هنگام تماشا، دکمه‌ی نشانک را بزنید تا جمله این‌جا نگه داشته شود.</string>
+    <string name="due_none">امروز چیزی برای مرور نیست.</string>
+    <plurals name="due_count">
+        <item quantity="one">%d کارت برای مرور امروز.</item>
+        <item quantity="other">%d کارت برای مرور امروز.</item>
+    </plurals>
+    <string name="start_review">شروع مرور</string>
+    <string name="browse_cards">دیدن کارت‌ها</string>
+    <string name="backup_working">در حال کار روی پشتیبان…</string>
+    <string name="cards_local_only">کارت‌ها فقط روی همین گوشی نگه داشته می‌شوند.</string>
+    <string name="back_up">پشتیبان‌گیری</string>
+    <string name="restore">بازیابی</string>
+    <string name="recently_played">اخیراً پخش‌شده</string>
+    <string name="remove_recent">حذف از فهرست اخیر</string>
+    <string name="backup_title">پشتیبان‌گیری از کارت‌ها</string>
+    <string name="backup_text">همه‌ی کارت‌ها را با صدا و تصویرشان در یک فایل ذخیره می‌کند که می‌توانید جای دیگری نگه دارید و بعداً بازیابی کنید. این فایل لینک ویدیوهایی را هم که کارت‌ها از آن‌ها آمده‌اند دارد، پس آن را خصوصی نگه دارید.</string>
+    <string name="backup_choose">انتخاب محل ذخیره</string>
+    <string name="continue_watching">ادامه‌ی تماشا</string>
+    <string name="source_from">%1$s · از %2$s</string>
+    <string name="source_file">فایل روی این گوشی</string>
+    <string name="source_link">لینک</string>
+    <string name="settings">تنظیمات</string>
+    <string name="guide">راهنما</string>
+    <string name="welcome_title">به Lingua Player خوش آمدید</string>
+    <string name="welcome_text">تازه آمده‌اید؟ راهنما در چند دقیقه توضیح می‌دهد چطور فیلم ببینید، جمله‌ها را ذخیره کنید و مرورشان کنید.</string>
+    <string name="welcome_open">باز کردن راهنما</string>
+
+    <!-- Cards -->
+    <string name="cards_title">کارت‌ها</string>
+    <string name="box1_empty">کارت‌های تازه این‌جا شروع می‌کنند. هنگام تماشا یک جمله را ذخیره کنید تا کارتی اضافه شود.</string>
+    <string name="box_empty">وقتی در مرور «بلد بودم» را بزنید، کارت‌ها به این‌جا می‌آیند.</string>
+    <string name="open_card">باز کردن کارت</string>
+    <string name="audio_only">فقط صدا</string>
+    <string name="show_box">نمایش جعبه‌ی %d</string>
+    <string name="card_from">از %1$s در %2$s</string>
+    <string name="delete_title">این کارت حذف شود؟</string>
+    <string name="delete_text">صدا و تصویرش هم حذف می‌شود.</string>
+
+    <!-- Review -->
+    <string name="review_title">مرور</string>
+    <string name="review_last">آخرین کارت</string>
+    <plurals name="review_left">
+        <item quantity="one">%d کارت مانده</item>
+        <item quantity="other">%d کارت مانده</item>
+    </plurals>
+    <string name="review_done">مرور امروز تمام شد. مرورهای تازه وقتی موعد کارت‌ها برسد می‌آیند.</string>
+    <string name="review_card_info">جعبه‌ی %1$d · %2$s</string>
+    <string name="play_again">پخش دوباره</string>
+    <string name="show_all">نمایش همه</string>
+    <string name="didnt_know">بلد نبودم</string>
+    <string name="knew_it">بلد بودم</string>
+    <string name="what_picture">تصویر</string>
+    <string name="what_text">متن</string>
+    <string name="what_meaning">معنی</string>
+    <string name="show_what">نمایش %s</string>
+    <string name="tap_to_show">برای دیدن %s بزنید</string>
+
+    <!-- Card editor -->
+    <string name="err_start_invalid">زمان شروع درست نیست (به شکل m:ss یا m:ss.s بنویسید)</string>
+    <string name="err_end_invalid">زمان پایان درست نیست (به شکل m:ss یا m:ss.s بنویسید)</string>
+    <string name="err_end_before_start">پایان باید بعد از شروع باشد</string>
+    <string name="err_too_long">هر کلیپ حداکثر ۶۰ ثانیه می‌تواند باشد</string>
+    <string name="new_card">کارت تازه</string>
+    <string name="text_from">متن از</string>
+    <string name="time_start">شروع</string>
+    <string name="time_end">پایان</string>
+    <string name="now">الان</string>
+    <string name="preview">پیش‌نمایش</string>
+    <string name="text_placeholder">آنچه گفته می‌شود</string>
+    <string name="meaning_placeholder">ترجمه یا یادداشت</string>
+    <string name="edit_card">ویرایش کارت</string>
+
+    <!-- Clip margins -->
+    <string name="clip_margins">حاشیه‌ی کلیپ</string>
+    <string name="margins_text">صدای اضافه‌ای که دور هر جمله‌ی ذخیره‌شده نگه داشته می‌شود تا اول و آخر کلمه‌ها بریده نشود.</string>
+    <string name="margins_before">پیش از جمله</string>
+    <string name="margins_after">پس از جمله</string>
+    <string name="reset_default">برگشت به پیش‌فرض</string>
+    <string name="margins_applies">برای جمله‌هایی که از این به بعد ذخیره می‌کنید.</string>
+    <string name="seconds_value">%.1f ثانیه</string>
+
+    <!-- Subtitle style -->
+    <string name="subtitle_style">ظاهر زیرنویس</string>
+    <string name="colour">رنگ</string>
+    <string name="size">اندازه</string>
+    <string name="style_note">زیرنویس‌های داخل فیلم، ظاهر تازه را از دفعه‌ی بعد که ویدیویی باز کنید می‌گیرند.</string>
+
+    <!-- Player -->
+    <string name="scale_best_fit">بهترین اندازه</string>
+    <string name="scale_fit_screen">هم‌اندازه‌ی صفحه</string>
+    <string name="scale_fill">پر کردن صفحه</string>
+    <string name="scale_original">اندازه‌ی اصلی</string>
+    <string name="note_track">زمان‌ها و متن از زیرنویس «%s».</string>
+    <string name="track_unnamed">زیرنویس %d</string>
+    <string name="note_subtitle_file">زمان‌ها و متن از فایل زیرنویس.</string>
+    <string name="finding_sentence">در حال پیدا کردن شروع و پایان جمله…</string>
+    <string name="audio_check_failed">بررسی صدا ممکن نشد: %s.</string>
+    <string name="no_speech">نزدیک این لحظه گفتاری پیدا نشد (%s).</string>
+    <string name="speech_cut_both">گفتار پیدا شد، ولی از بخشی که بررسی شد بلندتر است. هر دو زمان را بررسی کنید.</string>
+    <string name="speech_cut_start">شاید جمله زودتر شروع شده باشد. زمان شروع را بررسی کنید.</string>
+    <string name="speech_cut_end">شاید جمله ادامه داشته باشد. زمان پایان را بررسی کنید.</string>
+    <string name="speech_found">زمان‌ها از مکث‌های دور جمله پیدا شد.</string>
+    <string name="set_by_hand">%s زمان‌ها را دستی تنظیم کنید.</string>
+    <string name="loop_start">تکرار این جمله</string>
+    <string name="loop_stop">توقف تکرار این جمله</string>
+    <string name="loop_off">تکرار خاموش شد</string>
+    <string name="loop_on">این جمله تکرار می‌شود. برای توقف دوباره دکمه‌ی تکرار را بزنید.</string>
+    <string name="save_line">ذخیره‌ی این جمله</string>
+    <string name="save_with_options">ذخیره با تنظیمات</string>
+    <string name="looking_line">در حال پیدا کردن این جمله…</string>
+    <string name="quick_no_line">جمله‌ای پیدا نشد. دکمه را نگه دارید تا دستی ذخیره کنید.</string>
+    <string name="quick_already">قبلاً ذخیره شده</string>
+    <string name="quick_failed">این جمله ذخیره نشد</string>
+    <string name="quick_saved">ذخیره شد</string>
+    <string name="quick_removed">حذف شد</string>
+    <string name="continuing_from">ادامه از %s</string>
+    <string name="start_over">از اول</string>
+    <string name="vlc_error">VLC نتوانست این رسانه را پخش کند</string>
+    <string name="open_failed">باز نشد: %s</string>
+    <string name="no_sub_lines">در این فایل خط زیرنویسی پیدا نشد (فایل SRT یا VTT لازم است)</string>
+    <plurals name="loaded_sub_lines">
+        <item quantity="one">%d خط زیرنویس بارگذاری شد</item>
+        <item quantity="other">%d خط زیرنویس بارگذاری شد</item>
+    </plurals>
+    <string name="read_sub_failed">زیرنویس خوانده نشد: %s</string>
+    <string name="repeat">تکرار</string>
+    <string name="skip_back">۱۰ ثانیه عقب</string>
+    <string name="skip_forward">۱۰ ثانیه جلو</string>
+    <string name="aspect">نسبت تصویر: %s</string>
+    <string name="audio">صدا</string>
+    <string name="subtitles">زیرنویس</string>
+    <string name="load_sub_file">فایل زیرنویس</string>
+    <string name="speed">سرعت %s</string>
+    <string name="role_play">نقش‌آفرینی</string>
+    <string name="portrait">عمودی</string>
+    <string name="full_screen">تمام‌صفحه</string>
+    <string name="auto_rotate">چرخش خودکار</string>
+    <string name="subtitle_file">فایل زیرنویس: %s</string>
+    <string name="track_no_line">این زیرنویس در این لحظه خطی ندارد.</string>
+    <string name="saved_box1">در جعبه‌ی ۱ ذخیره شد</string>
+    <string name="cut_failed">بریدن صدا ممکن نشد</string>
+    <string name="mic_needed">نقش‌آفرینی برای ضبط صدای شما به میکروفون نیاز دارد.</string>
+    <string name="audio_track">ترک صدا</string>
+    <string name="subtitle_track">ترک زیرنویس</string>
+    <string name="no_tracks">ترکی موجود نیست.</string>
+
+    <!-- Role-play -->
+    <string name="rp_intro">شما و بازیگر به نوبت حرف می‌زنید. در جمله‌های شما صدای فیلم قطع و صدای شما ضبط می‌شود. از هدفون استفاده کنید تا صدای فیلم ضبط نشود.</string>
+    <string name="rp_lines">تعداد جمله</string>
+    <string name="rp_actor_starts">اول بازیگر</string>
+    <string name="rp_i_start">اول من</string>
+    <string name="rp_pause_on_mine">در جمله‌های من فیلم مکث کند</string>
+    <string name="rp_show_mine">جمله‌های من نشان داده شود</string>
+    <string name="rp_tap_line">روی هر جمله بزنید تا گوینده‌اش عوض شود.</string>
+    <string name="rp_reading">در حال خواندن زیرنویس…</string>
+    <string name="rp_no_lines">از این‌جا به بعد خط زیرنویسی نیست.</string>
+    <string name="rp_give_actor">این جمله را بازیگر بگوید</string>
+    <string name="rp_say_myself">این جمله را خودم می‌گویم</string>
+    <string name="rp_me">من</string>
+    <string name="rp_actor">بازیگر</string>
+    <string name="rp_progress">نقش‌آفرینی · جمله‌ی %1$d از %2$d</string>
+    <string name="rp_get_ready_title">نقش‌آفرینی · آماده شوید</string>
+    <string name="rp_playing">پخش صحنه‌ی شما</string>
+    <string name="rp_get_ready">آماده شوید</string>
+    <string name="rp_your_turn">نوبت شماست: حالا بگویید</string>
+    <string name="rp_skip">رد کردن</string>
+    <string name="rp_finished">صحنه تمام شد</string>
+    <string name="rp_stopped">متوقف شد: %s</string>
+    <string name="rp_error">مشکلی پیش آمد</string>
+    <plurals name="rp_said">
+        <item quantity="one">%1$d جمله از %2$d جمله‌ی خودتان را گفتید.</item>
+        <item quantity="other">%1$d جمله از %2$d جمله‌ی خودتان را گفتید.</item>
+    </plurals>
+    <string name="rp_play_scene">پخش صحنه‌ی من</string>
+    <string name="rp_try_again">دوباره</string>
+    <string name="rp_compare">مقایسه‌ی جمله به جمله</string>
+    <string name="rp_mine">من</string>
+
+    <!-- Settings -->
+    <string name="language">زبان</string>
+    <string name="lang_system">زبان گوشی</string>
+    <string name="settings_guide_text">طرز کار با برنامه، قدم به قدم.</string>
+    <string name="settings_other">حاشیه‌ی کلیپ و ظاهر زیرنویس در منوی پخش‌کننده هستند.</string>
+
+    <!-- Guide -->
+    <string name="guide_intro">Lingua Player پخش‌کننده‌ی ویدیو برای یادگیری زبان با فیلم است. هنگام تماشا، جمله‌هایی را که می‌خواهید یاد بگیرید ذخیره کنید: هر کدام کارتی می‌شود با صدا، تصویری از فیلم، متن و معنی‌ای که خودتان می‌نویسید. بعد هر روز کمی کارت‌ها را مرور کنید تا یادشان بگیرید.</string>
+
+    <string name="guide_start_title">شروع کار</string>
+    <string name="guide_start_body">• باز کردن فایل: یک فایل ویدیو یا صوتی روی گوشی انتخاب کنید. از برنامه‌های دیگر هم می‌توانید با «باز کردن با» ویدیو را در این برنامه باز کنید.\n• وارد کردن لینک: یک لینک مستقیم یا آدرس استریم (http://‎ یا https://‎) را پخش کنید. برنامه پیش از باز کردن لینک رمزنگاری‌نشده‌ی http://‎ هشدار می‌دهد.\n• ویدیوها از همان جایی که رها کرده‌اید ادامه پیدا می‌کنند. آخرین ویدیو بالای صفحه‌ی اصلی است و قبلی‌ها زیر «اخیراً پخش‌شده».</string>
+
+    <string name="guide_subs_title">زیرنویس</string>
+    <string name="guide_subs_body">• بیشتر فیلم‌های MKV و WebM زیرنویس داخلی دارند. از منوی پخش‌کننده با «زیرنویس» یکی را انتخاب کنید.\n• فایل زیرنویس: به جای آن، یک فایل ‎.srt یا ‎.vtt از گوشی بارگذاری کنید.\n• ظاهر زیرنویس: رنگ و اندازه را انتخاب کنید. زیرنویس‌های داخل فیلم ظاهر تازه را از دفعه‌ی بعد که ویدیویی باز کنید می‌گیرند.\n• جمله‌های ذخیره‌شده متن و زمان دقیقشان را از زیرنویس می‌گیرند، پس فیلمِ زیرنویس‌دار بهترین کارت‌ها را می‌دهد. اگر فیلم زیرنویس فارسی هم داشته باشد، معنی خودکار پر می‌شود.</string>
+
+    <string name="guide_player_title">کنترل‌های پخش</string>
+    <string name="guide_player_body">روی ویدیو بزنید تا کنترل‌ها نمایان یا پنهان شوند.\n• «۱۰ ثانیه عقب» و «۱۰ ثانیه جلو» جابه‌جا می‌کنند؛ نوار پایین نشان می‌دهد کجای فیلم هستید.\n• «تکرار» جمله‌ی فعلی را دوباره پخش می‌کند.\n• دکمه‌ی کوچک تکرار کنار تصویر، جمله‌ی فعلی را آن‌قدر تکرار می‌کند تا دوباره آن را بزنید.\n• سرعت: ‎1×، ‎0.75×، ‎0.5× یا ‎1.25×. گفتار آهسته‌تر راحت‌تر فهمیده می‌شود.\n• «نسبت تصویر» شکل جا گرفتن تصویر در صفحه را عوض می‌کند و «صدا» ترک صدا را انتخاب می‌کند.\n• پخش‌کننده با گوشی می‌چرخد و حالت افقی تمام‌صفحه است. «تمام‌صفحه» و «عمودی» یک جهت را قفل می‌کنند و «چرخش خودکار» قفل را برمی‌دارد.</string>
+
+    <string name="guide_save_title">ذخیره‌ی جمله</string>
+    <string name="guide_save_body">وقتی جمله‌ای شنیدید که می‌خواهید یاد بگیرید، از دکمه‌ی کوچک نشانک کنار ویدیو استفاده کنید.\n• زدن: جمله در پس‌زمینه ذخیره می‌شود و فیلم ادامه پیدا می‌کند. پیام کوتاه «ذخیره شد» با گزینه‌ی «برگرداندن» برای چند لحظه نمایش داده می‌شود.\n• نگه داشتن: فیلم مکث می‌کند و ویرایشگر باز می‌شود. زمان شروع و پایان (با «پیش‌نمایش» پخش می‌شوند)، متن، معنی و تصویر را بررسی کنید. با «متن از» بین زیرنویس‌ها جابه‌جا شوید.\n\nزمان‌ها و متن به این ترتیب پیدا می‌شوند:\n۱. فایل زیرنویسی که بارگذاری کرده‌اید.\n۲. زیرنویس داخل ویدیو (MKV یا WebM).\n۳. بدون زیرنویس، مکث‌های گفتار دور آن لحظه روی خود گوشی پیدا می‌شوند. در این حالت کارت متن ندارد و می‌توانید آن را در ویرایشگر بنویسید.\n\n«حاشیه‌ی کلیپ» (منوی پخش‌کننده) کمی صدا پیش و پس از هر جمله نگه می‌دارد تا اول و آخر کلمه‌ها بریده نشود.</string>
+
+    <string name="guide_cards_title">کارت‌ها و مرور</string>
+    <string name="guide_cards_body">کارت‌ها در پنج جعبه هستند (روش لایتنر). کارت‌های تازه در جعبه‌ی ۱ شروع می‌کنند.\n• جعبه‌ی ۱ هر روز مرور می‌شود، جعبه‌ی ۲ هر ۲ روز، جعبه‌ی ۳ هر ۴ روز، جعبه‌ی ۴ هر ۸ روز و جعبه‌ی ۵ هر ۱۶ روز.\n• «شروع مرور» در صفحه‌ی اصلی کارت‌های امروز را نشان می‌دهد. اول صدا پخش می‌شود و تصویر، متن و معنی محو هستند. گوش کنید، سعی کنید بفهمید، بعد روی هر بخش (یا «نمایش همه») بزنید تا ببینید.\n• «بلد بودم» کارت را یک جعبه بالا می‌برد. «بلد نبودم» آن را به جعبه‌ی ۱ برمی‌گرداند.\n• «دیدن کارت‌ها» همه‌ی جعبه‌ها را نشان می‌دهد. کارتی را باز کنید تا پخشش کنید، متن و معنی‌اش را ویرایش یا آن را حذف کنید.</string>
+
+    <string name="guide_roleplay_title">نقش‌آفرینی</string>
+    <string name="guide_roleplay_body">جمله‌های یک صحنه را به نوبت با بازیگر بگویید.\n۱. جایی که صحنه شروع می‌شود مکث کنید و از منوی پخش‌کننده «نقش‌آفرینی» را انتخاب کنید.\n۲. تعداد جمله‌ها و این‌که چه کسی شروع کند را انتخاب کنید. روی هر جمله بزنید تا گوینده‌اش عوض شود.\n۳. «در جمله‌های من فیلم مکث کند»: فیلم صبر می‌کند تا حرفتان تمام شود. اگر خاموشش کنید، فیلم بی‌وقفه ادامه می‌دهد.\n۴. در جمله‌های شما صدای فیلم قطع و صدای شما ضبط می‌شود. «تمام» نوبت شما را تمام می‌کند و «رد کردن» جمله را به بازیگر می‌سپارد.\n۵. در پایان، «پخش صحنه‌ی من» صحنه را بدون مکث و با صدای شما به جای بازیگر پخش می‌کند. «مقایسه‌ی جمله به جمله» جمله‌ی بازیگر و جمله‌ی شما را پخش می‌کند.\n\nنقش‌آفرینی به زیرنویس و میکروفون نیاز دارد. از هدفون استفاده کنید تا صدای فیلم همراه صدای شما ضبط نشود. ضبط‌ها فقط روی گوشی می‌مانند و با بستن نقش‌آفرینی پاک می‌شوند.</string>
+
+    <string name="guide_backup_title">پشتیبان‌گیری و بازیابی</string>
+    <string name="guide_backup_body">کارت‌ها فقط روی همین گوشی نگه داشته می‌شوند و با حذف برنامه پاک می‌شوند.\n• «پشتیبان‌گیری» (صفحه‌ی اصلی) همه‌ی کارت‌ها را با صدا و تصویرشان در یک فایل ZIP، هر جا که بخواهید (مثلاً Google Drive)، ذخیره می‌کند.\n• «بازیابی» کارت‌های چنین فایلی را اضافه می‌کند. کارت‌هایی که از قبل این‌جا هستند تکرار نمی‌شوند.\n\nفایل پشتیبان لینک ویدیوهایی را هم که کارت‌ها از آن‌ها آمده‌اند دارد، پس آن را خصوصی نگه دارید.</string>
+
+    <string name="guide_settings_title">تنظیمات</string>
+    <string name="guide_settings_body">• زبان («تنظیمات» در صفحه‌ی اصلی): زبان گوشی، English یا فارسی. کارت‌ها و زیرنویس‌ها ترجمه نمی‌شوند.\n• حاشیه‌ی کلیپ (منوی پخش‌کننده): چقدر صدا پیش و پس از هر جمله‌ی ذخیره‌شده نگه داشته شود، از ۰ تا ۱٫۵ ثانیه. برای جمله‌هایی که از این به بعد ذخیره می‌کنید.\n• ظاهر زیرنویس (منوی پخش‌کننده): رنگ و اندازه‌ی زیرنویس که برای متن کارت‌ها هم به کار می‌رود.</string>
+
+    <string name="guide_tips_title">نکته‌ها</string>
+    <string name="guide_tips_body">• برای نقش‌آفرینی و وقتی با دقت گوش می‌دهید از هدفون استفاده کنید.\n• با زیرنویسِ زبانی که یاد می‌گیرید تماشا کنید؛ زیرنویس فارسی معنی را پر می‌کند.\n• جمله‌های کمتر ولی مفید ذخیره کنید و هر روز کمی مرور کنید.\n• برای فیلم‌های آنلاین، لینک مستقیم فایل MKV بهتر از همه کار می‌کند: زیرنویس‌های داخلی‌اش هم از همان لینک خوانده می‌شوند. اینترنت کند، ذخیره را کندتر می‌کند.\n• برای جمله‌های سخت، سرعت را کم کنید و از دکمه‌ی تکرار استفاده کنید.</string>
+
+    <string name="guide_trouble_title">رفع مشکل</string>
+    <string name="guide_trouble_body">• صدا هست ولی تصویر سیاه است: برگردید و ویدیو را دوباره باز کنید.\n• «VLC نتوانست این رسانه را پخش کند»: شاید فایل خراب باشد یا اعتبار لینک تمام شده باشد. آن را در پخش‌کننده‌ی دیگری امتحان کنید.\n• «جمله‌ای پیدا نشد»: نزدیک آن لحظه زیرنویس متنی نیست و گفتار واضحی هم پیدا نشد. دکمه‌ی ذخیره را نگه دارید و زمان‌ها را دستی تنظیم کنید.\n• زمان‌ها کمی جابه‌جا هستند: دکمه را نگه دارید و آن‌ها را تنظیم کنید، یا «حاشیه‌ی کلیپ» را تغییر دهید.\n• زیرنویس داخل فایل‌های MP4 و زیرنویس‌های تصویری (PGS و VobSub) به صورت متن خوانده نمی‌شوند. به جای آن یک فایل ‎.srt بارگذاری کنید.\n• برنامه فقط روی گوشی‌های ۶۴ بیتی اجرا می‌شود.</string>
+</resources>

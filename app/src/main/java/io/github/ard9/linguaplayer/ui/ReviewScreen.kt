@@ -1,5 +1,8 @@
 package io.github.ard9.linguaplayer.ui
 
+import androidx.compose.ui.res.pluralStringResource
+import io.github.ard9.linguaplayer.R
+import androidx.compose.ui.res.stringResource
 import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -72,15 +75,15 @@ fun ReviewScreen(cards: List<Card>, repository: CardRepository, onBack: () -> Un
                 title = {
                     Text(
                         when (due.size) {
-                            0 -> "Review"
-                            1 -> "Last card"
-                            else -> "${due.size} cards left"
+                            0 -> stringResource(R.string.review_title)
+                            1 -> stringResource(R.string.review_last)
+                            else -> pluralStringResource(R.plurals.review_left, due.size, due.size)
                         }
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
@@ -90,7 +93,7 @@ fun ReviewScreen(cards: List<Card>, repository: CardRepository, onBack: () -> Un
         if (card == null) {
             Box(Modifier.padding(padding).fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
                 Text(
-                    "All done for today. New reviews appear as cards come due.",
+                    stringResource(R.string.review_done),
                     style = MaterialTheme.typography.bodyLarge,
                     color = Cinema.Dim,
                     textAlign = TextAlign.Center,
@@ -114,23 +117,23 @@ fun ReviewScreen(cards: List<Card>, repository: CardRepository, onBack: () -> Un
                 val allShown = (showPicture || !hasPicture) && textShown && (showMeaning || !hasMeaning)
 
                 if (hasPicture) {
-                    Hidden(revealed = showPicture, what = "picture", onReveal = { showPicture = true }) {
+                    Hidden(revealed = showPicture, what = stringResource(R.string.what_picture), onReveal = { showPicture = true }) {
                         FilmFrame(image = picture, text = null)
                     }
                 }
-                Hidden(revealed = textShown, what = "text", onReveal = { showText = true }) {
+                Hidden(revealed = textShown, what = stringResource(R.string.what_text), onReveal = { showText = true }) {
                     Surface(color = Cinema.Seat, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
                         Box(Modifier.padding(horizontal = 16.dp, vertical = 20.dp), contentAlignment = Alignment.Center) {
                             if (hasText) {
                                 SubtitleText(card.text, modifier = Modifier.fillMaxWidth())
                             } else {
-                                Text("No text", style = MaterialTheme.typography.bodyLarge, color = Cinema.Dim)
+                                Text(stringResource(R.string.no_text), style = MaterialTheme.typography.bodyLarge, color = Cinema.Dim)
                             }
                         }
                     }
                 }
                 if (hasMeaning) {
-                    Hidden(revealed = showMeaning, what = "meaning", onReveal = { showMeaning = true }) {
+                    Hidden(revealed = showMeaning, what = stringResource(R.string.what_meaning), onReveal = { showMeaning = true }) {
                         Surface(color = Cinema.Seat, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
                             Text(
                                 card.meaning,
@@ -142,27 +145,27 @@ fun ReviewScreen(cards: List<Card>, repository: CardRepository, onBack: () -> Un
                     }
                 }
                 Text(
-                    "Box ${card.box} · ${card.sourceTitle}",
+                    stringResource(R.string.review_card_info, card.box, card.sourceTitle),
                     style = MaterialTheme.typography.bodySmall,
                     color = Cinema.Dim,
                 )
                 if (!hasAudio) {
                     Text(
-                        "The audio file for this card is missing.",
+                        stringResource(R.string.audio_missing),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                     if (hasAudio && audioFile != null) {
-                        OutlinedButton(onClick = { audio.play(audioFile) }) { Text("Play again") }
+                        OutlinedButton(onClick = { audio.play(audioFile) }) { Text(stringResource(R.string.play_again)) }
                     }
                     if (!allShown) {
                         TextButton(onClick = {
                             showPicture = true
                             showText = true
                             showMeaning = true
-                        }) { Text("Show all") }
+                        }) { Text(stringResource(R.string.show_all)) }
                     }
                 }
                 // Answer once the text has been checked.
@@ -171,11 +174,11 @@ fun ReviewScreen(cards: List<Card>, repository: CardRepository, onBack: () -> Un
                         OutlinedButton(
                             onClick = { repository.update(Leitner.forgot(card, System.currentTimeMillis())) },
                             modifier = Modifier.weight(1f),
-                        ) { Text("Didn't know") }
+                        ) { Text(stringResource(R.string.didnt_know)) }
                         Button(
                             onClick = { repository.update(Leitner.knew(card, System.currentTimeMillis())) },
                             modifier = Modifier.weight(1f),
-                        ) { Text("I knew it") }
+                        ) { Text(stringResource(R.string.knew_it)) }
                     }
                 }
             }
@@ -193,7 +196,7 @@ private fun Hidden(revealed: Boolean, what: String, onReveal: () -> Unit, conten
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .clickable(enabled = !revealed, onClickLabel = "Show $what", onClick = onReveal),
+            .clickable(enabled = !revealed, onClickLabel = stringResource(R.string.show_what, what), onClick = onReveal),
     ) {
         Box(
             if (revealed) {
@@ -210,7 +213,7 @@ private fun Hidden(revealed: Boolean, what: String, onReveal: () -> Unit, conten
                     .matchParentSize()
                     .background(Cinema.Night.copy(alpha = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) 0.3f else 0.95f)),
             ) {
-                Text("Tap to show $what", style = MaterialTheme.typography.labelLarge, color = Cinema.Screen)
+                Text(stringResource(R.string.tap_to_show, what), style = MaterialTheme.typography.labelLarge, color = Cinema.Screen)
             }
         }
     }

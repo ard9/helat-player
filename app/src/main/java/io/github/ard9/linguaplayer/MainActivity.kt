@@ -2,6 +2,13 @@ package io.github.ard9.linguaplayer
 
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
+import java.util.Locale
+import io.github.ard9.linguaplayer.data.AppLanguage
+import io.github.ard9.linguaplayer.data.SettingsRepository
+import io.github.ard9.linguaplayer.ui.GuideScreen
+import io.github.ard9.linguaplayer.ui.SettingsScreen
+import androidx.compose.ui.res.stringResource
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.runtime.rememberCoroutineScope
@@ -41,14 +48,26 @@ import io.github.ard9.linguaplayer.ui.ReviewScreen
 class MainActivity : ComponentActivity() {
     private val incoming = mutableStateOf<PlaybackSource?>(null)
 
+    /** Applies the language chosen in Settings; "System" leaves the phone's language. */
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(withLanguage(newBase, SettingsRepository.language(newBase)))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (savedInstanceState == null) incoming.value = sourceFromIntent(intent)
         val app = application as LinguaApp
         setContent {
             val subtitleStyle by app.settings.subtitleStyle.collectAsState()
-            LinguaTheme(subtitleStyle) {
-                AppNavigation(app, incoming)
+            val persian = resources.configuration.locales[0].language == "fa"
+            LinguaTheme(subtitleStyle, persian) {
+                AppNavigation(app, incoming, onLanguageChange = { language ->
+                    if (language != app.settings.language.value) {
+                        app.settings.setLanguage(language)
+                        // Recreating applies the new language and layout direction everywhere.
+                        recreate()
+                    }
+                })
             }
         }
     }
@@ -68,6 +87,16 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/**
+ * [base] with [language] as its locale. Only the locale (and with it the layout direction) is
+ * overridden, so orientation and other changes still come from the system.
+ */
+private fun withLanguage(base: Context, language: AppLanguage): Context {
+    if (language == AppLanguage.System) return base
+    val config = Configuration().apply { setLocale(Locale.forLanguageTag(language.tag)) }
+    return base.createConfigurationContext(config)
+}
+
 private fun toast(context: Context, text: String) = Toast.makeText(context, text, Toast.LENGTH_LONG).show()
 
 private sealed interface Screen {
@@ -76,11 +105,36 @@ private sealed interface Screen {
     data object Box : Screen
     data class CardDetail(val cardId: String) : Screen
     data object Review : Screen
+    data object Settings : Screen
+    /** [fromSettings]: Back returns to Settings instead of Home. */
+    data class Guide(val fromSettings: Boolean) : Screen
+}
+
+/** Settings and Guide survive the activity being recreated for a language change. */
+private fun Screen.savedTag(): String? = when (this) {
+    Screen.Settings -> "settings"
+    is Screen.Guide -> if (fromSettings) "guide-settings" else "guide"
+    else -> null
+}
+
+private fun screenFromTag(tag: String?): Screen = when (tag) {
+    "settings" -> Screen.Settings
+    "guide-settings" -> Screen.Guide(fromSettings = true)
+    "guide" -> Screen.Guide(fromSettings = false)
+    else -> Screen.Home
 }
 
 @Composable
-private fun AppNavigation(app: LinguaApp, incoming: MutableState<PlaybackSource?>) {
-    var screen by remember { mutableStateOf<Screen>(Screen.Home) }
+private fun AppNavigation(
+    app: LinguaApp,
+    incoming: MutableState<PlaybackSource?>,
+    onLanguageChange: (AppLanguage) -> Unit,
+) {
+    var savedTag by rememberSaveable { mutableStateOf<String?>(null) }
+    var screen by remember { mutableStateOf(screenFromTag(savedTag)) }
+    LaunchedEffect(screen) { savedTag = screen.savedTag() }
+    val welcomeDismissed by app.settings.welcomeDismissed.collectAsState()
+    val language by app.settings.language.collectAsState()
     var insecureSource by remember { mutableStateOf<PlaybackSource?>(null) }
     var backupBusy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -109,7 +163,11 @@ private fun AppNavigation(app: LinguaApp, incoming: MutableState<PlaybackSource?
     }
 
     BackHandler(enabled = screen != Screen.Home) {
-        screen = if (screen is Screen.CardDetail) Screen.Box else Screen.Home
+        screen = when (val s = screen) {
+            is Screen.CardDetail -> Screen.Box
+            is Screen.Guide -> if (s.fromSettings) Screen.Settings else Screen.Home
+            else -> Screen.Home
+        }
     }
 
     when (val s = screen) {
@@ -121,6 +179,10 @@ private fun AppNavigation(app: LinguaApp, incoming: MutableState<PlaybackSource?
             onRemoveRecent = { app.recents.remove(it) },
             onOpenBox = { screen = Screen.Box },
             onOpenReview = { screen = Screen.Review },
+            onOpenSettings = { screen = Screen.Settings },
+            onOpenGuide = { screen = Screen.Guide(fromSettings = false) },
+            showWelcome = !welcomeDismissed,
+            onDismissWelcome = app.settings::dismissWelcome,
             backupBusy = backupBusy,
             onBackup = { uri ->
                 backupBusy = true
@@ -128,13 +190,20 @@ private fun AppNavigation(app: LinguaApp, incoming: MutableState<PlaybackSource?
                     val result = withContext(Dispatchers.IO) {
                         runCatching {
                             val out = context.contentResolver.openOutputStream(uri, "wt")
-                                ?: throw IOException("Cannot write to this place")
+                                ?: throw IOException(context.getString(R.string.backup_cannot_write))
                             out.use { app.cards.exportTo(it) }
                         }
                     }
                     backupBusy = false
                     result.onFailure { Log.w("Backup", "Export failed", it) }
-                    toast(context, if (result.isSuccess) "Backup saved (${cards.size} cards)" else "Could not save the backup: ${result.exceptionOrNull()?.message}")
+                    toast(
+                        context,
+                        if (result.isSuccess) {
+                            context.resources.getQuantityString(R.plurals.backup_saved, cards.size, cards.size)
+                        } else {
+                            context.getString(R.string.backup_failed, result.exceptionOrNull()?.message.orEmpty())
+                        },
+                    )
                 }
             },
             onRestore = { uri ->
@@ -143,7 +212,7 @@ private fun AppNavigation(app: LinguaApp, incoming: MutableState<PlaybackSource?
                     val result = withContext(Dispatchers.IO) {
                         runCatching {
                             val input = context.contentResolver.openInputStream(uri)
-                                ?: throw IOException("Cannot open this file")
+                                ?: throw IOException(context.getString(R.string.backup_cannot_open))
                             input.use { app.cards.importFrom(it) }
                         }
                     }
@@ -154,12 +223,14 @@ private fun AppNavigation(app: LinguaApp, incoming: MutableState<PlaybackSource?
                         result.fold(
                             onSuccess = { r ->
                                 when {
-                                    r.added.isEmpty() && r.skipped > 0 -> "All cards in this backup are already here"
-                                    r.skipped > 0 -> "Restored ${r.added.size} cards (${r.skipped} already here or incomplete)"
-                                    else -> "Restored ${r.added.size} cards"
+                                    r.added.isEmpty() && r.skipped > 0 -> context.getString(R.string.restore_all_present)
+                                    r.skipped > 0 -> context.resources.getQuantityString(
+                                        R.plurals.restored_with_skipped, r.added.size, r.added.size, r.skipped,
+                                    )
+                                    else -> context.resources.getQuantityString(R.plurals.restored, r.added.size, r.added.size)
                                 }
                             },
-                            onFailure = { "Could not restore: ${it.message}" },
+                            onFailure = { context.getString(R.string.restore_failed, it.message.orEmpty()) },
                         ),
                     )
                 }
@@ -202,26 +273,28 @@ private fun AppNavigation(app: LinguaApp, incoming: MutableState<PlaybackSource?
             }
         }
         Screen.Review -> ReviewScreen(cards, app.cards, onBack = { screen = Screen.Home })
+        Screen.Settings -> SettingsScreen(
+            language = language,
+            onLanguageChange = onLanguageChange,
+            onOpenGuide = { screen = Screen.Guide(fromSettings = true) },
+            onBack = { screen = Screen.Home },
+        )
+        is Screen.Guide -> GuideScreen(onBack = { screen = if (s.fromSettings) Screen.Settings else Screen.Home })
     }
 
     insecureSource?.let { source ->
         AlertDialog(
             onDismissRequest = { insecureSource = null },
-            title = { Text("Unencrypted link") },
-            text = {
-                Text(
-                    "This link uses http://, so anyone on your network can see or change " +
-                        "what is streamed. Play it anyway?"
-                )
-            },
+            title = { Text(stringResource(R.string.http_title)) },
+            text = { Text(stringResource(R.string.http_text)) },
             confirmButton = {
                 TextButton(onClick = {
                     insecureSource = null
                     play(source)
-                }) { Text("Play anyway") }
+                }) { Text(stringResource(R.string.http_play)) }
             },
             dismissButton = {
-                TextButton(onClick = { insecureSource = null }) { Text("Cancel") }
+                TextButton(onClick = { insecureSource = null }) { Text(stringResource(R.string.cancel)) }
             },
         )
     }

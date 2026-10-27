@@ -65,16 +65,18 @@ data class MkvSubtitleTrack(
     val isPersian: Boolean get() = language.lowercase(Locale.ROOT).substringBefore('-') in PERSIAN_CODES
 
     /** A short name for choosing a track, e.g. "English" or "Persian (Forced)". */
-    val label: String
-        get() {
-            val lang = languageName(language)
-            return when {
-                name.isNotBlank() && lang.isNotBlank() && !name.contains(lang, ignoreCase = true) -> "$lang ($name)"
-                name.isNotBlank() -> name
-                lang.isNotBlank() -> lang
-                else -> "Track $number"
-            }
+    val label: String get() = label(Locale.ENGLISH, "Track $number")
+
+    /** [label] with the language named in [display]; [unnamed] if the track has no name or language. */
+    fun label(display: Locale, unnamed: String): String {
+        val lang = languageName(language, display)
+        return when {
+            name.isNotBlank() && lang.isNotBlank() && !name.contains(lang, ignoreCase = true) -> "$lang ($name)"
+            name.isNotBlank() -> name
+            lang.isNotBlank() -> lang
+            else -> unnamed
         }
+    }
 
     private companion object {
         val TEXT_CODECS = setOf("S_TEXT/UTF8", "S_TEXT/ASS", "S_TEXT/SSA", "S_TEXT/WEBVTT", "D_WEBVTT/SUBTITLES")
@@ -93,12 +95,12 @@ data class MkvSubtitleTrack(
             } + BIBLIOGRAPHIC
         }
 
-        /** "eng", "per", "fa-IR" → "English", "Persian"; "" for unknown. */
-        fun languageName(code: String): String {
+        /** "eng", "per", "fa-IR" → "English", "Persian" (named in [display]); "" for unknown. */
+        fun languageName(code: String, display: Locale): String {
             val base = code.substringBefore('-').lowercase(Locale.ROOT)
             if (base.isBlank() || base == "und") return ""
             val two = if (base.length == 3) THREE_TO_TWO[base] ?: return base else base
-            return Locale(two).getDisplayLanguage(Locale.ENGLISH).ifBlank { base }
+            return Locale(two).getDisplayLanguage(display).ifBlank { base }
         }
     }
 }

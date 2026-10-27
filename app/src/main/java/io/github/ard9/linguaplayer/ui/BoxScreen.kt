@@ -1,5 +1,7 @@
 package io.github.ard9.linguaplayer.ui
 
+import io.github.ard9.linguaplayer.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -48,10 +50,10 @@ fun BoxScreen(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text("Cards") },
+                title = { Text(stringResource(R.string.cards_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
@@ -68,11 +70,7 @@ fun BoxScreen(
             if (inBox.isEmpty()) {
                 Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
                     Text(
-                        if (selectedBox == 1) {
-                            "New cards start here. Save a line while watching to add one."
-                        } else {
-                            "Cards move here when you answer \"I knew it\" in review."
-                        },
+                        stringResource(if (selectedBox == 1) R.string.box1_empty else R.string.box_empty),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Cinema.Dim,
                         textAlign = TextAlign.Center,
@@ -97,13 +95,13 @@ private fun CardRow(card: Card, repository: CardRepository, onClick: () -> Unit)
     val thumbnail = rememberCardImage(repository.imageFile(card), maxWidthPx = 320)
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().clickable(onClickLabel = "Open card", onClick = onClick),
+        modifier = Modifier.fillMaxWidth().clickable(onClickLabel = stringResource(R.string.open_card), onClick = onClick),
     ) {
         FilmFrame(image = thumbnail, text = null, modifier = Modifier.width(128.dp))
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(
-                card.text.ifBlank { "Audio only" },
+                card.text.ifBlank { stringResource(R.string.audio_only) },
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,

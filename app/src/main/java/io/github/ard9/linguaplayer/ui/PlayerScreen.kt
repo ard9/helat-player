@@ -1,5 +1,11 @@
 package io.github.ard9.linguaplayer.ui
 
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.runtime.CompositionLocalProvider
+import io.github.ard9.linguaplayer.R
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import android.Manifest
 import android.app.Activity
 import android.content.Context
@@ -131,13 +137,14 @@ private const val SKIP_MS = 10_000L
 private const val REPEAT_FALLBACK_MS = 5_000L
 private const val CONTROLS_TIMEOUT_MS = 4_000L
 
+/** Scale types with their names: a string resource, or null for a ratio shown as is. */
 private val SCALES = listOf(
-    MediaPlayer.ScaleType.SURFACE_BEST_FIT to "Best fit",
-    MediaPlayer.ScaleType.SURFACE_FIT_SCREEN to "Fit screen",
-    MediaPlayer.ScaleType.SURFACE_FILL to "Fill",
-    MediaPlayer.ScaleType.SURFACE_16_9 to "16:9",
-    MediaPlayer.ScaleType.SURFACE_4_3 to "4:3",
-    MediaPlayer.ScaleType.SURFACE_ORIGINAL to "Original",
+    Triple(MediaPlayer.ScaleType.SURFACE_BEST_FIT, R.string.scale_best_fit, ""),
+    Triple(MediaPlayer.ScaleType.SURFACE_FIT_SCREEN, R.string.scale_fit_screen, ""),
+    Triple(MediaPlayer.ScaleType.SURFACE_FILL, R.string.scale_fill, ""),
+    Triple(MediaPlayer.ScaleType.SURFACE_16_9, null, "16:9"),
+    Triple(MediaPlayer.ScaleType.SURFACE_4_3, null, "4:3"),
+    Triple(MediaPlayer.ScaleType.SURFACE_ORIGINAL, R.string.scale_original, ""),
 )
 
 private enum class TrackKind { Audio, Subtitle }
@@ -208,8 +215,12 @@ private val SAVED_HAPTIC = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
     HapticFeedbackConstants.KEYBOARD_TAP
 }
 
+/** A track's name for the user, with its language named in the app's language. */
+private fun Context.trackLabel(track: MkvSubtitleTrack): String =
+    track.label(resources.configuration.locales[0], getString(R.string.track_unnamed, track.number))
+
 /** The line of track [index] at the saved moment, with its Persian translation as the meaning. */
-private fun lineFromTrack(search: BuiltInSearch, index: Int, margins: ClipMargins): LineResult.Subtitle? {
+private fun lineFromTrack(context: Context, search: BuiltInSearch, index: Int, margins: ClipMargins): LineResult.Subtitle? {
     val track = search.tracks[index]
     val line = SubtitleLookup.nearMoment(search.lines[track.number].orEmpty(), search.atMs) ?: return null
     val meaning = if (track.isPersian) {
@@ -223,7 +234,7 @@ private fun lineFromTrack(search: BuiltInSearch, index: Int, margins: ClipMargin
         endMs = line.endMs + margins.afterMs,
         text = line.text,
         meaning = meaning ?: "",
-        note = "Times and text from the subtitle track \"${track.label}\".",
+        note = context.getString(R.string.note_track, context.trackLabel(track)),
         search = search,
         trackIndex = index,
     )
@@ -240,17 +251,18 @@ private fun overlapShare(aStart: Long, aEnd: Long, bStart: Long, bEnd: Long): Do
 @Composable
 private fun LoopButton(active: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val accent = MaterialTheme.colorScheme.primary
+    val label = stringResource(if (active) R.string.loop_stop else R.string.loop_start)
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .size(44.dp)
             .clip(CircleShape)
             .background(if (active) accent.copy(alpha = 0.9f) else Color.Black.copy(alpha = 0.35f))
-            .clickable(onClickLabel = if (active) "Stop repeating this line" else "Repeat this line", onClick = onClick),
+            .clickable(onClickLabel = label, onClick = onClick),
     ) {
         Icon(
             PlayerIcons.Repeat,
-            contentDescription = if (active) "Stop repeating this line" else "Repeat this line",
+            contentDescription = label,
             tint = if (active) Cinema.Night else Color.White.copy(alpha = 0.6f),
             modifier = Modifier.size(22.dp),
         )
@@ -292,7 +304,7 @@ private fun QuickSaveButton(
                 ) {
                     Text(shown.text, color = Cinema.Screen, style = MaterialTheme.typography.bodySmall)
                     shown.undo?.let { card ->
-                        TextButton(onClick = { onUndo(card) }) { Text("Undo") }
+                        TextButton(onClick = { onUndo(card) }) { Text(stringResource(R.string.undo)) }
                     }
                 }
             }
@@ -304,8 +316,8 @@ private fun QuickSaveButton(
                 .clip(CircleShape)
                 .background(Color.Black.copy(alpha = 0.35f))
                 .combinedClickable(
-                    onClickLabel = "Save this line",
-                    onLongClickLabel = "Save with options",
+                    onClickLabel = stringResource(R.string.save_line),
+                    onLongClickLabel = stringResource(R.string.save_with_options),
                     onClick = onTap,
                     onLongClick = {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -315,7 +327,7 @@ private fun QuickSaveButton(
         ) {
             Icon(
                 PlayerIcons.Bookmark,
-                contentDescription = "Save this line",
+                contentDescription = stringResource(R.string.save_line),
                 tint = Color.White.copy(alpha = if (busy) 0.9f else 0.6f),
                 modifier = Modifier.size(22.dp),
             )
@@ -527,7 +539,7 @@ fun PlayerScreen(
                     line.endMs + margins.afterMs,
                     line.text,
                     "",
-                    "Times and text from the subtitle file.",
+                    context.getString(R.string.note_subtitle_file),
                     null,
                     0,
                 )
@@ -541,27 +553,29 @@ fun PlayerScreen(
             lines.getOrNull()?.let { found ->
                 val search = BuiltInSearch(now, found, textTracks)
                 for (i in preferredOrder(textTracks, shownTrack(index))) {
-                    lineFromTrack(search, i, margins)?.let { return it }
+                    lineFromTrack(context, search, i, margins)?.let { return it }
                 }
             }
         }
-        onStage("Finding where the sentence starts and ends…")
+        onStage(context.getString(R.string.finding_sentence))
         val result = suspendCancellableCoroutine { continuation ->
             speechFinder.find(scope, source.uri, now) { continuation.resume(it) }
         }
         val outcome = result.getOrElse {
-            return LineResult.None("Could not check the audio: ${it.message}.")
+            return LineResult.None(context.getString(R.string.audio_check_failed, it.message.orEmpty()))
         }
-        val found = outcome.found ?: return LineResult.None("No speech found near this moment (${outcome.details}).")
+        val found = outcome.found ?: return LineResult.None(context.getString(R.string.no_speech, outcome.details))
         return LineResult.Speech(
             max(0L, found.startMs - margins.beforeMs),
             found.endMs + margins.afterMs,
-            when {
-                found.cutAtStart && found.cutAtEnd -> "Found speech, but it is longer than the part checked. Check both times."
-                found.cutAtStart -> "The sentence may start earlier. Check the start time."
-                found.cutAtEnd -> "The sentence may continue. Check the end time."
-                else -> "Times found from the pauses around the sentence."
-            },
+            context.getString(
+                when {
+                    found.cutAtStart && found.cutAtEnd -> R.string.speech_cut_both
+                    found.cutAtStart -> R.string.speech_cut_start
+                    found.cutAtEnd -> R.string.speech_cut_end
+                    else -> R.string.speech_found
+                }
+            ),
         )
     }
 
@@ -577,7 +591,7 @@ fun PlayerScreen(
                 autoFill = AutoFill(++fillVersion, result.startMs, result.endMs, null, null)
                 timeNote = result.note
             }
-            is LineResult.None -> timeNote = result.note + " Set the times by hand."
+            is LineResult.None -> timeNote = context.getString(R.string.set_by_hand, result.note)
         }
     }
 
@@ -666,7 +680,7 @@ fun PlayerScreen(
     fun toggleLoop() {
         if (loopRange != null) {
             loopRange = null
-            message("Loop off")
+            message(context.getString(R.string.loop_off))
             return
         }
         val now = player.time
@@ -675,7 +689,7 @@ fun PlayerScreen(
             loopRange = range
             player.setTime(range.first)
             if (!player.isPlaying) player.play()
-            message("Repeating this line. Tap Loop again to stop.")
+            message(context.getString(R.string.loop_on))
         }
     }
 
@@ -692,7 +706,7 @@ fun PlayerScreen(
         selectedTrack = 0
         draftImage = null
         videoLayout?.let { layout -> FrameGrabber.grab(layout) { draftImage = it } }
-        finding = "Looking for this line…"
+        finding = context.getString(R.string.looking_line)
         scope.launch {
             val result = findLine(now) { stage -> if (id == draftId) finding = stage }
             if (id != draftId) return@launch
@@ -714,23 +728,23 @@ fun PlayerScreen(
                     is LineResult.Subtitle -> QuickLine(result.startMs, result.endMs, result.text, result.meaning)
                     is LineResult.Speech -> QuickLine(result.startMs, result.endMs, "", "")
                     is LineResult.None -> {
-                        notice = QuickNotice("No line found. Hold the button to save by hand.")
+                        notice = QuickNotice(context.getString(R.string.quick_no_line))
                         return@launch
                     }
                 }
                 // A second tap on the same line would only make a duplicate card.
                 if (savedRanges.any { (s, e) -> overlapShare(s, e, line.startMs, line.endMs) > 0.5 }) {
-                    notice = QuickNotice("Already saved")
+                    notice = QuickNotice(context.getString(R.string.quick_already))
                     return@launch
                 }
                 val card = suspendCancellableCoroutine { c ->
                     saveClip(line.startMs, line.endMs, line.text, line.meaning, image) { c.resume(it) }
                 }
                 notice = if (card == null) {
-                    QuickNotice("Could not save this line")
+                    QuickNotice(context.getString(R.string.quick_failed))
                 } else {
                     view.performHapticFeedback(SAVED_HAPTIC)
-                    QuickNotice("Saved", undo = card)
+                    QuickNotice(context.getString(R.string.quick_saved), undo = card)
                 }
             } finally {
                 quickBusy--
@@ -751,8 +765,8 @@ fun PlayerScreen(
                         scope.launch {
                             snackbar.currentSnackbarData?.dismiss()
                             val result = snackbar.showSnackbar(
-                                message = "Continuing from ${formatTime(position)}",
-                                actionLabel = "Start over",
+                                message = context.getString(R.string.continuing_from, formatTime(position)),
+                                actionLabel = context.getString(R.string.start_over),
                                 duration = SnackbarDuration.Short,
                             )
                             if (result == SnackbarResult.ActionPerformed) player.setTime(0)
@@ -768,7 +782,7 @@ fun PlayerScreen(
                 }
                 MediaPlayer.Event.EncounteredError -> {
                     isPlaying = false
-                    message("VLC could not play this media", sticky = true)
+                    message(context.getString(R.string.vlc_error), sticky = true)
                 }
             }
         })
@@ -778,7 +792,7 @@ fun PlayerScreen(
                 it.media.release()
                 startGate.mediaReady()
             }
-            .onFailure { message("Could not open: ${it.message}", sticky = true) }
+            .onFailure { message(context.getString(R.string.open_failed, it.message.orEmpty()), sticky = true) }
         onDispose {
             session?.close()
             if (resumePending == null) savePosition(player.time, player.length)
@@ -867,15 +881,15 @@ fun PlayerScreen(
             result
                 .onSuccess { lines ->
                     if (lines.isEmpty()) {
-                        message("No subtitle lines found in this file (SRT or VTT expected)")
+                        message(context.getString(R.string.no_sub_lines))
                     } else {
                         externalLines = lines
                         externalName = SourceNames.displayName(context, uri)
                         player.setSpuTrack(-1) // Hide built-in subtitles so text is not shown twice.
-                        message("Loaded ${lines.size} subtitle lines")
+                        message(context.resources.getQuantityString(R.plurals.loaded_sub_lines, lines.size, lines.size))
                     }
                 }
-                .onFailure { message("Could not read subtitles: ${it.message}") }
+                .onFailure { message(context.getString(R.string.read_sub_failed, it.message.orEmpty())) }
         }
     }
 
@@ -933,7 +947,7 @@ fun PlayerScreen(
                     .padding(4.dp),
             ) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back), tint = Color.White)
                 }
                 Text(
                     source.title,
@@ -944,16 +958,17 @@ fun PlayerScreen(
                 )
             }
 
-            Row(
+            // Back and forward, and the seek bar below, stay left to right in Persian too.
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) { Row(
                 horizontalArrangement = Arrangement.spacedBy(32.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.align(Alignment.Center),
             ) {
                 TextButton(onClick = { repeatLine(); touch() }) {
-                    Text("Repeat", color = Color.White)
+                    Text(stringResource(R.string.repeat), color = Color.White)
                 }
                 TextButton(onClick = { seekTo(player.time - SKIP_MS); touch() }) {
-                    Text("−10s", color = Color.White)
+                    Text(stringResource(R.string.skip_back), color = Color.White)
                 }
                 IconButton(
                     onClick = {
@@ -964,15 +979,15 @@ fun PlayerScreen(
                 ) {
                     Icon(
                         if (isPlaying) PlayerIcons.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (isPlaying) "Pause" else "Play",
+                        contentDescription = stringResource(if (isPlaying) R.string.pause else R.string.play),
                         tint = Color.White,
                         modifier = Modifier.size(56.dp),
                     )
                 }
                 TextButton(onClick = { seekTo(player.time + SKIP_MS); touch() }) {
-                    Text("+10s", color = Color.White)
+                    Text(stringResource(R.string.skip_forward), color = Color.White)
                 }
-            }
+            } }
 
             Column(
                 modifier = Modifier
@@ -982,7 +997,7 @@ fun PlayerScreen(
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
                     .padding(horizontal = 12.dp, vertical = 4.dp),
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) { Row(verticalAlignment = Alignment.CenterVertically) {
                     val shownMs = seekFraction?.let { (it * lengthMs).toLong() } ?: timeMs
                     Text(formatTime(shownMs), color = Color.White, style = MaterialTheme.typography.labelMedium)
                     Slider(
@@ -999,35 +1014,36 @@ fun PlayerScreen(
                         modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
                     )
                     Text(formatTime(lengthMs), color = Color.White, style = MaterialTheme.typography.labelMedium)
-                }
+                } }
                 Row(Modifier.horizontalScroll(rememberScrollState())) {
-                    ControlButton("Aspect: ${SCALES[scaleIndex].second}") {
+                    val scale = SCALES[scaleIndex]
+                    ControlButton(stringResource(R.string.aspect, scale.second?.let { stringResource(it) } ?: scale.third)) {
                         scaleIndex = (scaleIndex + 1) % SCALES.size
                         player.setVideoScale(SCALES[scaleIndex].first)
                         touch()
                     }
-                    ControlButton("Audio") { trackDialog = TrackKind.Audio; touch() }
-                    ControlButton("Subtitles") { trackDialog = TrackKind.Subtitle; touch() }
-                    ControlButton("Load subtitle file") { subtitlePicker.launch(arrayOf("*/*")); touch() }
-                    ControlButton("Subtitle style") { styleDialog = true; touch() }
-                    ControlButton("Speed ${RATES[rateIndex].second}") {
+                    ControlButton(stringResource(R.string.audio)) { trackDialog = TrackKind.Audio; touch() }
+                    ControlButton(stringResource(R.string.subtitles)) { trackDialog = TrackKind.Subtitle; touch() }
+                    ControlButton(stringResource(R.string.load_sub_file)) { subtitlePicker.launch(arrayOf("*/*")); touch() }
+                    ControlButton(stringResource(R.string.subtitle_style)) { styleDialog = true; touch() }
+                    ControlButton(stringResource(R.string.speed, RATES[rateIndex].second)) {
                         rateIndex = (rateIndex + 1) % RATES.size
                         player.setRate(RATES[rateIndex].first)
                         touch()
                     }
-                    ControlButton("Role-play") { openRolePlay(); touch() }
-                    ControlButton("Clip margins") { marginsDialog = true; touch() }
-                    ControlButton(if (landscape) "Portrait" else "Full screen") {
+                    ControlButton(stringResource(R.string.role_play)) { openRolePlay(); touch() }
+                    ControlButton(stringResource(R.string.clip_margins)) { marginsDialog = true; touch() }
+                    ControlButton(stringResource(if (landscape) R.string.portrait else R.string.full_screen)) {
                         orientationLock = if (landscape) OrientationLock.Portrait else OrientationLock.Landscape
                         touch()
                     }
                     if (orientationLock != OrientationLock.None) {
-                        ControlButton("Auto-rotate") { orientationLock = OrientationLock.None; touch() }
+                        ControlButton(stringResource(R.string.auto_rotate)) { orientationLock = OrientationLock.None; touch() }
                     }
                 }
                 externalName?.let {
                     Text(
-                        "Subtitle file: $it",
+                        stringResource(R.string.subtitle_file, it),
                         color = Color.White,
                         style = MaterialTheme.typography.labelSmall,
                         maxLines = 1,
@@ -1057,7 +1073,7 @@ fun PlayerScreen(
             onUndo = { card ->
                 repository.delete(card)
                 savedRanges.remove(card.startMs to card.endMs)
-                notice = QuickNotice("Removed")
+                notice = QuickNotice(context.getString(R.string.quick_removed))
             },
             onNoticeShown = { shown -> if (notice === shown) notice = null },
             modifier = Modifier
@@ -1080,16 +1096,16 @@ fun PlayerScreen(
             autoFill = autoFill,
             finding = finding,
             timeNote = timeNote,
-            trackOptions = builtInSearch?.tracks?.map { it.label }.orEmpty(),
+            trackOptions = builtInSearch?.tracks?.map { context.trackLabel(it) }.orEmpty(),
             selectedTrack = selectedTrack,
             onSelectTrack = { index ->
                 val search = builtInSearch
-                val line = search?.let { lineFromTrack(it, index, currentMargins.value) }
+                val line = search?.let { lineFromTrack(context, it, index, currentMargins.value) }
                 if (line != null) {
                     applyToDialog(line)
                 } else {
                     selectedTrack = index
-                    timeNote = "This track has no line at this moment."
+                    timeNote = context.getString(R.string.track_no_line)
                 }
             },
             image = draftImage,
@@ -1113,14 +1129,14 @@ fun PlayerScreen(
                 previewEndMs = null
                 player.pause()
                 saveClip(s, e, text, meaning, image) { card ->
-                    message(if (card != null) "Saved to Box 1" else "Could not cut the audio", sticky = card == null)
+                    message(context.getString(if (card != null) R.string.saved_box1 else R.string.cut_failed), sticky = card == null)
                 }
             },
         )
     }
 
     val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) startRolePlay() else message("Role-play needs the microphone to record your voice.", sticky = true)
+        if (granted) startRolePlay() else message(context.getString(R.string.mic_needed), sticky = true)
     }
 
     // Reads the scene's lines when the setup opens and when the number of lines changes.
@@ -1174,7 +1190,7 @@ fun PlayerScreen(
 
     trackDialog?.let { kind ->
         TrackDialog(
-            title = if (kind == TrackKind.Audio) "Audio track" else "Subtitle track",
+            title = stringResource(if (kind == TrackKind.Audio) R.string.audio_track else R.string.subtitle_track),
             tracks = (if (kind == TrackKind.Audio) player.audioTracks else player.spuTracks)
                 ?.map { it.id to it.name }
                 .orEmpty(),
@@ -1214,7 +1230,7 @@ private fun TrackDialog(
         title = { Text(title) },
         text = {
             if (tracks.isEmpty()) {
-                Text("No tracks available.")
+                Text(stringResource(R.string.no_tracks))
             } else {
                 Column {
                     tracks.forEach { (id, name) ->
@@ -1229,7 +1245,7 @@ private fun TrackDialog(
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) } },
     )
 }
 

@@ -21,6 +21,9 @@ An Android video player for language learning.
   headphones help. Recordings stay on the phone and are deleted when the session is closed.
 - The home screen shows the app version; its last number is the GitHub build number.
 - Videos continue where you left them.
+- **English and Persian**: the app follows the phone's language, or choose one under Settings
+  (gear icon on the home screen). Persian uses a right-to-left layout and the Vazirmatn font.
+- **Guide**: the "?" icon on the home screen opens a step-by-step guide to every feature.
 - **Backup**: Back up saves all cards in one ZIP file; Restore adds the cards from such a file.
   Cards are otherwise kept only on the phone.
 
@@ -60,7 +63,7 @@ Review intervals: Box 1 every day, Box 2 every 2 days, Box 3 every 4, Box 4 ever
 
 ## Fonts
 
-Archivo and Atkinson Hyperlegible are used under the SIL Open Font License, and the Silero VAD
+Archivo, Atkinson Hyperlegible and Vazirmatn are used under the SIL Open Font License, and the Silero VAD
 model under the MIT License (see `licenses/`).
 
 ## Signing (for maintainers)

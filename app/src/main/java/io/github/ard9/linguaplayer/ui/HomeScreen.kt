@@ -29,6 +29,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import io.github.ard9.linguaplayer.R
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
@@ -70,6 +74,11 @@ fun HomeScreen(
     onRemoveRecent: (PlaybackSource) -> Unit,
     onOpenBox: () -> Unit,
     onOpenReview: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onOpenGuide: () -> Unit,
+    /** Shows the first-launch card that suggests the guide. */
+    showWelcome: Boolean,
+    onDismissWelcome: () -> Unit,
     /** True while a backup is written or restored. */
     backupBusy: Boolean,
     onBackup: (Uri) -> Unit,
@@ -85,7 +94,7 @@ fun HomeScreen(
     }
     var link by rememberSaveable { mutableStateOf("") }
     var linkOpen by rememberSaveable { mutableStateOf(false) }
-    var linkError by remember { mutableStateOf<String?>(null) }
+    var linkError by remember { mutableStateOf(false) }
     val dueCount = remember(cards) {
         val now = System.currentTimeMillis()
         cards.count { Leitner.isDue(it, now) }
@@ -106,10 +115,10 @@ fun HomeScreen(
     fun openLink() {
         val uri = Uri.parse(link.trim())
         if (uri.scheme !in setOf("http", "https") || uri.host.isNullOrBlank()) {
-            linkError = "Enter a link that starts with http:// or https://"
+            linkError = true
             return
         }
-        linkError = null
+        linkError = false
         onOpen(PlaybackSource(uri, uri.lastPathSegment?.takeIf { it.isNotBlank() } ?: uri.host!!))
     }
 
@@ -121,19 +130,35 @@ fun HomeScreen(
         ) {
             item {
                 Column {
-                    Text("Lingua Player", style = MaterialTheme.typography.displaySmall)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            stringResource(R.string.app_name),
+                            style = MaterialTheme.typography.displaySmall,
+                            modifier = Modifier.weight(1f),
+                        )
+                        IconButton(onClick = onOpenGuide) {
+                            Icon(PlayerIcons.Help, contentDescription = stringResource(R.string.guide), tint = Cinema.Dim)
+                        }
+                        IconButton(onClick = onOpenSettings) {
+                            Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings), tint = Cinema.Dim)
+                        }
+                    }
                     Text(
-                        "Watch, keep the lines you want to learn, review them later.",
+                        stringResource(R.string.home_tagline),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Cinema.Dim,
                     )
                     Text(
-                        "Version ${appVersion(context)}",
+                        stringResource(R.string.home_version, appVersion(context)),
                         style = MaterialTheme.typography.labelSmall,
                         color = Cinema.Dim.copy(alpha = 0.7f),
                         modifier = Modifier.padding(top = 4.dp),
                     )
                 }
+            }
+
+            if (showWelcome) {
+                item { WelcomeCard(onOpenGuide = onOpenGuide, onDismiss = onDismissWelcome) }
             }
 
             recents.firstOrNull()?.let { last ->
@@ -145,11 +170,11 @@ fun HomeScreen(
                     Button(
                         onClick = { filePicker.launch(arrayOf("video/*", "audio/*")) },
                         modifier = Modifier.weight(1f),
-                    ) { Text("Open file") }
+                    ) { Text(stringResource(R.string.open_file)) }
                     OutlinedButton(
                         onClick = { linkOpen = !linkOpen },
                         modifier = Modifier.weight(1f),
-                    ) { Text(if (linkOpen) "Hide link" else "Paste link") }
+                    ) { Text(stringResource(if (linkOpen) R.string.hide_link else R.string.paste_link)) }
                 }
             }
 
@@ -159,12 +184,12 @@ fun HomeScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(
                             value = link,
-                            onValueChange = { link = it; linkError = null },
-                            label = { Text("Direct link or stream URL") },
+                            onValueChange = { link = it; linkError = false },
+                            label = { Text(stringResource(R.string.link_label)) },
                             singleLine = true,
-                            isError = error != null,
-                            supportingText = if (error != null) {
-                                { Text(error) }
+                            isError = error,
+                            supportingText = if (error) {
+                                { Text(stringResource(R.string.link_error)) }
                             } else {
                                 null
                             },
@@ -176,7 +201,7 @@ fun HomeScreen(
                             onClick = { openLink() },
                             enabled = link.isNotBlank(),
                             modifier = Modifier.fillMaxWidth(),
-                        ) { Text("Play link") }
+                        ) { Text(stringResource(R.string.play_link)) }
                     }
                 }
             }
@@ -188,32 +213,32 @@ fun HomeScreen(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("Your cards", style = MaterialTheme.typography.titleLarge)
+                        Text(stringResource(R.string.your_cards), style = MaterialTheme.typography.titleLarge)
                         if (cards.isEmpty()) {
                             Text(
-                                "While watching, tap the bookmark button to keep a line here.",
+                                stringResource(R.string.cards_empty_hint),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = Cinema.Dim,
                             )
                         } else {
                             Text(
-                                when (dueCount) {
-                                    0 -> "Nothing to review today."
-                                    1 -> "1 card to review today."
-                                    else -> "$dueCount cards to review today."
+                                if (dueCount == 0) {
+                                    stringResource(R.string.due_none)
+                                } else {
+                                    pluralStringResource(R.plurals.due_count, dueCount, dueCount)
                                 },
                                 style = MaterialTheme.typography.bodyLarge,
                             )
                             BoxBars(counts = boxCounts(cards))
                             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Button(onClick = onOpenReview, enabled = dueCount > 0) { Text("Start review") }
-                                TextButton(onClick = onOpenBox) { Text("Browse cards") }
+                                Button(onClick = onOpenReview, enabled = dueCount > 0) { Text(stringResource(R.string.start_review)) }
+                                TextButton(onClick = onOpenBox) { Text(stringResource(R.string.browse_cards)) }
                             }
                         }
                         HorizontalDivider(color = Cinema.Aisle)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                if (backupBusy) "Working on the backup…" else "Cards are kept only on this phone.",
+                                stringResource(if (backupBusy) R.string.backup_working else R.string.cards_local_only),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Cinema.Dim,
                                 modifier = Modifier.weight(1f),
@@ -221,11 +246,11 @@ fun HomeScreen(
                             TextButton(
                                 onClick = { confirmBackup = true },
                                 enabled = cards.isNotEmpty() && !backupBusy,
-                            ) { Text("Back up") }
+                            ) { Text(stringResource(R.string.back_up)) }
                             TextButton(
                                 onClick = { restoreSource.launch(arrayOf("application/zip", "application/octet-stream")) },
                                 enabled = !backupBusy,
-                            ) { Text("Restore") }
+                            ) { Text(stringResource(R.string.restore)) }
                         }
                     }
                 }
@@ -235,7 +260,7 @@ fun HomeScreen(
             if (older.isNotEmpty()) {
                 item {
                     Text(
-                        "Recently played",
+                        stringResource(R.string.recently_played),
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(top = 8.dp),
                     )
@@ -252,10 +277,10 @@ fun HomeScreen(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
-                            Text(sourceKind(source), style = MaterialTheme.typography.bodySmall, color = Cinema.Dim)
+                            Text(sourceKind(source, context), style = MaterialTheme.typography.bodySmall, color = Cinema.Dim)
                         }
                         IconButton(onClick = { onRemoveRecent(source) }) {
-                            Icon(Icons.Default.Close, contentDescription = "Remove from recent", tint = Cinema.Dim)
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.remove_recent), tint = Cinema.Dim)
                         }
                     }
                     HorizontalDivider(color = Cinema.Aisle)
@@ -267,31 +292,47 @@ fun HomeScreen(
     if (confirmBackup) {
         AlertDialog(
             onDismissRequest = { confirmBackup = false },
-            title = { Text("Back up cards") },
-            text = {
-                Text(
-                    "Saves all cards, with their audio and pictures, in one file you can keep elsewhere " +
-                        "and restore later. The file also lists the links of the videos the cards came from, " +
-                        "so keep it private."
-                )
-            },
+            title = { Text(stringResource(R.string.backup_title)) },
+            text = { Text(stringResource(R.string.backup_text)) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmBackup = false
                     backupTarget.launch("lingua-cards-${LocalDate.now()}.zip")
-                }) { Text("Choose where to save") }
+                }) { Text(stringResource(R.string.backup_choose)) }
             },
-            dismissButton = { TextButton(onClick = { confirmBackup = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { confirmBackup = false }) { Text(stringResource(R.string.cancel)) } },
         )
+    }
+}
+
+/** Shown until closed: points new users to the guide. */
+@Composable
+private fun WelcomeCard(onOpenGuide: () -> Unit, onDismiss: () -> Unit) {
+    Surface(
+        color = Cinema.Seat,
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(Modifier.padding(start = 20.dp, top = 8.dp, end = 4.dp, bottom = 12.dp)) {
+            Column(Modifier.weight(1f).padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.welcome_title), style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.welcome_text), style = MaterialTheme.typography.bodyMedium, color = Cinema.Dim)
+                Button(onClick = onOpenGuide) { Text(stringResource(R.string.welcome_open)) }
+            }
+            IconButton(onClick = onDismiss) {
+                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close), tint = Cinema.Dim)
+            }
+        }
     }
 }
 
 @Composable
 private fun ContinueCard(source: PlaybackSource, resumeAtMs: Long?, onClick: () -> Unit) {
+    val context = LocalContext.current
     Surface(
         color = Cinema.Aisle,
         shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth().clickable(onClickLabel = "Continue watching", onClick = onClick),
+        modifier = Modifier.fillMaxWidth().clickable(onClickLabel = stringResource(R.string.continue_watching), onClick = onClick),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(16.dp)) {
             Box(
@@ -302,7 +343,7 @@ private fun ContinueCard(source: PlaybackSource, resumeAtMs: Long?, onClick: () 
             }
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
-                Text("Continue watching", style = MaterialTheme.typography.labelMedium, color = Cinema.Dim)
+                Text(stringResource(R.string.continue_watching), style = MaterialTheme.typography.labelMedium, color = Cinema.Dim)
                 Spacer(Modifier.height(2.dp))
                 Text(
                     source.title,
@@ -311,7 +352,11 @@ private fun ContinueCard(source: PlaybackSource, resumeAtMs: Long?, onClick: () 
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    if (resumeAtMs != null) "${sourceKind(source)} · from ${formatTime(resumeAtMs)}" else sourceKind(source),
+                    if (resumeAtMs != null) {
+                        stringResource(R.string.source_from, sourceKind(source, context), formatTime(resumeAtMs))
+                    } else {
+                        sourceKind(source, context)
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = Cinema.Dim,
                 )
@@ -327,5 +372,9 @@ private fun appVersion(context: android.content.Context): String = try {
     "?"
 }
 
-private fun sourceKind(source: PlaybackSource): String =
-    if (source.uri.scheme == "content") "File on this phone" else source.uri.host ?: "Link"
+private fun sourceKind(source: PlaybackSource, context: android.content.Context): String =
+    if (source.uri.scheme == "content") {
+        context.getString(R.string.source_file)
+    } else {
+        source.uri.host ?: context.getString(R.string.source_link)
+    }

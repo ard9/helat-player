@@ -1,5 +1,6 @@
 package io.github.ard9.linguaplayer.data
 
+import java.util.Locale
 import org.json.JSONObject
 import java.util.UUID
 import kotlin.math.min
@@ -96,5 +97,6 @@ fun formatTime(ms: Long): String {
     val h = totalSeconds / 3600
     val m = (totalSeconds % 3600) / 60
     val s = totalSeconds % 60
-    return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
+    // Always ASCII digits: film times are also typed into the editor and parsed back.
+    return if (h > 0) String.format(Locale.US, "%d:%02d:%02d", h, m, s) else String.format(Locale.US, "%d:%02d", m, s)
 }

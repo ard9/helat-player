@@ -39,33 +39,45 @@ val ArchivoCondensed = FontFamily(
     Font(R.font.archivo_condensed_bold, FontWeight.Bold),
 )
 
+/** Persian face (Vazirmatn), used for all text when the app is in Persian. */
+val Vazirmatn = FontFamily(
+    Font(R.font.vazirmatn_regular, FontWeight.Normal),
+    Font(R.font.vazirmatn_bold, FontWeight.Bold),
+    // No separate semibold file: the bold face stands in for it.
+    Font(R.font.vazirmatn_bold, FontWeight.SemiBold),
+)
+
 /** The user's subtitle style, used by the player overlay and by cards. */
 val LocalSubtitleStyle = staticCompositionLocalOf { SubtitleStyle(0xFFD84D, SubtitleSize.Medium) }
 
 fun SubtitleStyle.composeColor(): Color = Color(0xFF000000 or color.toLong())
 
-private fun typography(): Typography {
+/** [persian]: Atkinson and Archivo have no Persian letters, so Vazirmatn replaces both. */
+private fun typography(persian: Boolean): Typography {
     val base = Typography()
-    fun TextStyle.reading() = copy(fontFamily = Atkinson)
-    fun TextStyle.display() = copy(fontFamily = ArchivoCondensed, fontWeight = FontWeight.Bold)
+    val readingFont = if (persian) Vazirmatn else Atkinson
+    val displayFont = if (persian) Vazirmatn else ArchivoCondensed
+    fun TextStyle.reading() = copy(fontFamily = readingFont)
+    fun TextStyle.display() = copy(fontFamily = displayFont, fontWeight = FontWeight.Bold)
     return base.copy(
         displaySmall = base.displaySmall.display().copy(fontSize = 40.sp, lineHeight = 44.sp),
         headlineMedium = base.headlineMedium.display(),
         headlineSmall = base.headlineSmall.display(),
         titleLarge = base.titleLarge.display().copy(fontSize = 24.sp),
-        titleMedium = base.titleMedium.copy(fontFamily = ArchivoCondensed, fontWeight = FontWeight.SemiBold, fontSize = 18.sp),
-        titleSmall = base.titleSmall.copy(fontFamily = ArchivoCondensed, fontWeight = FontWeight.SemiBold),
-        bodyLarge = base.bodyLarge.reading().copy(fontSize = 17.sp, lineHeight = 25.sp),
-        bodyMedium = base.bodyMedium.reading().copy(lineHeight = 21.sp),
+        titleMedium = base.titleMedium.copy(fontFamily = displayFont, fontWeight = FontWeight.SemiBold, fontSize = 18.sp),
+        titleSmall = base.titleSmall.copy(fontFamily = displayFont, fontWeight = FontWeight.SemiBold),
+        // Persian letters need more room between lines.
+        bodyLarge = base.bodyLarge.reading().copy(fontSize = 17.sp, lineHeight = if (persian) 29.sp else 25.sp),
+        bodyMedium = base.bodyMedium.reading().copy(lineHeight = if (persian) 25.sp else 21.sp),
         bodySmall = base.bodySmall.reading(),
-        labelLarge = base.labelLarge.copy(fontFamily = ArchivoCondensed, fontWeight = FontWeight.SemiBold, fontSize = 16.sp),
+        labelLarge = base.labelLarge.copy(fontFamily = displayFont, fontWeight = FontWeight.SemiBold, fontSize = 16.sp),
         labelMedium = base.labelMedium.reading(),
         labelSmall = base.labelSmall.reading(),
     )
 }
 
 @Composable
-fun LinguaTheme(subtitleStyle: SubtitleStyle, content: @Composable () -> Unit) {
+fun LinguaTheme(subtitleStyle: SubtitleStyle, persian: Boolean, content: @Composable () -> Unit) {
     val accent = subtitleStyle.composeColor()
     val colors = remember(accent) {
         darkColorScheme(
@@ -94,7 +106,7 @@ fun LinguaTheme(subtitleStyle: SubtitleStyle, content: @Composable () -> Unit) {
             onError = Cinema.Night,
         )
     }
-    val type = remember { typography() }
+    val type = remember(persian) { typography(persian) }
     CompositionLocalProvider(LocalSubtitleStyle provides subtitleStyle) {
         MaterialTheme(colorScheme = colors, typography = type, content = content)
     }

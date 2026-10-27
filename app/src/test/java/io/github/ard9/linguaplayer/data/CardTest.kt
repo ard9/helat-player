@@ -1,5 +1,6 @@
 package io.github.ard9.linguaplayer.data
 
+import java.util.Locale
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -56,5 +57,18 @@ class CardTest {
         assertNull(parseClock("1:75"))
         assertNull(parseClock("abc"))
         assertEquals("1:23.4", formatClock(83_400))
+    }
+
+    @Test
+    fun `film times use ASCII digits on a Persian phone`() {
+        val before = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.forLanguageTag("fa"))
+            assertEquals("1:02:03", formatTime(3_723_000))
+            assertEquals("1:23.4", formatClock(83_400))
+            assertEquals(83_400L, parseClock(formatClock(83_400)))
+        } finally {
+            Locale.setDefault(before)
+        }
     }
 }

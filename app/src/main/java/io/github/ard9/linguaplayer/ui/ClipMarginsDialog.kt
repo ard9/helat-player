@@ -1,5 +1,7 @@
 package io.github.ard9.linguaplayer.ui
 
+import io.github.ard9.linguaplayer.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,7 +15,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.ard9.linguaplayer.data.ClipMargins
-import java.util.Locale
 import kotlin.math.roundToLong
 
 /** Sets how much audio is kept before and after each saved line, in 0.1 s steps. */
@@ -21,28 +22,28 @@ import kotlin.math.roundToLong
 fun ClipMarginsDialog(current: ClipMargins, onChange: (ClipMargins) -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Clip margins") },
+        title = { Text(stringResource(R.string.clip_margins)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    "Extra audio kept around each saved line, so the first and last words are not cut off.",
+                    stringResource(R.string.margins_text),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                MarginSlider("Before the line", current.beforeMs) { onChange(current.copy(beforeMs = it)) }
-                MarginSlider("After the line", current.afterMs) { onChange(current.copy(afterMs = it)) }
+                MarginSlider(stringResource(R.string.margins_before), current.beforeMs) { onChange(current.copy(beforeMs = it)) }
+                MarginSlider(stringResource(R.string.margins_after), current.afterMs) { onChange(current.copy(afterMs = it)) }
                 TextButton(
                     onClick = { onChange(ClipMargins.DEFAULT) },
                     enabled = current != ClipMargins.DEFAULT,
-                ) { Text("Reset to default") }
+                ) { Text(stringResource(R.string.reset_default)) }
                 Text(
-                    "Applies to the next lines you save.",
+                    stringResource(R.string.margins_applies),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.done)) } },
     )
 }
 
@@ -51,7 +52,7 @@ private fun MarginSlider(label: String, valueMs: Long, onChange: (Long) -> Unit)
     Column {
         Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
             Text(label, style = MaterialTheme.typography.titleSmall)
-            Text(String.format(Locale.US, "%.1f s", valueMs / 1000.0), style = MaterialTheme.typography.titleSmall)
+            Text(stringResource(R.string.seconds_value, valueMs / 1000.0), style = MaterialTheme.typography.titleSmall)
         }
         Slider(
             value = valueMs.toFloat(),

@@ -54,6 +54,7 @@ class RolePlaySession(
     /** True while the user's voice is being recorded. */
     var myTurn by mutableStateOf(false)
         private set
+    /** Set when the session stopped because of an error; may be blank if it has no message. */
     var error by mutableStateOf<String?>(null)
         private set
     /** Recordings by line index; lines the user skipped or did not speak have none. */
@@ -162,7 +163,7 @@ class RolePlaySession(
                 throw e
             } catch (e: Exception) {
                 Log.w(TAG, "Role-play failed", e)
-                error = e.message ?: "Something went wrong"
+                error = e.message.orEmpty()
                 player.setMuted(false)
                 player.pause()
                 myTurn = false

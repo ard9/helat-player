@@ -1,5 +1,7 @@
 package io.github.ard9.linguaplayer.ui
 
+import io.github.ard9.linguaplayer.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -50,10 +52,10 @@ fun CardScreen(card: Card, repository: CardRepository, onBack: () -> Unit) {
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text("Box ${card.box}") },
+                title = { Text(stringResource(R.string.box_n, card.box)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
@@ -68,23 +70,23 @@ fun CardScreen(card: Card, repository: CardRepository, onBack: () -> Unit) {
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 8.dp),
         ) {
-            FilmFrame(image = picture, text = card.text, hint = "No text")
+            FilmFrame(image = picture, text = card.text, hint = stringResource(R.string.no_text))
             if (card.meaning.isNotBlank()) {
                 Text(card.meaning, style = MaterialTheme.typography.bodyLarge)
             }
             Text(
-                "From ${card.sourceTitle} at ${formatTime(card.startMs)}",
+                stringResource(R.string.card_from, card.sourceTitle, formatTime(card.startMs)),
                 style = MaterialTheme.typography.bodySmall,
                 color = Cinema.Dim,
             )
             if (!hasAudio) {
-                Text("The audio file for this card is missing.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                Text(stringResource(R.string.audio_missing), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(onClick = { audio.play(audioFile) }, enabled = hasAudio) { Text("Play") }
-                OutlinedButton(onClick = { editing = true }) { Text("Edit") }
+                Button(onClick = { audio.play(audioFile) }, enabled = hasAudio) { Text(stringResource(R.string.play)) }
+                OutlinedButton(onClick = { editing = true }) { Text(stringResource(R.string.edit)) }
                 TextButton(onClick = { confirmDelete = true }) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
                 }
             }
         }
@@ -105,16 +107,16 @@ fun CardScreen(card: Card, repository: CardRepository, onBack: () -> Unit) {
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
-            title = { Text("Delete this card?") },
-            text = { Text("Its audio and picture are deleted too.") },
+            title = { Text(stringResource(R.string.delete_title)) },
+            text = { Text(stringResource(R.string.delete_text)) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmDelete = false
                     repository.delete(card)
                     onBack()
-                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+                }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.cancel)) } },
         )
     }
 }
