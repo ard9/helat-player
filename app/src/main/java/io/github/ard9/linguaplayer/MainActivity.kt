@@ -1,6 +1,15 @@
 package io.github.ard9.linguaplayer
 
+import android.content.Context
 import android.content.Intent
+import android.util.Log
+import android.widget.Toast
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.IOException
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -59,6 +68,8 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+private fun toast(context: Context, text: String) = Toast.makeText(context, text, Toast.LENGTH_LONG).show()
+
 private sealed interface Screen {
     data object Home : Screen
     data class Player(val source: PlaybackSource) : Screen
@@ -71,6 +82,9 @@ private sealed interface Screen {
 private fun AppNavigation(app: LinguaApp, incoming: MutableState<PlaybackSource?>) {
     var screen by remember { mutableStateOf<Screen>(Screen.Home) }
     var insecureSource by remember { mutableStateOf<PlaybackSource?>(null) }
+    var backupBusy by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var selectedBox by rememberSaveable { mutableIntStateOf(1) }
     val cards by app.cards.cards.collectAsState()
     val recents by app.recents.items.collectAsState()
@@ -104,6 +118,49 @@ private fun AppNavigation(app: LinguaApp, incoming: MutableState<PlaybackSource?
             onRemoveRecent = { app.recents.remove(it) },
             onOpenBox = { screen = Screen.Box },
             onOpenReview = { screen = Screen.Review },
+            backupBusy = backupBusy,
+            onBackup = { uri ->
+                backupBusy = true
+                scope.launch {
+                    val result = withContext(Dispatchers.IO) {
+                        runCatching {
+                            val out = context.contentResolver.openOutputStream(uri, "wt")
+                                ?: throw IOException("Cannot write to this place")
+                            out.use { app.cards.exportTo(it) }
+                        }
+                    }
+                    backupBusy = false
+                    result.onFailure { Log.w("Backup", "Export failed", it) }
+                    toast(context, if (result.isSuccess) "Backup saved (${cards.size} cards)" else "Could not save the backup: ${result.exceptionOrNull()?.message}")
+                }
+            },
+            onRestore = { uri ->
+                backupBusy = true
+                scope.launch {
+                    val result = withContext(Dispatchers.IO) {
+                        runCatching {
+                            val input = context.contentResolver.openInputStream(uri)
+                                ?: throw IOException("Cannot open this file")
+                            input.use { app.cards.importFrom(it) }
+                        }
+                    }
+                    backupBusy = false
+                    result.onFailure { Log.w("Backup", "Import failed", it) }
+                    toast(
+                        context,
+                        result.fold(
+                            onSuccess = { r ->
+                                when {
+                                    r.added.isEmpty() && r.skipped > 0 -> "All cards in this backup are already here"
+                                    r.skipped > 0 -> "Restored ${r.added.size} cards (${r.skipped} already here or incomplete)"
+                                    else -> "Restored ${r.added.size} cards"
+                                }
+                            },
+                            onFailure = { "Could not restore: ${it.message}" },
+                        ),
+                    )
+                }
+            },
         )
         is Screen.Player -> key(s.source) {
             // One libVLC instance per playback, created with the current subtitle style.

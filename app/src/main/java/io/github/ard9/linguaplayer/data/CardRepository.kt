@@ -6,6 +6,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.json.JSONArray
 import java.io.File
+import java.io.InputStream
+import java.io.OutputStream
 
 /**
  * Stores cards in a JSON file and their audio clips in app-private storage.
@@ -31,6 +33,17 @@ class CardRepository(context: Context) {
 
     @Synchronized
     fun add(card: Card) = save(_cards.value + card)
+
+    /** Writes a backup of all cards (ZIP) to [out]. Blocking. */
+    fun exportTo(out: OutputStream) = CardBackup.export(out, _cards.value, ::audioFile, ::imageFile)
+
+    /** Adds the cards of a backup that are not here yet. Blocking. */
+    @Synchronized
+    fun importFrom(input: InputStream): CardBackup.ImportResult {
+        val result = CardBackup.import(input, _cards.value.map { it.id }.toSet(), clipsDir, imagesDir)
+        if (result.added.isNotEmpty()) save(_cards.value + result.added)
+        return result
+    }
 
     @Synchronized
     fun update(card: Card) = save(_cards.value.map { if (it.id == card.id) card else it })

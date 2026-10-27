@@ -29,6 +29,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -56,6 +57,7 @@ import io.github.ard9.linguaplayer.data.Card
 import io.github.ard9.linguaplayer.data.Leitner
 import io.github.ard9.linguaplayer.data.PlaybackSource
 import io.github.ard9.linguaplayer.data.SourceNames
+import java.time.LocalDate
 
 @Composable
 fun HomeScreen(
@@ -65,8 +67,19 @@ fun HomeScreen(
     onRemoveRecent: (PlaybackSource) -> Unit,
     onOpenBox: () -> Unit,
     onOpenReview: () -> Unit,
+    /** True while a backup is written or restored. */
+    backupBusy: Boolean,
+    onBackup: (Uri) -> Unit,
+    onRestore: (Uri) -> Unit,
 ) {
     val context = LocalContext.current
+    var confirmBackup by remember { mutableStateOf(false) }
+    val backupTarget = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+        if (uri != null) onBackup(uri)
+    }
+    val restoreSource = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) onRestore(uri)
+    }
     var link by rememberSaveable { mutableStateOf("") }
     var linkOpen by rememberSaveable { mutableStateOf(false) }
     var linkError by remember { mutableStateOf<String?>(null) }
@@ -169,7 +182,7 @@ fun HomeScreen(
                         Text("Your cards", style = MaterialTheme.typography.titleLarge)
                         if (cards.isEmpty()) {
                             Text(
-                                "While watching, tap the video and then Save to keep a line here.",
+                                "While watching, tap the bookmark button to keep a line here.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = Cinema.Dim,
                             )
@@ -187,6 +200,23 @@ fun HomeScreen(
                                 Button(onClick = onOpenReview, enabled = dueCount > 0) { Text("Start review") }
                                 TextButton(onClick = onOpenBox) { Text("Browse cards") }
                             }
+                        }
+                        HorizontalDivider(color = Cinema.Aisle)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                if (backupBusy) "Working on the backup…" else "Cards are kept only on this phone.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Cinema.Dim,
+                                modifier = Modifier.weight(1f),
+                            )
+                            TextButton(
+                                onClick = { confirmBackup = true },
+                                enabled = cards.isNotEmpty() && !backupBusy,
+                            ) { Text("Back up") }
+                            TextButton(
+                                onClick = { restoreSource.launch(arrayOf("application/zip", "application/octet-stream")) },
+                                enabled = !backupBusy,
+                            ) { Text("Restore") }
                         }
                     }
                 }
@@ -223,6 +253,27 @@ fun HomeScreen(
                 }
             }
         }
+    }
+
+    if (confirmBackup) {
+        AlertDialog(
+            onDismissRequest = { confirmBackup = false },
+            title = { Text("Back up cards") },
+            text = {
+                Text(
+                    "Saves all cards, with their audio and pictures, in one file you can keep elsewhere " +
+                        "and restore later. The file also lists the links of the videos the cards came from, " +
+                        "so keep it private."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmBackup = false
+                    backupTarget.launch("lingua-cards-${LocalDate.now()}.zip")
+                }) { Text("Choose where to save") }
+            },
+            dismissButton = { TextButton(onClick = { confirmBackup = false }) { Text("Cancel") } },
+        )
     }
 }
 
