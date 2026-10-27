@@ -49,6 +49,9 @@ Actions pinned by SHA on `ubuntu-24.04` since build-45; no deprecation warnings 
 
 - Leave stream URLs (`sourceUri`) out of card backups, or offer it as a choice.
 - Online subtitle search (OpenSubtitles); the owner said "not now".
+- YouTube links (2026-10-27): the owner said "not now". Options were NewPipe Extractor
+  (GPLv3, breaks when YouTube changes, against YouTube's terms) or yt-dlp (~30 MB). Meanwhile
+  a downloaded file plus an SRT works with every feature.
 - Read subtitle lines ahead while playing, so Loop/Repeat are instant on online films.
   Approved at first, then put back to the owner: over HTTP the reader downloads whole clusters
   (video included), so it roughly doubles the data used while watching.
