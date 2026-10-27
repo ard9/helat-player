@@ -281,9 +281,10 @@ fun PlayerScreen(
             if (id != draftId) return@find
             findingSentence = false
             result
-                .onSuccess { found ->
+                .onSuccess { outcome ->
+                    val found = outcome.found
                     if (found == null) {
-                        timeNote = "No speech found near this moment. Set the times by hand."
+                        timeNote = "No speech found near this moment (${outcome.details}). Set the times by hand."
                     } else {
                         detectedRange = found.startMs to found.endMs
                         timeNote = when {

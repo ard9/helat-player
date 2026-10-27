@@ -67,7 +67,14 @@ class VlcClipper(
                 opened.close()
                 release(libVlc)
                 if (error == null && output.length() > MIN_WAV_BYTES) {
-                    onDone(Result.success(Unit))
+                    // Trimming reads and writes the file, so keep it off the main thread.
+                    Thread {
+                        val trimmed = runCatching { WavTrim.keepLast(output, endMs - startMs) }
+                        handler.post {
+                            if (trimmed.isFailure) output.delete()
+                            onDone(trimmed)
+                        }
+                    }.start()
                 } else {
                     output.delete()
                     onDone(Result.failure(error ?: IOException("VLC produced no audio")))
