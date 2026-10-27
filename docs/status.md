@@ -2,7 +2,7 @@
 
 Current state of the project. Update at the end of every task.
 
-Last update: 2026-10-27, after the controls and role-play range change (see the latest release).
+Last update: 2026-10-27, release `build-41`.
 
 ## Features
 
@@ -21,8 +21,8 @@ Last update: 2026-10-27, after the controls and role-play range change (see the 
 | Loop button on the video | | **No** |
 | Version on the home screen | | No report |
 | Role-play (record, pause/real-time, playback, compare) | | **No** |
-| Role-play scene by time range (From/To) | after build-38 | **No** |
-| Player controls stay while touched (4 s after letting go) | after build-38 | **No** |
+| Role-play scene by time range (From/To) | build-41 | **No** |
+| Player controls stay while touched (4 s after letting go) | build-41 | **No** |
 | English/Persian, right to left, Settings, guide, welcome card | build-37 | **No** |
 
 "No" means only tests and CI passed; the behaviour on a device is unknown.
