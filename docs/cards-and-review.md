@@ -29,6 +29,11 @@ passed.
   blurred (`Hidden`, `Modifier.blur` on Android 12+, a solid cover on older versions) until
   tapped or Show all. Answer buttons appear once the text is shown. Without audio the text is
   shown at once.
+- Pronunciation practice in review (`ui/PracticeRow.kt`): "Say it" records with
+  `VoiceRecorder` (stops on a pause after speech, max 3× the clip or 8 s), then "Mine" plays
+  the voice from just before speech began and "Mine + original" plays it followed by the
+  card audio. One file, `cacheDir/practice/voice.wav`, deleted when the card changes or the
+  screen closes. Microphone permission is asked on first use. Not verified on a device.
 
 ## Backup and restore (`CardBackup`)
 

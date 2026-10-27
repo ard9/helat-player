@@ -130,6 +130,14 @@
     <string name="show_all">Show all</string>
     <string name="didnt_know">Didn\'t know</string>
     <string name="knew_it">I knew it</string>
+    <string name="practice_record">Say it</string>
+    <string name="practice_again">Say it again</string>
+    <string name="practice_listening">Listening… say the line</string>
+    <string name="practice_mine">Mine</string>
+    <string name="practice_compare">Mine + original</string>
+    <string name="practice_nothing_heard">No speech was heard. Try again a little louder.</string>
+    <string name="practice_failed">The microphone could not record.</string>
+    <string name="practice_needs_mic">Practice needs the microphone to record your voice.</string>
     <string name="what_picture">picture</string>
     <string name="what_text">text</string>
     <string name="what_meaning">meaning</string>
@@ -290,7 +298,7 @@
     <string name="guide_save_body">When you hear a sentence you want to learn, use the small bookmark button at the side of the video.\n• Tap: the line is saved in the background and the film keeps playing. A short message says Saved, with Undo for a moment.\n• Hold: the film pauses and an editor opens. Check the start and end times (Preview plays them), the text, the meaning and the picture. Text from switches between subtitle tracks.\n\nWhere the times and text come from, in this order:\n1. A subtitle file you loaded.\n2. A subtitle track inside the video (MKV or WebM).\n3. Without subtitles, the pauses in speech around the moment are found on the phone. The card then has no text; you can type it in the editor.\n\nClip margins (player menu) keep a little audio before and after each line, so the first and last words are not cut off.</string>
 
     <string name="guide_cards_title">Cards and review</string>
-    <string name="guide_cards_body">Cards live in five boxes (the Leitner system). New cards start in Box 1.\n• Box 1 comes up every day, Box 2 every 2 days, Box 3 every 4, Box 4 every 8 and Box 5 every 16.\n• Start review on the home screen shows the cards due today. The audio plays first, while the picture, text and meaning are blurred. Listen, try to understand, then tap each part (or Show all) to check.\n• I knew it moves the card up one box. Didn\'t know sends it back to Box 1.\n• Speed (next to Play again) plays the card slower: 1×, 0.75× or 0.5×. The choice is kept.\n• Browse cards shows every box. The search field above them finds cards in all boxes by text, meaning or film. Open a card to play it, edit its text and meaning, or delete it.</string>
+    <string name="guide_cards_body">Cards live in five boxes (the Leitner system). New cards start in Box 1.\n• Box 1 comes up every day, Box 2 every 2 days, Box 3 every 4, Box 4 every 8 and Box 5 every 16.\n• Start review on the home screen shows the cards due today. The audio plays first, while the picture, text and meaning are blurred. Listen, try to understand, then tap each part (or Show all) to check.\n• Say it records you saying the line; it stops when you pause. Mine plays your voice, Mine + original plays yours and then the film\'s. The recording is deleted when you go to the next card.\n• I knew it moves the card up one box. Didn\'t know sends it back to Box 1.\n• Speed (next to Play again) plays the card slower: 1×, 0.75× or 0.5×. The choice is kept.\n• Browse cards shows every box. The search field above them finds cards in all boxes by text, meaning or film. Open a card to play it, edit its text and meaning, or delete it.</string>
 
     <string name="guide_roleplay_title">Role-play</string>
     <string name="guide_roleplay_body">Say the lines of a scene in turn with the actor.\n1. Pause where the scene starts and choose Role-play in the player menu.\n2. Choose the scene: a number of lines from now, or a time range (From and To, as m:ss; Now fills in the current time; at most 10 minutes). Choose who starts, and tap a line to change who says it.\n3. Pause the film on my lines: the film waits until you finish speaking. Turn it off to keep the film going in real time.\n4. On your lines the film goes quiet and your voice is recorded. Done ends your turn; Skip leaves the line to the actor.\n5. At the end, Play my scene plays the scene without pauses, with your voice in place of the actor\'s. Compare line by line plays the actor\'s line and yours.\n\nRole-play needs subtitles and the microphone. Use headphones so the film is not recorded with your voice. Recordings stay on the phone and are deleted when you close role-play.</string>

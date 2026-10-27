@@ -1,5 +1,6 @@
 package io.github.ard9.linguaplayer.ui
 
+import androidx.compose.runtime.key
 import androidx.compose.ui.res.pluralStringResource
 import io.github.ard9.linguaplayer.R
 import androidx.compose.ui.res.stringResource
@@ -178,6 +179,10 @@ fun ReviewScreen(
                             showMeaning = true
                         }) { Text(stringResource(R.string.show_all)) }
                     }
+                }
+                if (hasAudio && audioFile != null) {
+                    // A new card starts without a recording.
+                    key(card.id) { PracticeRow(audioFile, card.endMs - card.startMs, audio) }
                 }
                 // Answer once the text has been checked.
                 if (textShown) {
