@@ -78,6 +78,8 @@ class VlcClipper(
 
         player.setEventListener(MediaPlayer.EventListener { event ->
             when (event.type) {
+                // Some files ignore :stop-time, so also stop once the end has been passed.
+                MediaPlayer.Event.TimeChanged -> if (event.timeChanged >= endMs + STOP_MARGIN_MS) finish(null)
                 MediaPlayer.Event.EndReached, MediaPlayer.Event.Stopped -> finish(null)
                 MediaPlayer.Event.EncounteredError -> finish(IOException("VLC could not read this media"))
             }
@@ -91,5 +93,6 @@ class VlcClipper(
     private companion object {
         const val MIN_WAV_BYTES = 1024L
         const val TIMEOUT_EXTRA_MS = 30_000L
+        const val STOP_MARGIN_MS = 300L
     }
 }

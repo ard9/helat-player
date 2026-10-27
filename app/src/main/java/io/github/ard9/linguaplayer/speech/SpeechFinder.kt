@@ -38,7 +38,7 @@ class SpeechFinder(private val context: Context, private val vlc: VlcClipper) {
                 scope.launch {
                     val result = withContext(Dispatchers.Default) {
                         try {
-                            runCatching { analyse(wav, windowStart, positionMs) }
+                            runCatching { analyse(wav, windowStart, windowEnd - windowStart, positionMs) }
                         } finally {
                             wav.delete()
                         }
@@ -49,8 +49,8 @@ class SpeechFinder(private val context: Context, private val vlc: VlcClipper) {
         }
     }
 
-    private fun analyse(wav: File, windowStart: Long, positionMs: Long): Found? {
-        val samples = WavReader.readMono16(wav, SileroVad.SAMPLE_RATE)
+    private fun analyse(wav: File, windowStart: Long, windowMs: Long, positionMs: Long): Found? {
+        val samples = WavReader.read(wav, SileroVad.SAMPLE_RATE, windowMs)
         val probabilities = SileroVad.probabilities(context, samples)
         val span = SentenceFinder.find(probabilities, (positionMs - windowStart).toDouble()) ?: return null
         val analysedMs = probabilities.size * SentenceFinder.FRAME_MS
