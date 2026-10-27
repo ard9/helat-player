@@ -8,7 +8,7 @@ calls. CI runs them before every build (`gradle testDebugUnitTest`); there is no
 
 | Test | Covers |
 | --- | --- |
-| `subtitle/mkv/MkvSubtitlesTest` | Built-in tracks from real MKV/WebM files: track info and labels (also in Persian), line times and text, tags, a line from an earlier cluster, cues at front/back/none, WebVTT, jumping to the right part of the file, scenes, non-Matroska and truncated input. |
+| `subtitle/mkv/MkvSubtitlesTest` | Built-in tracks from real MKV/WebM files: track info and labels (also in Persian), line times and text, tags, a line from an earlier cluster, cues at front/back/none, WebVTT, jumping to the right part of the file, scenes by count and by time, non-Matroska and truncated input. |
 | `subtitle/mkv/SubtitleTextCleanerTest` | ASS fields/tags/drawings, SRT tags and entities. |
 | `subtitle/SubtitleParserTest` | SRT/VTT parsing, encodings; `SubtitleLookup` (which line a tap belongs to, translations, scenes). |
 | `speech/SentenceFinderTest` | Sentence boundaries from speech probabilities (pauses, short gaps, long speech, noise). |
@@ -16,7 +16,7 @@ calls. CI runs them before every build (`gradle testDebugUnitTest`); there is no
 | `data/CardTest` | Leitner scheduling, card JSON round trip and older cards, clock text (ASCII also on a Persian phone). |
 | `data/CardBackupTest` | Backup round trip, skipping existing cards, hostile backups (paths outside the folders, overwriting files, other ZIPs, damaged or newer data). |
 | `data/ResumePolicyTest` | Which playback positions are worth resuming. |
-| `roleplay/RolePlayLogicTest` | Alternating roles, end-of-speech detection, where speech began, WAV writing. |
+| `roleplay/RolePlayLogicTest` | Alternating roles, scene time range checks, end-of-speech detection, where speech began, WAV writing. |
 | `StringsTranslationTest` | Every English string has a Persian translation with the same placeholders, and no stale ones. |
 | `DocsTest` | Every doc named in `AGENTS.md` exists, and no doc is longer than 200 lines. |
 

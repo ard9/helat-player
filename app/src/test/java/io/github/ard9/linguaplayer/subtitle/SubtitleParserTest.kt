@@ -73,6 +73,13 @@ class SubtitleLookupTest {
     }
 
     @Test
+    fun `a time range holds the lines that start in it`() {
+        assertEquals(listOf("overlap", "later"), SubtitleLookup.between(lines, 2_000, 10_001).map { it.text })
+        assertEquals(listOf("first", "overlap"), SubtitleLookup.between(lines, 0, 10_000).map { it.text })
+        assertEquals(emptyList<String>(), SubtitleLookup.between(lines, 4_000, 9_000).map { it.text })
+    }
+
+    @Test
     fun `overlapping finds the translation`() {
         val translation = listOf(SubtitleLine(950, 3_050, "اول"), SubtitleLine(9_900, 12_100, "بعد"))
         assertEquals("بعد", SubtitleLookup.overlapping(translation, lines[2]))

@@ -15,7 +15,10 @@ Code: `ui/PlayerScreen.kt`, `player/VlcMedia.kt`, `player/FrameGrabber.kt`, `Lin
 
 ## Controls
 
-Tap the video to show or hide them; they hide after 4 s while playing.
+Tap the video to show or hide them. While playing they hide 4 s after the last touch; they
+stay while a finger is on the screen (an `Initial`-pass pointer observer on the root `Box` sees
+every touch, also scrolling the control row, without taking it) and while a dialog opened from
+the player is showing.
 
 - Top bar: back, title. Centre: Repeat, −10s, play/pause, +10s. Bottom: seek bar and a
   scrolling row: Aspect, Audio, Subtitles, Load subtitle file, Subtitle style, Speed,

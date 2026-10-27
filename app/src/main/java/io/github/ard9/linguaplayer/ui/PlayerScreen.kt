@@ -1,5 +1,9 @@
 package io.github.ard9.linguaplayer.ui
 
+import io.github.ard9.linguaplayer.data.parseClock
+import io.github.ard9.linguaplayer.data.formatClock
+import io.github.ard9.linguaplayer.roleplay.SceneRange
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.runtime.CompositionLocalProvider
@@ -389,6 +393,8 @@ fun PlayerScreen(
     var lengthMs by remember { mutableLongStateOf(0L) }
     var isPlaying by remember { mutableStateOf(false) }
     var controlsVisible by remember { mutableStateOf(true) }
+    // While a finger is on the screen the controls stay; they hide 4 s after it is lifted.
+    var fingerDown by remember { mutableStateOf(false) }
     var interaction by remember { mutableIntStateOf(0) }
     // Follows the phone's sensor; the full-screen button can lock one orientation.
     var orientationLock by remember { mutableStateOf(OrientationLock.None) }
@@ -411,6 +417,9 @@ fun PlayerScreen(
     val recorder = remember { VoiceRecorder(context.applicationContext) }
     var rolePlaySetup by remember { mutableStateOf(false) }
     var sceneFrom by remember { mutableLongStateOf(0L) }
+    // Time range of the scene, as typed (m:ss), used when role-play is set to a time range.
+    var rangeFromText by remember { mutableStateOf("") }
+    var rangeToText by remember { mutableStateOf("") }
     var sceneLines by remember { mutableStateOf<List<SubtitleLine>?>(null) }
     var iStart by remember { mutableStateOf(false) }
     val sceneMine = remember { mutableStateListOf<Boolean>() }
@@ -621,14 +630,26 @@ fun PlayerScreen(
     }
 
     /** Up to [count] subtitle lines from [fromMs] on, from the subtitle file or the best text track. */
-    suspend fun sceneLinesFrom(fromMs: Long, count: Int): List<SubtitleLine> {
-        externalLines?.let { return SubtitleLookup.scene(it, fromMs, count) }
+    suspend fun sceneLinesFrom(fromMs: Long, count: Int): List<SubtitleLine> =
+        sceneLines({ SubtitleLookup.scene(it, fromMs, count) }) { index, track -> index.linesFrom(fromMs, track, count) }
+
+    /** Subtitle lines that start inside [range], from the subtitle file or the best text track. */
+    suspend fun sceneLinesBetween(range: SceneRange.Ok): List<SubtitleLine> =
+        sceneLines({ SubtitleLookup.between(it, range.fromMs, range.toMs).take(RolePlayPrefs.MAX_LINES) }) { index, track ->
+            index.linesBetween(range.fromMs, range.toMs, track, RolePlayPrefs.MAX_LINES)
+        }
+
+    suspend fun sceneLines(
+        fromFile: (List<SubtitleLine>) -> List<SubtitleLine>,
+        fromTrack: (MkvSubtitles, Long) -> List<SubtitleLine>,
+    ): List<SubtitleLine> {
+        externalLines?.let { return fromFile(it) }
         val index = builtIn.await() ?: return emptyList()
         val tracks = index.textTracks
         if (tracks.isEmpty()) return emptyList()
         val track = tracks[preferredOrder(tracks, shownTrack(index)).first()]
         return withContext(Dispatchers.IO) {
-            runCatching { index.linesFrom(fromMs, track.number, count) }
+            runCatching { fromTrack(index, track.number) }
                 .onFailure { Log.w(TAG, "Could not read the scene", it) }
                 .getOrDefault(emptyList())
         }
@@ -638,6 +659,8 @@ fun PlayerScreen(
         player.pause()
         loopRange = null
         sceneFrom = player.time
+        rangeFromText = formatClock(sceneFrom)
+        rangeToText = formatClock(sceneFrom + SceneRange.DEFAULT_MS)
         sceneLines = null
         rolePlaySetup = true
     }
@@ -853,8 +876,10 @@ fun PlayerScreen(
         }
     }
 
-    LaunchedEffect(controlsVisible, isPlaying, interaction) {
-        if (controlsVisible && isPlaying) {
+    // A dialog opened from the controls keeps them on screen too.
+    val dialogOpen = styleDialog || marginsDialog || trackDialog != null || draft != null || rolePlaySetup
+    LaunchedEffect(controlsVisible, isPlaying, interaction, fingerDown, dialogOpen) {
+        if (controlsVisible && isPlaying && !fingerDown && !dialogOpen) {
             delay(CONTROLS_TIMEOUT_MS)
             controlsVisible = false
         }
@@ -895,7 +920,20 @@ fun PlayerScreen(
 
     val currentText = externalLines?.let { SubtitleLookup.activeAt(it, timeMs)?.text }.orEmpty()
 
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            // Sees every touch first (also scrolling the control row) without taking it.
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        fingerDown = event.changes.any { it.pressed }
+                    }
+                }
+            }
+    ) {
         AndroidView(
             factory = { ctx ->
                 VLCVideoLayout(ctx).apply {
@@ -1139,12 +1177,18 @@ fun PlayerScreen(
         if (granted) startRolePlay() else message(context.getString(R.string.mic_needed), sticky = true)
     }
 
-    // Reads the scene's lines when the setup opens and when the number of lines changes.
-    LaunchedEffect(rolePlaySetup, rolePlayPrefs.lineCount, sceneFrom) {
+    val sceneRange = SceneRange.check(parseClock(rangeFromText), parseClock(rangeToText))
+    val byTime = rolePlayPrefs.byTime
+    // Reads the scene again when what defines it changes (only the keys of the chosen mode).
+    LaunchedEffect(rolePlaySetup, byTime, if (byTime) sceneRange else rolePlayPrefs.lineCount, sceneFrom) {
         if (!rolePlaySetup) return@LaunchedEffect
         sceneLines = null
         delay(300) // Wait for typing to settle.
-        val lines = sceneLinesFrom(sceneFrom, rolePlayPrefs.lineCount)
+        val lines = if (byTime) {
+            (sceneRange as? SceneRange.Ok)?.let { sceneLinesBetween(it) } ?: emptyList()
+        } else {
+            sceneLinesFrom(sceneFrom, rolePlayPrefs.lineCount)
+        }
         sceneLines = lines
         sceneMine.clear()
         sceneMine.addAll(Roles.alternate(lines, iStart).map { it.mine })
@@ -1155,6 +1199,12 @@ fun PlayerScreen(
             lines = sceneLines,
             mine = sceneMine,
             prefs = rolePlayPrefs,
+            rangeFrom = rangeFromText,
+            rangeTo = rangeToText,
+            range = sceneRange,
+            onRangeFromChange = { rangeFromText = it },
+            onRangeToChange = { rangeToText = it },
+            currentTime = { player.time },
             iStart = iStart,
             onPrefsChange = onRolePlayPrefsChange,
             onIStartChange = { value ->

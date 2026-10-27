@@ -15,6 +15,28 @@ object Roles {
         lines.mapIndexed { i, line -> RoleLine(line.startMs, line.endMs, line.text, mine = (i % 2 == 0) == iStart) }
 }
 
+/** Checks a scene's time range as typed by the user. */
+object SceneRange {
+    /** Longest range; online files are read over the network, so long ranges are slow. */
+    const val MAX_MS = 10L * 60 * 1000
+    /** Length offered when the setup opens. */
+    const val DEFAULT_MS = 60_000L
+
+    sealed interface Result
+    data class Ok(val fromMs: Long, val toMs: Long) : Result
+    data object Invalid : Result
+    data object EndBeforeStart : Result
+    data object TooLong : Result
+
+    /** [fromMs] and [toMs] are null when the text could not be read as a time. */
+    fun check(fromMs: Long?, toMs: Long?): Result = when {
+        fromMs == null || toMs == null || fromMs < 0 -> Invalid
+        toMs <= fromMs -> EndBeforeStart
+        toMs - fromMs > MAX_MS -> TooLong
+        else -> Ok(fromMs, toMs)
+    }
+}
+
 /**
  * Decides when the user has finished saying a line, from speech probabilities that arrive
  * every [frameMs]: after some speech, a pause of [silenceMs] ends it. Without any speech it

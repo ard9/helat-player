@@ -152,6 +152,23 @@ class MkvSubtitles private constructor(
         return finish(lines).filter { it.endMs > fromMs }.take(count)
     }
 
+    /**
+     * Up to [max] lines of [track] that start in [fromMs, toMs), in time order. Like
+     * [linesFrom], lines found before a read limit are returned.
+     */
+    fun linesBetween(fromMs: Long, toMs: Long, track: Long, max: Int): List<SubtitleLine> {
+        val wanted = textTracks.filter { it.number == track }.associateBy { it.number }
+        if (wanted.isEmpty() || toMs <= fromMs || max <= 0) return emptyList()
+        val from = clusterBefore(fromMs - BEFORE_MS) ?: return emptyList()
+        val lines = mutableListOf<RawLine>()
+        // Read until a line starts after the range, so the last line knows where it ends.
+        val stopMs = minOf(toMs, fromMs + MAX_SCENE_MS)
+        scan(from, stopMs + BEFORE_MS, wanted, mapOf(track to lines), partialOk = true) {
+            lines.any { it.startMs >= stopMs } || lines.count { it.startMs >= fromMs } > max
+        }
+        return finish(lines).filter { it.startMs in fromMs until stopMs }.take(max)
+    }
+
     /** File position of the cluster to start reading from for [ms]. */
     private fun clusterBefore(ms: Long): Long? =
         cues.lastOrNull { it.first <= ms }?.let { segmentStart + it.second }

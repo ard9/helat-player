@@ -217,8 +217,9 @@ fun CardTextDialog(
     )
 }
 
+/** A time field (m:ss.s, left to right) with a "Now" button. */
 @Composable
-private fun TimeRow(label: String, value: String, onChange: (String) -> Unit, onNow: () -> Unit) {
+internal fun TimeRow(label: String, value: String, onChange: (String) -> Unit, onNow: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedTextField(
             value = value,

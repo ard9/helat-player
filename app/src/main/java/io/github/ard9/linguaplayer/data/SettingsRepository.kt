@@ -32,7 +32,13 @@ data class ClipMargins(val beforeMs: Long, val afterMs: Long) {
 }
 
 /** The last role-play choices, offered again next time. */
-data class RolePlayPrefs(val lineCount: Int, val pauseForMe: Boolean, val showMyText: Boolean) {
+data class RolePlayPrefs(
+    val lineCount: Int,
+    val pauseForMe: Boolean,
+    val showMyText: Boolean,
+    /** The scene is a time range instead of a number of lines from now. */
+    val byTime: Boolean = false,
+) {
     companion object {
         const val MIN_LINES = 2
         const val MAX_LINES = 200
@@ -94,6 +100,7 @@ class SettingsRepository(context: Context) {
             prefs.getInt(KEY_RP_COUNT, RolePlayPrefs.DEFAULT.lineCount).coerceIn(RolePlayPrefs.MIN_LINES, RolePlayPrefs.MAX_LINES),
             prefs.getBoolean(KEY_RP_PAUSE, RolePlayPrefs.DEFAULT.pauseForMe),
             prefs.getBoolean(KEY_RP_TEXT, RolePlayPrefs.DEFAULT.showMyText),
+            prefs.getBoolean(KEY_RP_BY_TIME, RolePlayPrefs.DEFAULT.byTime),
         )
     )
     val rolePlay: StateFlow<RolePlayPrefs> = _rolePlay
@@ -103,6 +110,7 @@ class SettingsRepository(context: Context) {
             .putInt(KEY_RP_COUNT, value.lineCount)
             .putBoolean(KEY_RP_PAUSE, value.pauseForMe)
             .putBoolean(KEY_RP_TEXT, value.showMyText)
+            .putBoolean(KEY_RP_BY_TIME, value.byTime)
             .apply()
         _rolePlay.value = value
     }
@@ -144,5 +152,6 @@ class SettingsRepository(context: Context) {
         private const val KEY_RP_COUNT = "roleplay_lines"
         private const val KEY_RP_PAUSE = "roleplay_pause"
         private const val KEY_RP_TEXT = "roleplay_show_text"
+        private const val KEY_RP_BY_TIME = "roleplay_by_time"
     }
 }

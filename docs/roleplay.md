@@ -6,15 +6,20 @@ voice in place of the actor's.
 
 Code: `roleplay/RolePlayLogic.kt` (pure, tested), `roleplay/VoiceRecorder.kt`,
 `roleplay/RolePlaySession.kt`, `ui/RolePlayUi.kt`, hookup in `ui/PlayerScreen.kt`
-(`openRolePlay`, `startRolePlay`, `closeRolePlay`, `sceneLinesFrom`).
+(`openRolePlay`, `startRolePlay`, `closeRolePlay`, `sceneLinesFrom`, `sceneLinesBetween`).
 
 ## Setup (`RolePlaySetupDialog`)
 
-- Scene: the next N subtitle lines from the paused moment (default 10, 2–200), from the
-  subtitle file (`SubtitleLookup.scene`) or the best built-in text track
-  (`MkvSubtitles.linesFrom`).
+- Scene, two modes (the last one used is remembered):
+  - **Number of lines**: the next N subtitle lines from the paused moment (default 10, 2–200):
+    `SubtitleLookup.scene` or `MkvSubtitles.linesFrom`.
+  - **Time range**: From/To typed as m:ss (ASCII), each with "Now"; opens as now to now + 1 min.
+    `SceneRange.check` refuses invalid times, To not after From, and ranges over 10 min (online
+    files are read over the network). Lines that *start* in the range, at most 200:
+    `SubtitleLookup.between` or `MkvSubtitles.linesBetween`.
+  - Lines come from the subtitle file if one is loaded, else the best built-in text track.
 - Roles alternate (`Roles.alternate`), actor first unless "I start"; tapping a line flips it.
-- Options, remembered in `SettingsRepository`: line count, "Pause the film on my lines"
+- Options, remembered in `SettingsRepository`: mode, line count, "Pause the film on my lines"
   (default on), "Show my lines" (default on).
 - Needs `RECORD_AUDIO`, asked only when Start is tapped.
 

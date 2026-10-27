@@ -140,6 +140,10 @@ object SubtitleLookup {
     fun scene(lines: List<SubtitleLine>, fromMs: Long, count: Int): List<SubtitleLine> =
         lines.filter { it.endMs > fromMs }.sortedBy { it.startMs }.take(count)
 
+    /** Lines that start in [fromMs, toMs), in time order. */
+    fun between(lines: List<SubtitleLine>, fromMs: Long, toMs: Long): List<SubtitleLine> =
+        lines.filter { it.startMs in fromMs until toMs }.sortedBy { it.startMs }
+
     /** Text of the lines that overlap [line] in time (e.g. its translation), or null. */
     fun overlapping(lines: List<SubtitleLine>, line: SubtitleLine): String? {
         val mid = (line.startMs + line.endMs) / 2

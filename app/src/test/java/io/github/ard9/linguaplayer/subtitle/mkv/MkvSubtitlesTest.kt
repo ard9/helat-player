@@ -145,6 +145,18 @@ class MkvSubtitlesTest {
     }
 
     @Test
+    fun `a scene by time holds the lines that start in the range`() {
+        val mkv = open("subs.mkv")
+        val scene = mkv.linesBetween(4_000, 21_000, track = 2, max = 200)
+        assertEquals(listOf(5_000L, 20_100L), scene.map { it.startMs })
+        assertEquals(23_900L, scene.last().endMs)
+        assertEquals(listOf(2_000L), mkv.linesBetween(0, 3_000, track = 2, max = 200).map { it.startMs })
+        assertEquals(1, mkv.linesBetween(0, 60_000, track = 2, max = 1).size)
+        assertTrue(mkv.linesBetween(30_000, 40_000, track = 2, max = 200).isEmpty())
+        assertEquals(listOf(50_000L), open("no-cues.mkv").linesBetween(40_000, 60_000, track = 2, max = 200).map { it.startMs })
+    }
+
+    @Test
     fun `other files are not Matroska`() {
         val notMkv = object : ByteSource {
             override val isRemote = false

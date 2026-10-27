@@ -14,7 +14,7 @@ An Android video player for language learning.
 - **Listening practice**: Repeat plays the current line again, the small loop button above the
   save button repeats it until tapped again, and Speed slows playback down (0.5×–1.25×).
 - **Role-play**: from the player menu, take turns with the actor over the next lines (as many
-  as you like). On your lines the film goes quiet and your voice is recorded; the film either
+  as you like) or over a time range you choose (From/To, up to 10 minutes). On your lines the film goes quiet and your voice is recorded; the film either
   pauses until you finish or carries on in real time. Then play the scene back without pauses,
   your voice over the picture in place of the actor's (silence before your first word is
   skipped), or compare each of your lines with the actor's. Needs subtitles and the microphone;

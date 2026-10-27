@@ -1,5 +1,9 @@
 package io.github.ard9.linguaplayer.ui
 
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import io.github.ard9.linguaplayer.data.formatClock
+import io.github.ard9.linguaplayer.roleplay.SceneRange
 import io.github.ard9.linguaplayer.R
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -59,6 +63,13 @@ fun RolePlaySetupDialog(
     lines: List<SubtitleLine>?,
     mine: List<Boolean>,
     prefs: RolePlayPrefs,
+    /** The time range as typed, and whether it is valid; used when [RolePlayPrefs.byTime]. */
+    rangeFrom: String,
+    rangeTo: String,
+    range: SceneRange.Result,
+    onRangeFromChange: (String) -> Unit,
+    onRangeToChange: (String) -> Unit,
+    currentTime: () -> Long,
     iStart: Boolean,
     onPrefsChange: (RolePlayPrefs) -> Unit,
     onIStartChange: (Boolean) -> Unit,
@@ -71,32 +82,59 @@ fun RolePlaySetupDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.role_play)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            // Scrolls in landscape, where the dialog is short; the line list below has a fixed maximum height.
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(
                     stringResource(R.string.rp_intro),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(stringResource(R.string.rp_lines), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                    OutlinedButton(
-                        onClick = { onPrefsChange(prefs.copy(lineCount = (prefs.lineCount - 1).coerceAtLeast(RolePlayPrefs.MIN_LINES))) },
-                    ) { Text("−") }
-                    OutlinedTextField(
-                        value = countText,
-                        onValueChange = { text ->
-                            countText = text.filter { it.isDigit() }.take(3)
-                            countText.toIntOrNull()?.let {
-                                onPrefsChange(prefs.copy(lineCount = it.coerceIn(RolePlayPrefs.MIN_LINES, RolePlayPrefs.MAX_LINES)))
-                            }
-                        },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.widthIn(max = 72.dp),
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = !prefs.byTime,
+                        onClick = { onPrefsChange(prefs.copy(byTime = false)) },
+                        label = { Text(stringResource(R.string.rp_mode_lines)) },
                     )
-                    OutlinedButton(
-                        onClick = { onPrefsChange(prefs.copy(lineCount = (prefs.lineCount + 1).coerceAtMost(RolePlayPrefs.MAX_LINES))) },
-                    ) { Text("+") }
+                    FilterChip(
+                        selected = prefs.byTime,
+                        onClick = { onPrefsChange(prefs.copy(byTime = true)) },
+                        label = { Text(stringResource(R.string.rp_mode_time)) },
+                    )
+                }
+                if (prefs.byTime) {
+                    TimeRow(stringResource(R.string.rp_from), rangeFrom, onRangeFromChange) { onRangeFromChange(formatClock(currentTime())) }
+                    TimeRow(stringResource(R.string.rp_to), rangeTo, onRangeToChange) { onRangeToChange(formatClock(currentTime())) }
+                    val error = when (range) {
+                        SceneRange.Invalid -> R.string.rp_err_invalid
+                        SceneRange.EndBeforeStart -> R.string.rp_err_order
+                        SceneRange.TooLong -> R.string.rp_err_too_long
+                        is SceneRange.Ok -> null
+                    }
+                    if (error != null) {
+                        Text(stringResource(error), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(stringResource(R.string.rp_lines), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                        OutlinedButton(
+                            onClick = { onPrefsChange(prefs.copy(lineCount = (prefs.lineCount - 1).coerceAtLeast(RolePlayPrefs.MIN_LINES))) },
+                        ) { Text("−") }
+                        OutlinedTextField(
+                            value = countText,
+                            onValueChange = { text ->
+                                countText = text.filter { it.isDigit() }.take(3)
+                                countText.toIntOrNull()?.let {
+                                    onPrefsChange(prefs.copy(lineCount = it.coerceIn(RolePlayPrefs.MIN_LINES, RolePlayPrefs.MAX_LINES)))
+                                }
+                            },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.widthIn(max = 72.dp),
+                        )
+                        OutlinedButton(
+                            onClick = { onPrefsChange(prefs.copy(lineCount = (prefs.lineCount + 1).coerceAtMost(RolePlayPrefs.MAX_LINES))) },
+                        ) { Text("+") }
+                    }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(selected = !iStart, onClick = { onIStartChange(false) }, label = { Text(stringResource(R.string.rp_actor_starts)) })
@@ -105,12 +143,16 @@ fun RolePlaySetupDialog(
                 SwitchRow(stringResource(R.string.rp_pause_on_mine), prefs.pauseForMe) { onPrefsChange(prefs.copy(pauseForMe = it)) }
                 SwitchRow(stringResource(R.string.rp_show_mine), prefs.showMyText) { onPrefsChange(prefs.copy(showMyText = it)) }
                 Text(stringResource(R.string.rp_tap_line), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                when {
+                // With an invalid range only the error above is shown.
+                if (!prefs.byTime || range is SceneRange.Ok) when {
                     lines == null -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                         Text(stringResource(R.string.rp_reading), style = MaterialTheme.typography.bodySmall)
                     }
-                    lines.isEmpty() -> Text(stringResource(R.string.rp_no_lines), style = MaterialTheme.typography.bodyMedium)
+                    lines.isEmpty() -> Text(
+                        stringResource(if (prefs.byTime) R.string.rp_no_lines_range else R.string.rp_no_lines),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
                     else -> LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                         modifier = Modifier.heightIn(max = 280.dp),
@@ -187,125 +229,125 @@ fun BoxScope.RolePlayOverlay(session: RolePlaySession, onClose: () -> Unit) {
                 RolePlaySession.Phase.Acting -> if (current >= 0) {
                     stringResource(R.string.rp_progress, current + 1, total)
                 } else {
-                    stringResource(R.string.rp_get_ready_title)
-                }
-                RolePlaySession.Phase.PlayingBack -> stringResource(R.string.rp_playing)
-                else -> stringResource(R.string.role_play)
-            },
-            color = Color.White,
-            style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier.weight(1f),
-        )
-        TextButton(onClick = onClose) { Text(stringResource(R.string.close), color = Color.White) }
-    }
-
-    when (session.phase) {
-        RolePlaySession.Phase.Acting, RolePlaySession.Phase.PlayingBack -> {
-            val line = session.lines.getOrNull(current)
-            if (session.myTurn && line != null) {
-                YourTurn(session, line.text)
-            } else if (line != null && session.phase == RolePlaySession.Phase.Acting) {
-                Text(
-                    stringResource(if (line.mine) R.string.rp_get_ready else R.string.rp_actor),
-                    color = Color.White,
-                    style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .windowInsetsPadding(WindowInsets.safeDrawing)
-                        .padding(start = 16.dp, top = 52.dp)
-                        .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(50))
-                        .padding(horizontal = 12.dp, vertical = 4.dp),
-                )
-            }
-            if (session.phase == RolePlaySession.Phase.PlayingBack) {
-                OutlinedButton(
-                    onClick = { session.stop() },
-                    modifier = Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.safeDrawing).padding(bottom = 16.dp),
-                ) { Text(stringResource(R.string.stop), color = Color.White) }
-            }
-        }
-        RolePlaySession.Phase.Finished, RolePlaySession.Phase.Comparing -> Results(session)
-    }
-}
-
-@Composable
-private fun BoxScope.YourTurn(session: RolePlaySession, text: String) {
-    Surface(
-        color = Cinema.Night.copy(alpha = 0.88f),
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier
-            .align(Alignment.BottomCenter)
-            .windowInsetsPadding(WindowInsets.safeDrawing)
-            .padding(16.dp)
-            .widthIn(max = 560.dp)
-            .fillMaxWidth(),
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.padding(16.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Box(Modifier.size(10.dp).background(Cinema.Exit, RoundedCornerShape(50)))
-                Text(stringResource(R.string.rp_your_turn), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-            }
-            if (session.showMyText) {
-                SubtitleText(text, modifier = Modifier.fillMaxWidth())
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TextButton(onClick = { session.skip() }) { Text(stringResource(R.string.rp_skip)) }
-                Button(onClick = { session.done() }) { Text(stringResource(R.string.done)) }
-            }
-        }
-    }
-}
-
-@Composable
-private fun BoxScope.Results(session: RolePlaySession) {
-    Surface(
-        color = Cinema.Night.copy(alpha = 0.92f),
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier
-            .align(Alignment.Center)
-            .windowInsetsPadding(WindowInsets.safeDrawing)
-            .padding(16.dp)
-            .widthIn(max = 560.dp)
-            .fillMaxWidth(),
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(16.dp)) {
-            Text(stringResource(R.string.rp_finished), style = MaterialTheme.typography.titleLarge)
-            session.error?.let { Text(stringResource(R.string.rp_stopped, it.ifBlank { stringResource(R.string.rp_error) }), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-            val said = session.recordings.size
-            val mineCount = session.lines.count { it.mine }
-            Text(
-                pluralStringResource(R.plurals.rp_said, mineCount, said, mineCount),
-                style = MaterialTheme.typography.bodyMedium,
-                color = Cinema.Dim,
+                        stringResource(R.string.rp_get_ready_title)
+                    }
+                    RolePlaySession.Phase.PlayingBack -> stringResource(R.string.rp_playing)
+                    else -> stringResource(R.string.role_play)
+                },
+                color = Color.White,
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.weight(1f),
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { session.playBack() }, enabled = said > 0) { Text(stringResource(R.string.rp_play_scene)) }
-                @Suppress("MissingPermission") // The permission was granted before the first start.
-                OutlinedButton(onClick = { session.start() }) { Text(stringResource(R.string.rp_try_again)) }
+            TextButton(onClick = onClose) { Text(stringResource(R.string.close), color = Color.White) }
+        }
+
+        when (session.phase) {
+            RolePlaySession.Phase.Acting, RolePlaySession.Phase.PlayingBack -> {
+                val line = session.lines.getOrNull(current)
+                if (session.myTurn && line != null) {
+                    YourTurn(session, line.text)
+                } else if (line != null && session.phase == RolePlaySession.Phase.Acting) {
+                    Text(
+                        stringResource(if (line.mine) R.string.rp_get_ready else R.string.rp_actor),
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .windowInsetsPadding(WindowInsets.safeDrawing)
+                            .padding(start = 16.dp, top = 52.dp)
+                            .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(50))
+                            .padding(horizontal = 12.dp, vertical = 4.dp),
+                    )
+                }
+                if (session.phase == RolePlaySession.Phase.PlayingBack) {
+                    OutlinedButton(
+                        onClick = { session.stop() },
+                        modifier = Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.safeDrawing).padding(bottom = 16.dp),
+                    ) { Text(stringResource(R.string.stop), color = Color.White) }
+                }
             }
-            if (said > 0) {
-                Text(stringResource(R.string.rp_compare), style = MaterialTheme.typography.titleSmall)
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.heightIn(max = 220.dp)) {
-                    itemsIndexed(session.lines) { i, line ->
-                        if (!line.mine) return@itemsIndexed
-                        val busy = session.phase == RolePlaySession.Phase.Comparing && session.current == i
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                line.text,
-                                style = MaterialTheme.typography.bodyMedium,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                textAlign = TextAlign.Start,
-                                color = if (busy) MaterialTheme.colorScheme.primary else Cinema.Screen,
-                                modifier = Modifier.weight(1f),
-                            )
-                            TextButton(onClick = { session.playActor(i) }) { Text(stringResource(R.string.rp_actor)) }
-                            TextButton(onClick = { session.playMine(i) }, enabled = session.recordings[i] != null) { Text(stringResource(R.string.rp_mine)) }
-                        }
+            RolePlaySession.Phase.Finished, RolePlaySession.Phase.Comparing -> Results(session)
+        }
+    }
+
+    @Composable
+    private fun BoxScope.YourTurn(session: RolePlaySession, text: String) {
+        Surface(
+            color = Cinema.Night.copy(alpha = 0.88f),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(16.dp)
+                .widthIn(max = 560.dp)
+                .fillMaxWidth(),
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.padding(16.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(Modifier.size(10.dp).background(Cinema.Exit, RoundedCornerShape(50)))
+                    Text(stringResource(R.string.rp_your_turn), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                }
+                if (session.showMyText) {
+                    SubtitleText(text, modifier = Modifier.fillMaxWidth())
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    TextButton(onClick = { session.skip() }) { Text(stringResource(R.string.rp_skip)) }
+                    Button(onClick = { session.done() }) { Text(stringResource(R.string.done)) }
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun BoxScope.Results(session: RolePlaySession) {
+        Surface(
+            color = Cinema.Night.copy(alpha = 0.92f),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier
+                .align(Alignment.Center)
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(16.dp)
+                .widthIn(max = 560.dp)
+                .fillMaxWidth(),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(16.dp)) {
+                Text(stringResource(R.string.rp_finished), style = MaterialTheme.typography.titleLarge)
+                session.error?.let { Text(stringResource(R.string.rp_stopped, it.ifBlank { stringResource(R.string.rp_error) }), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                val said = session.recordings.size
+                val mineCount = session.lines.count { it.mine }
+                Text(
+                    pluralStringResource(R.plurals.rp_said, mineCount, said, mineCount),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Cinema.Dim,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { session.playBack() }, enabled = said > 0) { Text(stringResource(R.string.rp_play_scene)) }
+                    @Suppress("MissingPermission") // The permission was granted before the first start.
+                    OutlinedButton(onClick = { session.start() }) { Text(stringResource(R.string.rp_try_again)) }
+                }
+                if (said > 0) {
+                    Text(stringResource(R.string.rp_compare), style = MaterialTheme.typography.titleSmall)
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.heightIn(max = 220.dp)) {
+                        itemsIndexed(session.lines) { i, line ->
+                            if (!line.mine) return@itemsIndexed
+                            val busy = session.phase == RolePlaySession.Phase.Comparing && session.current == i
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    line.text,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.Start,
+                                    color = if (busy) MaterialTheme.colorScheme.primary else Cinema.Screen,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                TextButton(onClick = { session.playActor(i) }) { Text(stringResource(R.string.rp_actor)) }
+                                TextButton(onClick = { session.playMine(i) }, enabled = session.recordings[i] != null) { Text(stringResource(R.string.rp_mine)) }
+                            }
                     }
                 }
             }

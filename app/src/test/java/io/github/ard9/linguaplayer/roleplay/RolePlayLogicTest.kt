@@ -25,6 +25,17 @@ class RolePlayLogicTest {
         assertEquals(listOf(true, false, true, false, true), Roles.alternate(lines, iStart = true).map { it.mine })
     }
 
+    @Test
+    fun `a scene range must be valid, in order and short enough`() {
+        assertEquals(SceneRange.Ok(750_000, 845_000), SceneRange.check(750_000, 845_000))
+        assertEquals(SceneRange.Invalid, SceneRange.check(null, 845_000))
+        assertEquals(SceneRange.Invalid, SceneRange.check(750_000, null))
+        assertEquals(SceneRange.EndBeforeStart, SceneRange.check(845_000, 750_000))
+        assertEquals(SceneRange.EndBeforeStart, SceneRange.check(750_000, 750_000))
+        assertEquals(SceneRange.Ok(0, SceneRange.MAX_MS), SceneRange.check(0, SceneRange.MAX_MS))
+        assertEquals(SceneRange.TooLong, SceneRange.check(0, SceneRange.MAX_MS + 1))
+    }
+
     /** Feeds [ms] of probability [p] and returns whether the detector ended the turn. */
     private fun SpeechEndDetector.feed(p: Float, ms: Int): Boolean {
         var ended = false
