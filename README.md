@@ -10,7 +10,8 @@ An Android video player for language learning.
   text come from a subtitle file, else from the video's own subtitle track, else from the pauses
   around the sentence. Everything can be checked with Preview and adjusted before saving.
 - **Cards**: each saved line keeps its audio, a frame of the video, the text and your meaning.
-  Tap a card to open it; review them as flashcards in a 5-box Leitner system.
+  Tap a card to open it, search them by text, meaning or film, and review them as flashcards
+  in a 5-box Leitner system.
 - **Listening practice**: Repeat plays the current line again, the small loop button above the
   save button repeats it until tapped again (or until you seek), and Speed slows playback down (0.5×–1.25×).
 - **Role-play**: from the player menu, take turns with the actor over the next lines (as many

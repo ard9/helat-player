@@ -1,5 +1,13 @@
 package io.github.ard9.linguaplayer.ui
 
+import io.github.ard9.linguaplayer.data.CardSearch
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.material3.OutlinedTextField
 import io.github.ard9.linguaplayer.R
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.clickable
@@ -44,7 +52,14 @@ fun BoxScreen(
     onOpenCard: (Card) -> Unit,
     onBack: () -> Unit,
 ) {
-    val inBox = cards.filter { it.box == selectedBox }.sortedByDescending { it.createdAt }
+    var query by rememberSaveable { mutableStateOf("") }
+    val searching = query.isNotBlank()
+    // While searching, results come from every box.
+    val shown = if (searching) {
+        CardSearch.find(cards, query)
+    } else {
+        cards.filter { it.box == selectedBox }.sortedByDescending { it.createdAt }
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -61,16 +76,37 @@ fun BoxScreen(
         }
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            BoxBars(
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                placeholder = { Text(stringResource(R.string.search_cards)) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                trailingIcon = if (searching) {
+                    {
+                        IconButton(onClick = { query = "" }) {
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.clear_search))
+                        }
+                    }
+                } else {
+                    null
+                },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
+            )
+            if (!searching) BoxBars(
                 counts = boxCounts(cards),
                 selected = selectedBox,
                 onSelect = onSelectBox,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
             )
-            if (inBox.isEmpty()) {
+            if (shown.isEmpty()) {
                 Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
                     Text(
-                        stringResource(if (selectedBox == 1) R.string.box1_empty else R.string.box_empty),
+                        when {
+                            searching -> stringResource(R.string.search_none)
+                            selectedBox == 1 -> stringResource(R.string.box1_empty)
+                            else -> stringResource(R.string.box_empty)
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = Cinema.Dim,
                         textAlign = TextAlign.Center,
@@ -81,8 +117,8 @@ fun BoxScreen(
                     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    items(inBox, key = { it.id }) { card ->
-                        CardRow(card, repository) { onOpenCard(card) }
+                    items(shown, key = { it.id }) { card ->
+                        CardRow(card, repository, showBox = searching) { onOpenCard(card) }
                     }
                 }
             }
@@ -91,7 +127,7 @@ fun BoxScreen(
 }
 
 @Composable
-private fun CardRow(card: Card, repository: CardRepository, onClick: () -> Unit) {
+private fun CardRow(card: Card, repository: CardRepository, showBox: Boolean, onClick: () -> Unit) {
     val thumbnail = rememberCardImage(repository.imageFile(card), maxWidthPx = 320)
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -115,6 +151,9 @@ private fun CardRow(card: Card, repository: CardRepository, onClick: () -> Unit)
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+            }
+            if (showBox) {
+                Text(stringResource(R.string.box_n, card.box), style = MaterialTheme.typography.labelSmall, color = Cinema.Dim)
             }
         }
     }

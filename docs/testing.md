@@ -14,6 +14,7 @@ calls. CI runs them before every build (`gradle testDebugUnitTest`); there is no
 | `speech/SentenceFinderTest` | Sentence boundaries from speech probabilities (pauses, short gaps, long speech, noise). |
 | `clip/WavTest` | `WavTrim` (VLC start-time bug) and `WavReader` (downmix, resample, limits). |
 | `data/CardTest` | Leitner scheduling, card JSON round trip and older cards, clock text (ASCII also on a Persian phone). |
+| `data/CardSearchTest` | Card search: words, case, meaning and film, Persian letter forms. |
 | `data/CardBackupTest` | Backup round trip, skipping existing cards, hostile backups (paths outside the folders, overwriting files, other ZIPs, damaged or newer data). |
 | `player/LineLoopTest` | Loop jumps: waiting for the old position after a jump, repeating, early landing, giving up waiting, never ending by itself. |
 | `data/ResumePolicyTest` | Which playback positions are worth resuming. |

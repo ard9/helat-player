@@ -19,7 +19,9 @@ passed.
 ## Screens
 
 - Home: due count, box bars, Start review, Browse cards, Back up / Restore.
-- `BoxScreen`: the five boxes as tabs (`BoxBars`), cards of the selected box.
+- `BoxScreen`: the five boxes as tabs (`BoxBars`), cards of the selected box. A search field
+  finds cards in all boxes (`CardSearch`: every word must appear in text, meaning or film;
+  case, Arabic ي/ك and the half space are ignored; tested).
 - `CardScreen`: picture with text, play, edit text/meaning, delete (with its files).
 - Card audio (`ClipAudioPlayer`, Media3) has a speed button in the card and review screens:
   1×, 0.75×, 0.5× (pitch kept), stored as `clip_speed` in `SettingsRepository`.
