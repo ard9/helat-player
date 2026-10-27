@@ -631,15 +631,15 @@ fun PlayerScreen(
 
     /** Up to [count] subtitle lines from [fromMs] on, from the subtitle file or the best text track. */
     suspend fun sceneLinesFrom(fromMs: Long, count: Int): List<SubtitleLine> =
-        sceneLines({ SubtitleLookup.scene(it, fromMs, count) }) { index, track -> index.linesFrom(fromMs, track, count) }
+        readScene({ SubtitleLookup.scene(it, fromMs, count) }) { index, track -> index.linesFrom(fromMs, track, count) }
 
     /** Subtitle lines that start inside [range], from the subtitle file or the best text track. */
     suspend fun sceneLinesBetween(range: SceneRange.Ok): List<SubtitleLine> =
-        sceneLines({ SubtitleLookup.between(it, range.fromMs, range.toMs).take(RolePlayPrefs.MAX_LINES) }) { index, track ->
+        readScene({ SubtitleLookup.between(it, range.fromMs, range.toMs).take(RolePlayPrefs.MAX_LINES) }) { index, track ->
             index.linesBetween(range.fromMs, range.toMs, track, RolePlayPrefs.MAX_LINES)
         }
 
-    suspend fun sceneLines(
+    suspend fun readScene(
         fromFile: (List<SubtitleLine>) -> List<SubtitleLine>,
         fromTrack: (MkvSubtitles, Long) -> List<SubtitleLine>,
     ): List<SubtitleLine> {
