@@ -18,7 +18,8 @@ import kotlin.coroutines.resumeWithException
 
 /** Records the user's voice to WAV, optionally stopping by itself when they stop speaking. */
 class VoiceRecorder(private val context: Context) {
-    class Recording(val durationMs: Long, val heardSpeech: Boolean)
+    /** [speechStartMs]: where the user started speaking in the recording (0 if not heard). */
+    class Recording(val durationMs: Long, val heardSpeech: Boolean, val speechStartMs: Long)
 
     fun hasPermission(): Boolean =
         ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
@@ -63,7 +64,7 @@ class VoiceRecorder(private val context: Context) {
                     if (stopWhenSilent && ended) break
                 }
                 recorder.stop()
-                return Recording(wav.durationMs, detector.heardSpeech)
+                return Recording(wav.durationMs, detector.heardSpeech, detector.speechStartMs)
             }
         } finally {
             recorder.release()
@@ -71,8 +72,8 @@ class VoiceRecorder(private val context: Context) {
     }
 }
 
-/** Plays a recorded WAV and returns when it has finished (or is cancelled). */
-suspend fun playRecording(file: File) {
+/** Plays a recorded WAV from [fromMs] and returns when it has finished (or is cancelled). */
+suspend fun playRecording(file: File, fromMs: Long = 0) {
     val player = MediaPlayer()
     try {
         suspendCancellableCoroutine { continuation ->
@@ -84,6 +85,7 @@ suspend fun playRecording(file: File) {
                     true
                 }
                 player.prepare()
+                if (fromMs > 0) player.seekTo(fromMs.toInt())
                 player.start()
             } catch (e: Exception) {
                 if (continuation.isActive) continuation.resumeWithException(e)

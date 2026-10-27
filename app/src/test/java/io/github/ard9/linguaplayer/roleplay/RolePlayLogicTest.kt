@@ -44,6 +44,18 @@ class RolePlayLogicTest {
     }
 
     @Test
+    fun `knows where speech began`() {
+        val d = SpeechEndDetector()
+        d.feed(0.05f, 1_000) // 31 frames of silence: 992 ms
+        assertEquals(0L, d.speechStartMs)
+        d.feed(0.9f, 500)
+        assertEquals(992L, d.speechStartMs)
+        d.feed(0.05f, 300)
+        d.feed(0.9f, 300) // later speech does not move the start
+        assertEquals(992L, d.speechStartMs)
+    }
+
+    @Test
     fun `a click is not speech`() {
         val d = SpeechEndDetector()
         assertFalse(d.feed(0.9f, 64))

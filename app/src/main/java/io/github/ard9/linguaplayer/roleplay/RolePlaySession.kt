@@ -57,7 +57,10 @@ class RolePlaySession(
     var error by mutableStateOf<String?>(null)
         private set
     /** Recordings by line index; lines the user skipped or did not speak have none. */
-    val recordings = mutableStateMapOf<Int, File>()
+    val recordings = mutableStateMapOf<Int, Take>()
+
+    /** A recorded line; [voiceStartMs] skips the silence before the user began to speak. */
+    class Take(val file: File, val voiceStartMs: Long)
 
     @Volatile private var stopRecording = false
     private var job: Job? = null
@@ -81,7 +84,7 @@ class RolePlaySession(
 
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     fun start() = launch(Phase.Acting) {
-        recordings.values.forEach { it.delete() }
+        recordings.values.forEach { it.file.delete() }
         recordings.clear()
         beginAt(lines.first().startMs)
         for ((i, line) in lines.withIndex()) {
@@ -91,21 +94,25 @@ class RolePlaySession(
         finishScene()
     }
 
-    /** Plays the scene again with the user's recordings in place of their lines. */
+    /**
+     * Plays the scene again without stopping: on the user's lines the film goes quiet and their
+     * voice plays over the picture, starting with the line. If their voice runs longer than the
+     * actor's line, the film stays quiet until it ends.
+     */
     fun playBack() = launch(Phase.PlayingBack) {
         beginAt(lines.first().startMs)
         for ((i, line) in lines.withIndex()) {
             current = i
-            val recording = recordings[i]
-            if (recording == null) {
+            val take = recordings[i]
+            if (take == null) {
                 waitUntil { player.timeMs >= line.endMs }
                 continue
             }
             waitUntil { player.timeMs >= line.startMs - EARLY_MS }
             player.setMuted(true)
-            player.pause()
-            playRecording(recording)
-            continueAfter(line)
+            playRecording(take.file, take.voiceStartMs)
+            waitUntil { player.timeMs >= line.endMs }
+            player.setMuted(false)
         }
         finishScene()
     }
@@ -125,7 +132,7 @@ class RolePlaySession(
     fun playMine(index: Int) = launch(Phase.Comparing) {
         current = index
         player.pause()
-        recordings[index]?.let { playRecording(it) }
+        recordings[index]?.let { playRecording(it.file, it.voiceStartMs) }
         phase = Phase.Finished
     }
 
@@ -198,7 +205,12 @@ class RolePlaySession(
             stopRecording = true
             myTurn = false
         }
-        if (skipped || !result.heardSpeech) file.delete() else recordings[index] = file
+        if (skipped || !result.heardSpeech) {
+            file.delete()
+        } else {
+            // Keep a moment before the first word so it is not clipped.
+            recordings[index] = Take(file, max(0L, result.speechStartMs - VOICE_LEAD_MS))
+        }
         if (pauseForMe) continueAfter(line) else {
             waitUntil { player.timeMs >= line.endMs }
             player.setMuted(false)
@@ -254,6 +266,7 @@ class RolePlaySession(
         const val TAIL_MS = 600L
         const val SEEK_SETTLE_MS = 200L
         const val MIN_TURN_MS = 8_000L
+        const val VOICE_LEAD_MS = 150L
         const val SEEK_TIMEOUT_MS = 8_000L
         const val SEEK_TOLERANCE_MS = 2_500L
     }

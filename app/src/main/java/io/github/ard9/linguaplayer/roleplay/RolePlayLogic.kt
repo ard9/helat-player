@@ -31,6 +31,10 @@ class SpeechEndDetector(
     private var quietFor = 0.0
     private var speechFor = 0.0
 
+    /** Where speech first began, in ms from the start (0 until speech is heard). */
+    var speechStartMs = 0L
+        private set
+
     /** True once the speaking turn is over. */
     fun next(probability: Float): Boolean {
         elapsed += frameMs
@@ -38,7 +42,10 @@ class SpeechEndDetector(
             speechFor += frameMs
             quietFor = 0.0
             // A short click is not speech; about a tenth of a second is.
-            if (speechFor >= MIN_SPEECH_MS) spoke = true
+            if (speechFor >= MIN_SPEECH_MS && !spoke) {
+                spoke = true
+                speechStartMs = (elapsed - speechFor).toLong()
+            }
         } else if (probability < QUIET) {
             speechFor = 0.0
             quietFor += frameMs

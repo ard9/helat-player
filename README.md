@@ -15,8 +15,9 @@ An Android video player for language learning.
   save button repeats it until tapped again, and Speed slows playback down (0.5×–1.25×).
 - **Role-play**: from the player menu, take turns with the actor over the next lines (as many
   as you like). On your lines the film goes quiet and your voice is recorded; the film either
-  pauses until you finish or carries on in real time. Then play the scene back with your
-  voice, or compare each of your lines with the actor's. Needs subtitles and the microphone;
+  pauses until you finish or carries on in real time. Then play the scene back without pauses,
+  your voice over the picture in place of the actor's (silence before your first word is
+  skipped), or compare each of your lines with the actor's. Needs subtitles and the microphone;
   headphones help. Recordings stay on the phone and are deleted when the session is closed.
 - The home screen shows the app version; its last number is the GitHub build number.
 - Videos continue where you left them.
