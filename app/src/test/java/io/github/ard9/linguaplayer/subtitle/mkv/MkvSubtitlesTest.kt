@@ -97,11 +97,15 @@ class MkvSubtitlesTest {
     }
 
     @Test
-    fun `reads only part of the file around the moment`() {
+    fun `jumps to the part of the file near the moment`() {
+        // Online files must not be read from the start: the cues lead straight to ~40 s of 60 s.
         val file = fixture("subs.mkv")
-        val counting = CountingSource(file)
-        MkvSubtitles.open(counting)!!.linesAround(21_000)
-        assertTrue("read ${counting.bytesRead} of ${file.length()}", counting.bytesRead < file.length())
+        val recording = RecordingSource(file)
+        val mkv = MkvSubtitles.open(recording)!!
+        recording.opens.clear()
+        mkv.linesAround(51_000)
+        val from = recording.opens.single()
+        assertTrue("started at $from of ${file.length()}", from > file.length() / 2)
     }
 
     @Test
@@ -148,17 +152,13 @@ class MkvSubtitlesTest {
             FileInputStream(file).also { it.channel.position(from) }
     }
 
-    private class CountingSource(private val file: File) : ByteSource {
-        var bytesRead = 0L
+    /** Remembers where each read starts, like the HTTP range requests of an online file. */
+    private class RecordingSource(private val file: File) : ByteSource {
+        val opens = mutableListOf<Long>()
         override val isRemote = true
         override fun open(from: Long, toInclusive: Long?): InputStream {
-            val input = FileInputStream(file).also { it.channel.position(from) }
-            return object : InputStream() {
-                override fun read(): Int = input.read().also { if (it >= 0) bytesRead++ }
-                override fun read(b: ByteArray, off: Int, len: Int): Int =
-                    input.read(b, off, len).also { if (it > 0) bytesRead += it }
-                override fun close() = input.close()
-            }
+            opens.add(from)
+            return FileInputStream(file).also { it.channel.position(from) }
         }
     }
 
