@@ -75,14 +75,17 @@ import io.github.ard9.linguaplayer.data.SourceNames
 import io.github.ard9.linguaplayer.data.SubtitleStyle
 import io.github.ard9.linguaplayer.data.formatTime
 import io.github.ard9.linguaplayer.player.FrameGrabber
-import io.github.ard9.linguaplayer.player.SubtitleOcr
-import io.github.ard9.linguaplayer.player.SubtitleWatcher
 import io.github.ard9.linguaplayer.player.openVlcMedia
+import io.github.ard9.linguaplayer.subtitle.mkv.MkvSubtitleTrack
+import io.github.ard9.linguaplayer.subtitle.mkv.MkvSubtitles
+import io.github.ard9.linguaplayer.subtitle.mkv.byteSourceFor
 import io.github.ard9.linguaplayer.speech.SpeechFinder
 import io.github.ard9.linguaplayer.subtitle.SubtitleLine
 import io.github.ard9.linguaplayer.subtitle.SubtitleLookup
 import io.github.ard9.linguaplayer.subtitle.SubtitleParser
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -133,6 +136,32 @@ private class StartGate(private val start: () -> Unit) {
 
 private data class SaveDraft(val startMs: Long, val endMs: Long, val text: String)
 
+private const val TAG = "PlayerScreen"
+
+/** Lines of all text tracks around the moment Save was tapped, kept to switch tracks. */
+private class BuiltInSearch(
+    val atMs: Long,
+    val lines: Map<Long, List<SubtitleLine>>,
+    val tracks: List<MkvSubtitleTrack>,
+)
+
+/**
+ * Track indexes to try, best first. Cards are for learning the film's language, so a
+ * non-Persian track is preferred for the text (the one on screen, then the default), and
+ * the Persian one is used for the meaning.
+ */
+private fun preferredOrder(tracks: List<MkvSubtitleTrack>, shown: MkvSubtitleTrack?): List<Int> {
+    val order = mutableListOf<Int>()
+    fun addFirst(predicate: (MkvSubtitleTrack) -> Boolean) {
+        tracks.indices.firstOrNull { it !in order && predicate(tracks[it]) }?.let(order::add)
+    }
+    addFirst { it == shown && !it.isPersian }
+    addFirst { it.isDefault && !it.isPersian }
+    addFirst { !it.isPersian }
+    tracks.indices.filter { it !in order }.forEach(order::add)
+    return order
+}
+
 @Composable
 fun PlayerScreen(
     source: PlaybackSource,
@@ -169,21 +198,21 @@ fun PlayerScreen(
     var draft by remember { mutableStateOf<SaveDraft?>(null) }
     var draftImage by remember { mutableStateOf<Bitmap?>(null) }
     var videoLayout by remember { mutableStateOf<VLCVideoLayout?>(null) }
-    var detectedText by remember { mutableStateOf("") }
-    var readingText by remember { mutableStateOf(false) }
-    var waitingForLine by remember { mutableStateOf(false) }
-    var detectedRange by remember { mutableStateOf<Pair<Long, Long>?>(null) }
-    var findingSentence by remember { mutableStateOf(false) }
+    var autoFill by remember { mutableStateOf<AutoFill?>(null) }
+    var finding by remember { mutableStateOf<String?>(null) }
     var timeNote by remember { mutableStateOf<String?>(null) }
     var draftId by remember { mutableIntStateOf(0) }
-    // Times built-in subtitles from the moment they appear and disappear on screen.
-    val watcher = remember {
-        SubtitleWatcher(
-            layout = { videoLayout },
-            clock = { player.time },
-            isActive = { player.isPlaying && externalLines == null },
-        )
+    var fillVersion by remember { mutableIntStateOf(0) }
+    // Built-in subtitle tracks of MKV/WebM files, read straight from the file (headers only).
+    val builtIn = remember {
+        scope.async(Dispatchers.IO) {
+            runCatching { byteSourceFor(context, source.uri)?.let { MkvSubtitles.open(it) } }
+                .onFailure { Log.w(TAG, "Could not read built-in subtitles", it) }
+                .getOrNull()
+        }
     }
+    var builtInSearch by remember { mutableStateOf<BuiltInSearch?>(null) }
+    var selectedTrack by remember { mutableIntStateOf(0) }
     var previewEndMs by remember { mutableStateOf<Long?>(null) }
     var trackDialog by remember { mutableStateOf<TrackKind?>(null) }
 
@@ -204,8 +233,6 @@ fun PlayerScreen(
 
     fun seekTo(ms: Long) {
         val upper = if (lengthMs > 0) lengthMs else Long.MAX_VALUE
-        watcher.reset()
-        waitingForLine = false
         player.setTime(ms.coerceIn(0L, upper))
     }
 
@@ -245,48 +272,55 @@ fun PlayerScreen(
         }
     }
 
-    fun openDraft(startMs: Long, endMs: Long, text: String, subtitleImage: Bitmap?, note: String? = null) {
+    fun openDraft(startMs: Long, endMs: Long, text: String, note: String? = null) {
         player.pause()
         draftId++
         draft = SaveDraft(startMs, endMs, text)
-        detectedRange = null
-        findingSentence = false
+        autoFill = null
+        finding = null
         timeNote = note
+        builtInSearch = null
+        selectedTrack = 0
         draftImage = null
-        detectedText = ""
-        readingText = subtitleImage != null
         videoLayout?.let { layout -> FrameGrabber.grab(layout) { draftImage = it } }
-        subtitleImage?.let { image ->
-            SubtitleOcr.read(image) {
-                detectedText = it
-                readingText = false
-            }
-        }
     }
 
-    fun openDraftFor(line: SubtitleWatcher.Line) = openDraft(
-        max(0L, line.startMs - CLIP_PADDING_MS),
-        line.endMs + CLIP_PADDING_MS,
-        "",
-        line.image,
-        "Times come from when the subtitle appeared and disappeared.",
-    )
+    /** Fills the dialog from the line of track [index] at the saved moment; false if it has none. */
+    fun useTrack(search: BuiltInSearch, index: Int): Boolean {
+        val track = search.tracks[index]
+        val line = SubtitleLookup.nearMoment(search.lines[track.number].orEmpty(), search.atMs) ?: return false
+        // The Persian track, when there is one, gives the meaning of a line in another language.
+        val meaning = if (track.isPersian) {
+            null
+        } else {
+            search.tracks.firstOrNull { it.isPersian }
+                ?.let { persian -> SubtitleLookup.overlapping(search.lines[persian.number].orEmpty(), line) }
+        }
+        autoFill = AutoFill(
+            version = ++fillVersion,
+            startMs = max(0L, line.startMs - CLIP_PADDING_MS),
+            endMs = line.endMs + CLIP_PADDING_MS,
+            text = line.text,
+            meaning = meaning ?: "",
+        )
+        selectedTrack = index
+        timeNote = "Times and text from the subtitle track \"${track.label}\"."
+        return true
+    }
 
-    /** No subtitles: open the dialog now and fill in the times once the pauses are found. */
-    fun openDraftWithSpeechSearch(now: Long) {
-        openDraft(max(0L, now - 5_000L), now, "", null)
-        val id = draftId
-        findingSentence = true
+    /** No usable subtitle line: find the pauses around the sentence instead. */
+    fun searchSpeech(now: Long, id: Int) {
+        finding = "Finding where the sentence starts and ends…"
         speechFinder.find(scope, source.uri, now) { result ->
             if (id != draftId) return@find
-            findingSentence = false
+            finding = null
             result
                 .onSuccess { outcome ->
                     val found = outcome.found
                     if (found == null) {
                         timeNote = "No speech found near this moment (${outcome.details}). Set the times by hand."
                     } else {
-                        detectedRange = found.startMs to found.endMs
+                        autoFill = AutoFill(++fillVersion, found.startMs, found.endMs, null, null)
                         timeNote = when {
                             found.cutAtStart && found.cutAtEnd -> "Found speech, but it is longer than the part checked. Check both times."
                             found.cutAtStart -> "The sentence may start earlier. Check the start time."
@@ -299,35 +333,49 @@ fun PlayerScreen(
         }
     }
 
+    /** The built-in subtitle track VLC is showing, if it can be matched to the file's tracks. */
+    fun shownTrack(index: MkvSubtitles): MkvSubtitleTrack? {
+        val listed = player.spuTracks?.filter { it.id != -1 } ?: return null
+        val position = listed.indexOfFirst { it.id == player.spuTrack }
+        return if (position >= 0 && listed.size == index.tracks.size) index.tracks[position] else null
+    }
+
     fun onSaveClicked() {
-        if (waitingForLine) return
         val now = player.time
         val fileLine = externalLines?.let { SubtitleLookup.lineForSave(it, now) }
         if (fileLine != null) {
-            openDraft(max(0L, fileLine.startMs - CLIP_PADDING_MS), fileLine.endMs + CLIP_PADDING_MS, fileLine.text, null)
+            openDraft(
+                max(0L, fileLine.startMs - CLIP_PADDING_MS),
+                fileLine.endMs + CLIP_PADDING_MS,
+                fileLine.text,
+                "Times and text from the subtitle file.",
+            )
             return
         }
-        when (val target = if (externalLines == null) watcher.lineForSave(now) else SubtitleWatcher.SaveTarget.NoLine) {
-            is SubtitleWatcher.SaveTarget.Ready -> openDraftFor(target.line)
-            SubtitleWatcher.SaveTarget.WaitForEnd -> {
-                // Keep playing until the subtitle disappears, so its end time is exact.
-                waitingForLine = true
-                if (!player.isPlaying) player.play()
-                message("Saving when this line ends…")
+        openDraft(max(0L, now - 5_000L), now, "")
+        val id = draftId
+        finding = "Looking for this line in the subtitles…"
+        scope.launch {
+            val index = builtIn.await()
+            val textTracks = index?.textTracks.orEmpty()
+            if (index != null && textTracks.isNotEmpty()) {
+                val lines = withContext(Dispatchers.IO) { runCatching { index.linesAround(now) } }
+                if (id != draftId) return@launch
+                lines.onFailure { Log.w(TAG, "Could not read subtitle lines", it) }
+                lines.getOrNull()?.let { found ->
+                    val search = BuiltInSearch(now, found, textTracks)
+                    builtInSearch = search
+                    for (i in preferredOrder(textTracks, shownTrack(index))) {
+                        if (useTrack(search, i)) {
+                            finding = null
+                            return@launch
+                        }
+                    }
+                    builtInSearch = null
+                }
             }
-            SubtitleWatcher.SaveTarget.NoLine -> openDraftWithSpeechSearch(now)
+            if (id == draftId) searchSpeech(now, id)
         }
-    }
-
-    DisposableEffect(watcher) {
-        watcher.onLineClosed = { line ->
-            if (waitingForLine) {
-                waitingForLine = false
-                openDraftFor(line)
-            }
-        }
-        watcher.start()
-        onDispose { watcher.stop() }
     }
 
     DisposableEffect(player) {
@@ -496,15 +544,7 @@ fun PlayerScreen(
             ExtendedFloatingActionButton(
                 onClick = ::onSaveClicked,
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = {
-                    Text(
-                        when {
-                            waitingForLine -> "Waiting…"
-                            savingCount > 0 -> "Saving…"
-                            else -> "Save"
-                        }
-                    )
-                },
+                text = { Text(if (savingCount > 0) "Saving…" else "Save") },
                 modifier = Modifier.align(Alignment.CenterEnd).padding(end = 16.dp),
             )
 
@@ -599,15 +639,21 @@ fun PlayerScreen(
             initialStartMs = current.startMs,
             initialEndMs = current.endMs,
             initialText = current.text,
-            detectedText = detectedText,
-            readingText = readingText,
-            detectedRange = detectedRange,
-            findingSentence = findingSentence,
+            autoFill = autoFill,
+            finding = finding,
             timeNote = timeNote,
+            trackOptions = builtInSearch?.tracks?.map { it.label }.orEmpty(),
+            selectedTrack = selectedTrack,
+            onSelectTrack = { index ->
+                val search = builtInSearch
+                if (search != null && !useTrack(search, index)) {
+                    selectedTrack = index
+                    timeNote = "This track has no line at this moment."
+                }
+            },
             image = draftImage,
             currentTime = { player.time },
             onPreview = { s, e ->
-                watcher.reset()
                 player.setTime(s)
                 player.play()
                 previewEndMs = e

@@ -6,8 +6,9 @@ An Android video player for language learning.
 - Aspect ratio modes (best fit, fit screen, fill, 16:9, 4:3, original), full screen, audio and subtitle track selection.
 - Shows subtitles from an external file (SRT or VTT) or from a subtitle track inside the video,
   in the colour and size you choose. The player follows the phone's rotation; landscape is full screen.
-- **Save**: with a subtitle file, saves the sentence being spoken as a card with its audio clip and text.
-  Without one, pick a start and end time by hand (with preview and an optional note).
+- **Save**: saves the sentence being spoken as a card with its audio clip and text. Times and
+  text come from a subtitle file, else from the video's own subtitle track, else from the pauses
+  around the sentence. Everything can be checked with Preview and adjusted before saving.
 - **Cards**: each saved line keeps its audio, a frame of the video, the text and your meaning.
   Tap a card to open it; review them as flashcards in a 5-box Leitner system.
 
@@ -35,9 +36,10 @@ Review intervals: Box 1 every day, Box 2 every 2 days, Box 3 every 4, Box 4 ever
 ## Limitations
 
 - The APK is built for 64-bit ARM phones (arm64-v8a) only.
-- For subtitle tracks inside the video, the app times each line from when it appears and
-  disappears on screen, and reads its text with on-device text recognition (ML Kit).
-  The recognised text can contain small mistakes; check it before saving.
+- Subtitle tracks inside MKV/WebM files are read straight from the file (only the part
+  around the saved moment, also for online links that allow partial downloads). Text tracks
+  (SRT, ASS, WebVTT) give exact times and text; when there is a Persian track, it fills the
+  meaning. Picture subtitles (PGS, VobSub) cannot be read as text.
 - Without any subtitles, Save looks at the audio from 8 s before to 6 s after the moment you
   tap it and finds the pauses around the sentence with Silero VAD (on the device). Speech
   without pauses, or very long sentences, may need the times adjusted by hand.

@@ -125,6 +125,25 @@ object SubtitleLookup {
     fun activeAt(lines: List<SubtitleLine>, positionMs: Long): SubtitleLine? =
         lines.lastOrNull { positionMs in it.startMs..it.endMs }
 
+    /**
+     * The line on screen at [positionMs] (the latest if several), or one that ended within the
+     * last few seconds, for a Save tapped just after the line.
+     */
+    fun nearMoment(lines: List<SubtitleLine>, positionMs: Long): SubtitleLine? {
+        lines.filter { positionMs >= it.startMs && positionMs <= it.endMs + 150 }
+            .maxByOrNull { it.startMs }
+            ?.let { return it }
+        return lines.lastOrNull { it.endMs <= positionMs && positionMs - it.endMs <= 5_000 }
+    }
+
+    /** Text of the lines that overlap [line] in time (e.g. its translation), or null. */
+    fun overlapping(lines: List<SubtitleLine>, line: SubtitleLine): String? {
+        val mid = (line.startMs + line.endMs) / 2
+        val matches = lines.filter { it.startMs < line.endMs - 200 && it.endMs > line.startMs + 200 }
+            .ifEmpty { lines.filter { mid in it.startMs..it.endMs } }
+        return matches.joinToString("\n") { it.text }.ifBlank { null }
+    }
+
     /** The line being spoken now, or the last one that already finished. */
     fun lineForSave(lines: List<SubtitleLine>, positionMs: Long): SubtitleLine? =
         activeAt(lines, positionMs) ?: lines.lastOrNull { it.endMs <= positionMs }

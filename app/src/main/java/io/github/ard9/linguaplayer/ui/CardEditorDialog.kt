@@ -10,9 +10,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -36,6 +38,18 @@ import io.github.ard9.linguaplayer.data.parseClock
 const val MAX_CLIP_MS = 60_000L
 
 /**
+ * Values found after the dialog opened. Each new [version] replaces the fields;
+ * a null [text] or [meaning] leaves that field as it is.
+ */
+data class AutoFill(
+    val version: Int,
+    val startMs: Long,
+    val endMs: Long,
+    val text: String?,
+    val meaning: String?,
+)
+
+/**
  * Shown when the user taps Save: start/end time (prefilled from the subtitle line when there
  * is one), text, meaning and the captured frame. [currentTime] is read when a "Now" button is
  * pressed, so it follows a running preview.
@@ -45,14 +59,15 @@ fun CardEditorDialog(
     initialStartMs: Long,
     initialEndMs: Long,
     initialText: String,
-    /** Text read from the subtitle picture; fills the Text field if it is still empty. */
-    detectedText: String,
-    readingText: Boolean,
-    /** Start and end found from the pauses around the sentence; replaces the times when it arrives. */
-    detectedRange: Pair<Long, Long>?,
-    findingSentence: Boolean,
-    /** A short explanation of how the times were found, or why they were not. */
+    autoFill: AutoFill?,
+    /** What is being looked for right now, shown with a spinner; null when idle. */
+    finding: String?,
+    /** A short explanation of where the times came from, or why they were not found. */
     timeNote: String?,
+    /** Subtitle tracks the text can come from; shown as choices when there are several. */
+    trackOptions: List<String>,
+    selectedTrack: Int,
+    onSelectTrack: (Int) -> Unit,
     image: Bitmap?,
     currentTime: () -> Long,
     onPreview: (startMs: Long, endMs: Long) -> Unit,
@@ -63,13 +78,12 @@ fun CardEditorDialog(
     var endText by remember { mutableStateOf(formatClock(initialEndMs)) }
     var text by remember { mutableStateOf(initialText) }
     var meaning by remember { mutableStateOf("") }
-    LaunchedEffect(detectedText) {
-        if (text.isBlank() && detectedText.isNotBlank()) text = detectedText
-    }
-    LaunchedEffect(detectedRange) {
-        detectedRange?.let { (s, e) ->
-            startText = formatClock(s)
-            endText = formatClock(e)
+    LaunchedEffect(autoFill?.version) {
+        autoFill?.let { fill ->
+            startText = formatClock(fill.startMs)
+            endText = formatClock(fill.endMs)
+            fill.text?.let { text = it }
+            fill.meaning?.let { meaning = it }
         }
     }
 
@@ -104,13 +118,28 @@ fun CardEditorDialog(
                         modifier = Modifier.fillMaxWidth().heightIn(max = 140.dp),
                     )
                 }
-                if (findingSentence) {
+                if (finding != null) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                        Text("Finding where the sentence starts and ends…", style = MaterialTheme.typography.bodySmall)
+                        Text(finding, style = MaterialTheme.typography.bodySmall)
                     }
                 } else if (timeNote != null) {
                     Text(timeNote, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (trackOptions.size > 1) {
+                    Text("Text from", style = MaterialTheme.typography.labelMedium)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    ) {
+                        trackOptions.forEachIndexed { index, label ->
+                            FilterChip(
+                                selected = index == selectedTrack,
+                                onClick = { onSelectTrack(index) },
+                                label = { Text(label) },
+                            )
+                        }
+                    }
                 }
                 TimeRow("Start", startText, { startText = it }) { startText = formatClock(currentTime()) }
                 TimeRow("End", endText, { endText = it }) { endText = formatClock(currentTime()) }
@@ -123,7 +152,7 @@ fun CardEditorDialog(
                     value = text,
                     onValueChange = { text = it },
                     label = { Text("Text") },
-                    placeholder = { Text(if (readingText) "Reading the subtitle…" else "What is said") },
+                    placeholder = { Text("What is said") },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(

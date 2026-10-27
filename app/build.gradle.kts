@@ -83,9 +83,6 @@ dependencies {
     // Video playback (all formats VLC supports).
     implementation("org.videolan.android:libvlc-all:3.7.6")
 
-    // Reads built-in subtitle text on the device (bundled model, no Play services needed).
-    implementation("com.google.mlkit:text-recognition:16.0.1")
-
     // Finds sentence boundaries by detecting speech (Silero VAD model in assets).
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.20.0")
 
