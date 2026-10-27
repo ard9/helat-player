@@ -4,8 +4,11 @@ There is no Gradle wrapper and no local Android SDK is assumed. **GitHub Actions
 
 ## CI
 
-`.github/workflows/build.yml` runs on every push to `main` (and by hand), on `ubuntu-latest`
-with JDK 17 (Temurin) and Gradle 8.13:
+`.github/workflows/build.yml` runs on every push to `main` (and by hand), on `ubuntu-24.04`
+(a fixed image, not `ubuntu-latest`) with JDK 17 (Temurin) and Gradle 8.13. Actions are pinned
+by commit SHA with the version in a comment; to update one, look up the new tag's commit
+(`git ls-remote --tags https://github.com/<owner>/<action>.git`, use the `^{}` line for
+annotated tags):
 
 1. **Unit tests**: `gradle testDebugUnitTest`. A failing test stops the run, so no broken APK
    is published.

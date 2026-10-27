@@ -35,7 +35,6 @@ Last update: 2026-10-27, release `build-43`.
 
 ## Proposals waiting for a decision
 
-- Pin GitHub Actions by commit SHA instead of `@v4` (see `docs/security.md`).
 - Leave stream URLs (`sourceUri`) out of card backups, or offer it as a choice.
 - Move logic out of `ui/PlayerScreen.kt` (~1270 lines) into a testable class without changing
   behaviour (see `docs/architecture.md`).
@@ -43,12 +42,6 @@ Last update: 2026-10-27, release `build-43`.
 - Read subtitle lines ahead while playing, so Loop/Repeat are instant on online films.
   Approved at first, then put back to the owner: over HTTP the reader downloads whole clusters
   (video included), so it roughly doubles the data used while watching.
-
-## CI warnings to handle before they break the build
-
-- Node.js 20 actions are deprecated; runners force Node 24. Update `actions/checkout`,
-  `actions/setup-java` (v5 exists), `actions/upload-artifact`, `gradle/actions/setup-gradle`.
-- `ubuntu-latest` moves to Ubuntu 26 from 2026-10-19; watch the next builds.
 
 ## Known gaps
 

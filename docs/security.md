@@ -32,12 +32,13 @@ libVLC and ONNX Runtime parse untrusted data in native code; keep them updated.
 - Signing secrets live only in GitHub Secrets; the keystore file is removed after each run
   and never committed (`build-and-release.md`).
 - The workflow has `contents: write` to publish releases.
+- Actions are pinned by commit SHA, so a moved or hijacked tag cannot change the code that
+  runs next to the signing secrets.
 
 ## Open items
 
 | Item | Severity | Status |
 | --- | --- | --- |
-| GitHub Actions pinned by tag (`@v4`), not by commit SHA: a compromised action could read the signing secrets. | Medium | Proposal, not approved |
 | Backups contain stream URLs with possible tokens. | Low | Proposal: leave them out or make it a choice |
 | The repository is public; the owner wants it private / releases only. | — | On hold |
 | Release APK is not minified or obfuscated (R8). | Low | On hold |
