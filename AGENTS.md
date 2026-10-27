@@ -33,12 +33,15 @@ These rules come from the owner and apply to every change:
 
 There is no Gradle wrapper and no local Android SDK is assumed. **GitHub Actions is the build.**
 
-- `.github/workflows/build.yml` builds on every push to `main` (JDK 17, Gradle 8.13).
+- `.github/workflows/build.yml` runs on every push to `main` (JDK 17, Gradle 8.13):
+  first **unit tests** (`gradle testDebugUnitTest`), then the APK build. A failing test stops
+  the build, so no broken APK is published.
 - If the signing secrets exist it builds a signed `release` APK, otherwise a `debug` APK.
 - Every run publishes a GitHub Release `build-<run number>` with `LinguaPlayer.apk`.
   The owner installs from the release page on the phone.
-- On failure, the step "Summarize build errors" puts the compiler errors in a check-run
-  annotation titled **Build errors**. Read it with:
+- On failure, the step "Summarize build errors" puts compiler errors and failed tests (with
+  their assertion messages) in a check-run annotation titled **Build errors**; the HTML test
+  report is uploaded as the `test-report` artifact. Read the annotation with:
   ```sh
   JOB=$(gh api repos/ard9/lingua-player/actions/runs/<RUN_ID>/jobs --jq '.jobs[0].id')
   gh api repos/ard9/lingua-player/check-runs/$JOB/annotations --jq '.[].message'
@@ -106,17 +109,30 @@ The found range is widened by the user's **clip margins** (default 0.45 s each s
 - **Subtitle style** (colour/size) is applied to libVLC at instance creation, so a style change
   takes effect for built-in tracks the next time a video is opened.
 
-## Verifying logic without a device
+## Tests
 
-Algorithms were developed as Python prototypes first and checked on real files, then ported:
+JVM unit tests live in `app/src/test/` (JUnit 4; the real `org.json` is on the test classpath
+because Android's is a stub). They cover the logic that can run without a device:
 
-- MKV subtitle extraction: test files made with ffmpeg (SRT + Persian SRT + ASS tracks, cues at
-  front/back, live mode with no cues, WebM with WebVTT). The Kotlin port mirrors the prototype.
-- VAD sentence finding: tuned on Silero's own sample audio (`tests/data/test.wav` in
-  `snakers4/silero-vad`).
+| Test | Covers |
+| --- | --- |
+| `subtitle/mkv/MkvSubtitlesTest` | Reading built-in tracks from real MKV/WebM files: track info, line times and text, tags, a line from an earlier cluster, cues at front/back/none, WebVTT, jumping to the right part of the file, non-Matroska and truncated input. |
+| `subtitle/mkv/SubtitleTextCleanerTest` | ASS fields/tags/drawings, SRT tags and entities. |
+| `subtitle/SubtitleParserTest` | SRT/VTT parsing, encodings; `SubtitleLookup` (which line a tap belongs to, translations). |
+| `speech/SentenceFinderTest` | Sentence boundaries from speech probabilities (pauses, short gaps, long speech, noise). |
+| `clip/WavTest` | `WavTrim` (VLC start-time bug) and `WavReader` (downmix, resample, limits). |
+| `data/CardTest` | Leitner scheduling, card JSON round trip and loading cards from older versions, clock text. |
 
-When changing these parts, re-test the same way and say what was tested. The prototypes are
-not in the repository; recreate them from the Kotlin code if needed (ffmpeg, `onnxruntime`).
+Fixtures are in `app/src/test/resources/media/` (a few small files) and are recreated with
+`tools/make-test-media.sh` (needs ffmpeg). Their subtitle lines are listed in `MkvSubtitlesTest`.
+
+Rules for changes:
+
+- Change logic in these areas together with its tests; add a test for every bug fixed there.
+- Keep logic that can be tested out of Android classes (as `SentenceFinder`, `MkvSubtitles`,
+  `WavTrim` are), so it can be covered here.
+- Not covered by tests: libVLC playback, UI, Media3/VLC clipping, the Silero model itself.
+  For those, say exactly what was and was not verified on a device.
 
 ## Data on the device
 
@@ -143,5 +159,4 @@ App-private storage only, excluded from backup (`allowBackup=false`, data extrac
 - MP4 built-in subtitles are not read (only MKV/WebM); picture subtitles (PGS/VobSub) cannot be
   read as text. Both fall back to VAD.
 - VAD cannot separate sentences spoken without a pause.
-- No automated tests yet; the build is the only CI check.
 - APK is large (~80 MB): libVLC, ONNX Runtime and Media3 native code.
