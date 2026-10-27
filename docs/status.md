@@ -2,7 +2,7 @@
 
 Current state of the project. Update at the end of every task.
 
-Last update: 2026-10-27, release `build-43`.
+Last update: 2026-10-27, release `build-54`.
 
 ## Features
 
@@ -25,6 +25,13 @@ Last update: 2026-10-27, release `build-43`.
 | Role-play scene by time range (From/To) | build-41 | **No** |
 | Player controls stay while touched (4 s after letting go) | build-41 | **No** |
 | English/Persian, right to left, Settings, guide, welcome card | build-37 | **No** |
+| Card audio speed (1×, 0.75×, 0.5×) in card and review screens | build-46 | **No** |
+| Card search (text, meaning, film; all boxes) | build-47 | **No** |
+| Pronunciation practice in review (record, mine, mine + original) | build-48 | **No** |
+| Daily review reminder (Settings, notification, WorkManager) | build-49 | **No** |
+| Backup reminder on Home after 14 days | build-50 | **No** |
+| Errors explained in the app's language (`describe`) | build-52 | **No** |
+| Line choosing moved to tested `LineSearch` (no behaviour change intended) | build-53 | **No** (re-check saving and Repeat) |
 
 "No" means only tests and CI passed; the behaviour on a device is unknown.
 
@@ -32,6 +39,11 @@ Last update: 2026-10-27, release `build-43`.
 
 - Make the repository private, possibly with a separate public repository for releases only.
 - R8 minification and obfuscation of the release APK.
+
+## CI
+
+Actions pinned by SHA on `ubuntu-24.04` since build-45; no deprecation warnings left. Gradle
+8.13 gets an "out of date" notice; it stays pinned with AGP 8.11.1 (`build-and-release.md`).
 
 ## Proposals waiting for a decision
 
