@@ -36,7 +36,8 @@ class MkvSubtitlesTest {
     fun `names track languages in the app's language`() {
         val mkv = open("subs.mkv")
         val persian = Locale.forLanguageTag("fa")
-        assertEquals("فارسی", mkv.tracks[1].label(persian, "?"))
+        // The track is also named "Persian" in the file; that name is kept as it is.
+        assertEquals("فارسی (Persian)", mkv.tracks[1].label(persian, "?"))
         assertEquals("انگلیسی", mkv.tracks[0].label(persian, "?"))
     }
 
