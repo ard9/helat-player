@@ -1,0 +1,58 @@
+# Decisions
+
+Why things are the way they are. Do not undo these without a new reason; add new decisions at
+the end with the date.
+
+## 2026-10-26 Playback is libVLC, not Media3
+
+Media3 failed with `DECODING_FAILED` on HEVC 10-bit (`hvc1.2.4.L120.90`) on the owner's
+phone; libVLC plays it with software decoding. Media3 is kept only for clipping and for
+playing saved clips. Cost: larger APK, toolchain pins (`build-and-release.md`).
+
+## 2026-10-27 StartGate before playback
+
+Starting before the video view was attached sometimes gave a black picture with sound.
+Playback now waits for both the media and the attached view.
+
+## 2026-10-27 Built-in subtitles are read from the file, not the screen
+
+An earlier version watched libVLC's subtitle surface and used OCR (ML Kit). It failed: with
+software decoding libVLC blends subtitles into the video, so there is no separate layer.
+Removed, together with ML Kit. MKV/WebM tracks are parsed directly instead, also over HTTP
+Range, which gives exact times and text.
+
+## 2026-10-27 Speech detection only as a fallback, in a short window
+
+Without subtitles, Silero VAD looks 8 s before and 6 s after the moment (a 15 s window was
+too much). It cannot split sentences spoken without a pause, so subtitles always come first.
+
+## 2026-10-27 Work around libVLC ignoring `:start-time`
+
+On some files libVLC writes audio from 0 to the end time. `VlcClipper` stops on
+`TimeChanged` past the end and `WavTrim` keeps only the last requested duration.
+
+## 2026-10-27 Quick save by tap, editor by hold
+
+The owner wanted saving to be quick and not disturb watching: a small faint button saves in
+the background with Undo; holding opens the editor for checking.
+
+## 2026-10-27 Edge-to-edge insets
+
+With targetSdk 35 the system navigation bar covered the controls in landscape; controls use
+`WindowInsets.safeDrawing` padding.
+
+## 2026-10-27 Role-play playback without pauses
+
+The owner wanted the final playback natural: the user's voice over the picture in place of
+the actor's, skipping the silence before the first word, with no pauses.
+
+## 2026-10-27 Language by overriding only the locale
+
+`attachBaseContext` overrides only the locale (not the whole configuration) because the
+activity handles rotation itself; a full override would freeze orientation. Film times stay
+ASCII because they are typed in the editor.
+
+## 2026-10-27 Docs split by area
+
+`AGENTS.md` is a short entry point; details live in `docs/`, one file per area, each under
+200 lines, so no single file grows too long to read. `DocsTest` enforces it.
