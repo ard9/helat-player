@@ -73,7 +73,8 @@ Package `io.github.ard9.linguaplayer` (`app/src/main/java/...`):
 | `subtitle/SubtitleParser.kt` | External SRT/VTT parsing; `SubtitleLookup` (which line belongs to a moment, overlapping translation). |
 | `subtitle/mkv/` | Reads built-in subtitle tracks from MKV/WebM: `ByteSource` (local fd or HTTP Range), `EbmlReader` (streaming EBML with byte budget), `MkvSubtitles` (headers, cues, clusters around a moment, ASS/SRT/WebVTT text cleanup). |
 | `clip/` | Audio cutting. `ClipService` tries Media3 `TransformerClipper` (m4a) and falls back to `VlcClipper` (libVLC sout → wav) + `WavTrim`. |
-| `speech/` | No-subtitle fallback: `SpeechFinder` cuts 8 s before / 6 s after the moment, `SileroVad` (ONNX Runtime, model in `assets/silero_vad.onnx`), `SentenceFinder` (pure logic: hysteresis, gap merge, split long speech). |
+| `speech/` | No-subtitle fallback: `SpeechFinder` cuts 8 s before / 6 s after the moment, `SileroVad` (ONNX Runtime, model in `assets/silero_vad.onnx`; `Stream` for live audio), `SentenceFinder` (pure logic: hysteresis, gap merge, split long speech). |
+| `roleplay/` | Role-play (user and actor take turns): `RolePlayLogic` (roles, `SpeechEndDetector`, `WavWriter`; pure), `VoiceRecorder` (mic → WAV, stops on silence), `RolePlaySession` (drives the player through a `ScenePlayer` interface: mute/pause/seek, records, plays back). UI in `ui/RolePlayUi.kt`; scene lines from `MkvSubtitles.linesFrom` or `SubtitleLookup.scene`. |
 
 ## How saving a line works
 
@@ -124,6 +125,7 @@ because Android's is a stub). They cover the logic that can run without a device
 | `data/CardTest` | Leitner scheduling, card JSON round trip and loading cards from older versions, clock text. |
 | `data/CardBackupTest` | Backup round trip, skipping existing cards, and hostile backups (paths outside the folders, overwriting files, other ZIPs, damaged or newer data). |
 | `data/ResumePolicyTest` | Which playback positions are worth resuming. |
+| `roleplay/RolePlayLogicTest` | Alternating roles, end-of-speech detection, WAV writing. |
 
 Fixtures are in `app/src/test/resources/media/` (a few small files) and are recreated with
 `tools/make-test-media.sh` (needs ffmpeg). Their subtitle lines are listed in `MkvSubtitlesTest`.
@@ -149,7 +151,9 @@ App-private storage only, excluded from backup (`allowBackup=false`, data extrac
 
 ## Security notes
 
-- Only permission: `INTERNET`. No analytics, no own server.
+- Permissions: `INTERNET`, and `RECORD_AUDIO` (asked at runtime, only when role-play starts).
+  Recordings are written to `cacheDir/roleplay/…` and deleted when the session is closed.
+  No analytics, no own server.
 - `usesCleartextTraffic=true` so http streams play; the app warns before opening any http link.
 - Stream URLs (may contain tokens) are stored in recents and cards; hence no Android backup.
   The user's own card backup includes `sourceUri`; the app tells them to keep it private.

@@ -15,6 +15,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.math.abs
 import java.io.File
 import kotlin.math.max
 
@@ -113,9 +115,7 @@ class RolePlaySession(
         val line = lines[index]
         current = index
         player.setMuted(false)
-        player.seekTo(max(0L, line.startMs - EARLY_MS))
-        player.play()
-        delay(SEEK_SETTLE_MS)
+        seekAndPlay(max(0L, line.startMs - EARLY_MS))
         waitUntil { player.timeMs >= line.endMs + EARLY_MS }
         player.pause()
         phase = Phase.Finished
@@ -215,8 +215,20 @@ class RolePlaySession(
 
     private suspend fun beginAt(firstLineMs: Long) {
         player.setMuted(false)
-        player.seekTo(max(0L, firstLineMs - LEAD_MS))
+        seekAndPlay(max(0L, firstLineMs - LEAD_MS))
+    }
+
+    /**
+     * Jumps back and plays, returning once the player reports the new position. Until then
+     * it may still report the old one (e.g. the end of the scene), which would look as if
+     * every line had already passed.
+     */
+    private suspend fun seekAndPlay(targetMs: Long) {
+        player.seekTo(targetMs)
         player.play()
+        withTimeoutOrNull(SEEK_TIMEOUT_MS) {
+            waitUntil { abs(player.timeMs - targetMs) < SEEK_TOLERANCE_MS }
+        }
         delay(SEEK_SETTLE_MS)
     }
 
@@ -242,5 +254,7 @@ class RolePlaySession(
         const val TAIL_MS = 600L
         const val SEEK_SETTLE_MS = 200L
         const val MIN_TURN_MS = 8_000L
+        const val SEEK_TIMEOUT_MS = 8_000L
+        const val SEEK_TOLERANCE_MS = 2_500L
     }
 }
