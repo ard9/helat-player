@@ -49,6 +49,8 @@ Every push to `main` builds an APK with GitHub Actions and publishes it on the
    - **I knew it** moves the card up one box.
    - **Didn't know** moves it back to Box 1.
 
+   **Speed** next to Play again plays the card at 0.75× or 0.5×.
+
 Review intervals: Box 1 every day, Box 2 every 2 days, Box 3 every 4, Box 4 every 8, Box 5 every 16.
 
 ## Limitations

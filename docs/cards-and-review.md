@@ -21,6 +21,8 @@ passed.
 - Home: due count, box bars, Start review, Browse cards, Back up / Restore.
 - `BoxScreen`: the five boxes as tabs (`BoxBars`), cards of the selected box.
 - `CardScreen`: picture with text, play, edit text/meaning, delete (with its files).
+- Card audio (`ClipAudioPlayer`, Media3) has a speed button in the card and review screens:
+  1×, 0.75×, 0.5× (pitch kept), stored as `clip_speed` in `SettingsRepository`.
 - `ReviewScreen`: due cards one by one. The audio plays first; picture, text and meaning are
   blurred (`Hidden`, `Modifier.blur` on Android 12+, a solid cover on older versions) until
   tapped or Show all. Answer buttons appear once the text is shown. Without audio the text is

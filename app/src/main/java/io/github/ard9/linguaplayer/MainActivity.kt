@@ -145,6 +145,7 @@ private fun AppNavigation(
     val clipMargins by app.settings.clipMargins.collectAsState()
     val positions by app.recents.positions.collectAsState()
     val rolePlayPrefs by app.settings.rolePlay.collectAsState()
+    val clipSpeed by app.settings.clipSpeed.collectAsState()
 
     fun play(source: PlaybackSource) {
         app.recents.add(source)
@@ -270,10 +271,10 @@ private fun AppNavigation(
             if (card == null) {
                 LaunchedEffect(Unit) { screen = Screen.Box }
             } else {
-                CardScreen(card, app.cards, onBack = { screen = Screen.Box })
+                CardScreen(card, app.cards, clipSpeed, app.settings::setClipSpeed, onBack = { screen = Screen.Box })
             }
         }
-        Screen.Review -> ReviewScreen(cards, app.cards, onBack = { screen = Screen.Home })
+        Screen.Review -> ReviewScreen(cards, app.cards, clipSpeed, app.settings::setClipSpeed, onBack = { screen = Screen.Home })
         Screen.Settings -> SettingsScreen(
             language = language,
             onLanguageChange = onLanguageChange,

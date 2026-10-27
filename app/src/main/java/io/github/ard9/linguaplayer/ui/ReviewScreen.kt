@@ -50,7 +50,13 @@ import io.github.ard9.linguaplayer.data.Leitner
 /** Flashcard review. Front: the frame and the audio. Back: the line on the frame and its meaning. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReviewScreen(cards: List<Card>, repository: CardRepository, onBack: () -> Unit) {
+fun ReviewScreen(
+    cards: List<Card>,
+    repository: CardRepository,
+    speed: Float,
+    onSpeedChange: (Float) -> Unit,
+    onBack: () -> Unit,
+) {
     // Cards answered in this session move to a future date and drop out of the queue.
     val sessionStart = remember { System.currentTimeMillis() }
     val due = cards.filter { Leitner.isDue(it, sessionStart) }.sortedBy { it.nextReviewAt }
@@ -60,6 +66,7 @@ fun ReviewScreen(cards: List<Card>, repository: CardRepository, onBack: () -> Un
     var showText by remember(card?.id) { mutableStateOf(false) }
     var showMeaning by remember(card?.id) { mutableStateOf(false) }
     val audio = rememberClipAudioPlayer()
+    audio.speed = speed
     val audioFile = card?.let { repository.audioFile(it) }
     val hasAudio = audioFile?.exists() == true
     val picture = rememberCardImage(card?.let { repository.imageFile(it) }, maxWidthPx = 1080)
@@ -159,6 +166,10 @@ fun ReviewScreen(cards: List<Card>, repository: CardRepository, onBack: () -> Un
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                     if (hasAudio && audioFile != null) {
                         OutlinedButton(onClick = { audio.play(audioFile) }) { Text(stringResource(R.string.play_again)) }
+                        SpeedButton(speed) {
+                            onSpeedChange(it)
+                            audio.play(audioFile)
+                        }
                     }
                     if (!allShown) {
                         TextButton(onClick = {

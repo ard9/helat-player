@@ -75,6 +75,17 @@ class SettingsRepository(context: Context) {
         _language.value = value
     }
 
+    private val _clipSpeed = MutableStateFlow(
+        prefs.getFloat(KEY_CLIP_SPEED, 1f).takeIf { it in CLIP_SPEED_RANGE } ?: 1f
+    )
+    /** Speed of card audio in the card and review screens. */
+    val clipSpeed: StateFlow<Float> = _clipSpeed
+
+    fun setClipSpeed(value: Float) {
+        prefs.edit().putFloat(KEY_CLIP_SPEED, value).apply()
+        _clipSpeed.value = value
+    }
+
     private val _welcomeDismissed = MutableStateFlow(prefs.getBoolean(KEY_WELCOME, false))
     /** True once the first-launch welcome card on the home screen was closed. */
     val welcomeDismissed: StateFlow<Boolean> = _welcomeDismissed
@@ -139,6 +150,8 @@ class SettingsRepository(context: Context) {
         private const val FILE = "settings"
         private const val KEY_LANGUAGE = "language"
         private const val KEY_WELCOME = "welcome_dismissed"
+        private const val KEY_CLIP_SPEED = "clip_speed"
+        private val CLIP_SPEED_RANGE = 0.25f..2f
 
         /** The chosen language, read before the app's singletons exist (activity start). */
         fun language(context: Context): AppLanguage = AppLanguage.fromTag(

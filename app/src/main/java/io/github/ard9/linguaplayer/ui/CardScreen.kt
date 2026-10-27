@@ -38,8 +38,15 @@ import io.github.ard9.linguaplayer.data.formatTime
 /** One card, full size: frame with its line, meaning, and the audio playing on open. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CardScreen(card: Card, repository: CardRepository, onBack: () -> Unit) {
+fun CardScreen(
+    card: Card,
+    repository: CardRepository,
+    speed: Float,
+    onSpeedChange: (Float) -> Unit,
+    onBack: () -> Unit,
+) {
     val audio = rememberClipAudioPlayer()
+    audio.speed = speed
     val audioFile = repository.audioFile(card)
     val hasAudio = audioFile.exists()
     val picture = rememberCardImage(repository.imageFile(card), maxWidthPx = 1080)
@@ -84,6 +91,12 @@ fun CardScreen(card: Card, repository: CardRepository, onBack: () -> Unit) {
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(onClick = { audio.play(audioFile) }, enabled = hasAudio) { Text(stringResource(R.string.play)) }
+                if (hasAudio) {
+                    SpeedButton(speed) {
+                        onSpeedChange(it)
+                        audio.play(audioFile)
+                    }
+                }
                 OutlinedButton(onClick = { editing = true }) { Text(stringResource(R.string.edit)) }
                 TextButton(onClick = { confirmDelete = true }) {
                     Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
