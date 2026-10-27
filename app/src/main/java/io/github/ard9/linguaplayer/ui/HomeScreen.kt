@@ -127,6 +127,12 @@ fun HomeScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         color = Cinema.Dim,
                     )
+                    Text(
+                        "Version ${appVersion(context)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Cinema.Dim.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
                 }
             }
 
@@ -312,6 +318,13 @@ private fun ContinueCard(source: PlaybackSource, resumeAtMs: Long?, onClick: () 
             }
         }
     }
+}
+
+/** The version shown on the home screen; its last number is the GitHub build number. */
+private fun appVersion(context: android.content.Context): String = try {
+    context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "?"
+} catch (e: Exception) {
+    "?"
 }
 
 private fun sourceKind(source: PlaybackSource): String =

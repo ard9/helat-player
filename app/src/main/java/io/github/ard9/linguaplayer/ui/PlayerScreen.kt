@@ -227,6 +227,27 @@ private fun overlapShare(aStart: Long, aEnd: Long, bStart: Long, bEnd: Long): Do
     return if (overlap <= 0 || shorter <= 0) 0.0 else overlap.toDouble() / shorter
 }
 
+/** Small, faint button that turns repeating the current line on and off. */
+@Composable
+private fun LoopButton(active: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val accent = MaterialTheme.colorScheme.primary
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .background(if (active) accent.copy(alpha = 0.9f) else Color.Black.copy(alpha = 0.35f))
+            .clickable(onClickLabel = if (active) "Stop repeating this line" else "Repeat this line", onClick = onClick),
+    ) {
+        Icon(
+            PlayerIcons.Repeat,
+            contentDescription = if (active) "Stop repeating this line" else "Repeat this line",
+            tint = if (active) Cinema.Night else Color.White.copy(alpha = 0.6f),
+            modifier = Modifier.size(22.dp),
+        )
+    }
+}
+
 /**
  * Small, faint save button that stays on screen while watching. Tap saves the current line
  * in the background; holding opens the editor.
@@ -908,7 +929,6 @@ fun PlayerScreen(
                     ControlButton("Subtitles") { trackDialog = TrackKind.Subtitle; touch() }
                     ControlButton("Load subtitle file") { subtitlePicker.launch(arrayOf("*/*")); touch() }
                     ControlButton("Subtitle style") { styleDialog = true; touch() }
-                    ControlButton(if (loopRange != null) "Loop: on" else "Loop line") { toggleLoop(); touch() }
                     ControlButton("Speed ${RATES[rateIndex].second}") {
                         rateIndex = (rateIndex + 1) % RATES.size
                         player.setRate(RATES[rateIndex].first)
@@ -934,6 +954,16 @@ fun PlayerScreen(
                 }
             }
         }
+
+        // The loop button sits just above the save button, in the same quiet style.
+        LoopButton(
+            active = loopRange != null,
+            onClick = ::toggleLoop,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(end = 12.dp, bottom = 112.dp),
+        )
 
         QuickSaveButton(
             busy = quickBusy > 0,
