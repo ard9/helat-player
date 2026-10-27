@@ -25,8 +25,9 @@ Every push to `main` builds an APK with GitHub Actions and publishes it on the
 1. Open a video file, or paste a link and tap **Play link**.
 2. Tap the video to show controls. **Load subtitle file** picks an `.srt` or `.vtt` file;
    **Subtitles** chooses a track inside the video.
-3. When you hear a sentence you want to learn, tap **Save**. With a subtitle file the current
-   line is saved directly; otherwise choose the start and end time. The audio goes to Box 1.
+3. When you hear a sentence you want to learn, tap the small bookmark button on the right.
+   The line is saved in the background while the film keeps playing (Undo is offered for a
+   moment). Hold the button instead to pause and check the times, text and meaning first.
 4. From the home screen, tap **Review**. Listen, reveal the text, then answer:
    - **I knew it** moves the card up one box.
    - **Didn't know** moves it back to Box 1.
