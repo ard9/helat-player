@@ -54,3 +54,6 @@ passed.
 - The backup includes `sourceUri` (may contain stream tokens); the app tells the user to keep
   it private. See `security.md`.
 - `CardBackupTest` covers round trips and hostile backups.
+- Backup reminder: Home shows a card when cards have not been backed up for 14 days (counted
+  from the oldest card if never), until a backup succeeds; ✕ hides it for 7 days
+  (`BackupReminder`, pure and tested; `last_backup_at`, `backup_snoozed_until` in settings).

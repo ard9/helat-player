@@ -80,6 +80,9 @@ fun HomeScreen(
     /** Shows the first-launch card that suggests the guide. */
     showWelcome: Boolean,
     onDismissWelcome: () -> Unit,
+    /** Days since the last backup when the home screen should suggest one, else null. */
+    daysWithoutBackup: Int?,
+    onSnoozeBackup: () -> Unit,
     /** True while a backup is written or restored. */
     backupBusy: Boolean,
     onBackup: (Uri) -> Unit,
@@ -161,6 +164,16 @@ fun HomeScreen(
 
             if (showWelcome) {
                 item { WelcomeCard(onOpenGuide = onOpenGuide, onDismiss = onDismissWelcome) }
+            }
+
+            if (daysWithoutBackup != null && !backupBusy) {
+                item {
+                    BackupNudge(
+                        days = daysWithoutBackup,
+                        onBackup = { confirmBackup = true },
+                        onDismiss = onSnoozeBackup,
+                    )
+                }
             }
 
             recents.firstOrNull()?.let { last ->
@@ -326,6 +339,23 @@ fun HomeScreen(
             },
             dismissButton = { TextButton(onClick = { confirmBackup = false }) { Text(stringResource(R.string.cancel)) } },
         )
+    }
+}
+
+/** Suggests a backup when the cards have not been backed up for a while. */
+@Composable
+private fun BackupNudge(days: Int, onBackup: () -> Unit, onDismiss: () -> Unit) {
+    Surface(color = Cinema.Seat, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(start = 20.dp, top = 8.dp, end = 4.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f).padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(pluralStringResource(R.plurals.backup_nudge, days, days), style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(R.string.backup_nudge_text), style = MaterialTheme.typography.bodySmall, color = Cinema.Dim)
+                TextButton(onClick = onBackup) { Text(stringResource(R.string.back_up)) }
+            }
+            IconButton(onClick = onDismiss) {
+                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close), tint = Cinema.Dim)
+            }
+        }
     }
 }
 

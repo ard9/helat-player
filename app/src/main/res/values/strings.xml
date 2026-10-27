@@ -90,6 +90,11 @@
     <string name="clear_history_title">Clear the history?</string>
     <string name="clear_history_text">Removes all recently played videos and the places where they stopped. Your cards are kept.</string>
     <string name="remove_recent">Remove from recent</string>
+    <plurals name="backup_nudge">
+        <item quantity="one">No backup for %d day</item>
+        <item quantity="other">No backup for %d days</item>
+    </plurals>
+    <string name="backup_nudge_text">Cards are only on this phone. A backup keeps them safe if the phone is lost or the app is removed.</string>
     <string name="backup_title">Back up cards</string>
     <string name="backup_text">Saves all cards, with their audio and pictures, in one file you can keep elsewhere and restore later. The file also lists the links of the videos the cards came from, so keep it private.</string>
     <string name="backup_choose">Choose where to save</string>
@@ -312,7 +317,7 @@
     <string name="guide_roleplay_body">Say the lines of a scene in turn with the actor.\n1. Pause where the scene starts and choose Role-play in the player menu.\n2. Choose the scene: a number of lines from now, or a time range (From and To, as m:ss; Now fills in the current time; at most 10 minutes). Choose who starts, and tap a line to change who says it.\n3. Pause the film on my lines: the film waits until you finish speaking. Turn it off to keep the film going in real time.\n4. On your lines the film goes quiet and your voice is recorded. Done ends your turn; Skip leaves the line to the actor.\n5. At the end, Play my scene plays the scene without pauses, with your voice in place of the actor\'s. Compare line by line plays the actor\'s line and yours.\n\nRole-play needs subtitles and the microphone. Use headphones so the film is not recorded with your voice. Recordings stay on the phone and are deleted when you close role-play.</string>
 
     <string name="guide_backup_title">Backup and restore</string>
-    <string name="guide_backup_body">Cards are kept only on this phone; uninstalling the app deletes them.\n• Back up (home screen) saves all cards, with their audio and pictures, in one ZIP file wherever you choose, for example Google Drive.\n• Restore adds the cards from such a file. Cards that are already here are skipped.\n\nThe backup also lists the links of the videos the cards came from, so keep it private.</string>
+    <string name="guide_backup_body">Cards are kept only on this phone; uninstalling the app deletes them.\n• Back up (home screen) saves all cards, with their audio and pictures, in one ZIP file wherever you choose, for example Google Drive.\n• Restore adds the cards from such a file. Cards that are already here are skipped.\n• If there has been no backup for 14 days, the home screen reminds you. ✕ hides the reminder for a week.\n\nThe backup also lists the links of the videos the cards came from, so keep it private.</string>
 
     <string name="guide_settings_title">Settings</string>
     <string name="guide_settings_body">• Language (Settings on the home screen): the phone\'s language, English or Persian. Cards and subtitles are not translated.\n• Daily review reminder (Settings): a notification at the time you choose (20:00 at first) when cards are due. Android asks to allow notifications when you turn it on.\n• Clip margins (player menu): how much audio is kept before and after each saved line, from 0 to 1.5 seconds. Applies to the next lines you save.\n• Subtitle style (player menu): colour and size of subtitles, also used for the text on cards.</string>

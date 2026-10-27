@@ -107,6 +107,23 @@ class SettingsRepository(context: Context) {
         _reminder.value = value
     }
 
+    private val _lastBackupAt = MutableStateFlow(prefs.getLong(KEY_LAST_BACKUP, 0L).takeIf { it > 0 })
+    /** When the cards were last backed up (wall clock), or null if never. */
+    val lastBackupAt: StateFlow<Long?> = _lastBackupAt
+
+    private val _backupSnoozedUntil = MutableStateFlow(prefs.getLong(KEY_BACKUP_SNOOZE, 0L))
+    val backupSnoozedUntil: StateFlow<Long> = _backupSnoozedUntil
+
+    fun backupDone(at: Long) {
+        prefs.edit().putLong(KEY_LAST_BACKUP, at).apply()
+        _lastBackupAt.value = at
+    }
+
+    fun snoozeBackupReminder(until: Long) {
+        prefs.edit().putLong(KEY_BACKUP_SNOOZE, until).apply()
+        _backupSnoozedUntil.value = until
+    }
+
     private val _welcomeDismissed = MutableStateFlow(prefs.getBoolean(KEY_WELCOME, false))
     /** True once the first-launch welcome card on the home screen was closed. */
     val welcomeDismissed: StateFlow<Boolean> = _welcomeDismissed
@@ -173,6 +190,8 @@ class SettingsRepository(context: Context) {
         private const val KEY_WELCOME = "welcome_dismissed"
         private const val KEY_CLIP_SPEED = "clip_speed"
         private const val KEY_REMINDER_ON = "reminder_on"
+        private const val KEY_LAST_BACKUP = "last_backup_at"
+        private const val KEY_BACKUP_SNOOZE = "backup_snoozed_until"
         private const val KEY_REMINDER_TIME = "reminder_minutes"
         private val CLIP_SPEED_RANGE = 0.25f..2f
 

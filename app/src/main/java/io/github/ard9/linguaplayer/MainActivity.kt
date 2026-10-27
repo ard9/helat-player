@@ -1,5 +1,6 @@
 package io.github.ard9.linguaplayer
 
+import io.github.ard9.linguaplayer.data.BackupReminder
 import io.github.ard9.linguaplayer.reminder.ReviewReminder
 import android.content.Context
 import android.content.Intent
@@ -136,6 +137,8 @@ private fun AppNavigation(
     val rolePlayPrefs by app.settings.rolePlay.collectAsState()
     val clipSpeed by app.settings.clipSpeed.collectAsState()
     val reminder by app.settings.reminder.collectAsState()
+    val lastBackupAt by app.settings.lastBackupAt.collectAsState()
+    val backupSnoozedUntil by app.settings.backupSnoozedUntil.collectAsState()
 
     fun play(source: PlaybackSource) {
         app.recents.add(source)
@@ -174,6 +177,10 @@ private fun AppNavigation(
             onOpenSettings = { screen = Screen.Settings },
             onOpenGuide = { screen = Screen.Guide(fromSettings = false) },
             showWelcome = !welcomeDismissed,
+            daysWithoutBackup = remember(cards, lastBackupAt, backupSnoozedUntil) {
+                BackupReminder.daysWithoutBackup(System.currentTimeMillis(), cards, lastBackupAt, backupSnoozedUntil)
+            },
+            onSnoozeBackup = { app.settings.snoozeBackupReminder(System.currentTimeMillis() + BackupReminder.SNOOZE_MS) },
             onDismissWelcome = app.settings::dismissWelcome,
             backupBusy = backupBusy,
             onBackup = { uri ->
@@ -188,6 +195,7 @@ private fun AppNavigation(
                     }
                     backupBusy = false
                     result.onFailure { Log.w("Backup", "Export failed", it) }
+                    if (result.isSuccess) app.settings.backupDone(System.currentTimeMillis())
                     toast(
                         context,
                         if (result.isSuccess) {
