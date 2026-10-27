@@ -1,5 +1,8 @@
 package io.github.ard9.linguaplayer.ui
 
+import io.github.ard9.linguaplayer.player.LineSearch
+import io.github.ard9.linguaplayer.player.FoundLine
+import io.github.ard9.linguaplayer.player.BuiltInSearch
 import kotlinx.coroutines.Job
 import android.os.SystemClock
 import io.github.ard9.linguaplayer.player.LineLoop
@@ -186,13 +189,6 @@ private data class SaveDraft(val startMs: Long, val endMs: Long, val text: Strin
 
 private const val TAG = "PlayerScreen"
 
-/** Lines of all text tracks around the moment Save was tapped, kept to switch tracks. */
-private class BuiltInSearch(
-    val atMs: Long,
-    val lines: Map<Long, List<SubtitleLine>>,
-    val tracks: List<MkvSubtitleTrack>,
-)
-
 /** Where a line is and what it says, and how that was found. */
 private sealed interface LineResult {
     data class Subtitle(
@@ -226,33 +222,16 @@ private val SAVED_HAPTIC = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
 private fun Context.trackLabel(track: MkvSubtitleTrack): String =
     track.label(resources.configuration.locales[0], getString(R.string.track_unnamed, track.number))
 
-/** The line of track [index] at the saved moment, with its Persian translation as the meaning. */
-private fun lineFromTrack(context: Context, search: BuiltInSearch, index: Int, margins: ClipMargins): LineResult.Subtitle? {
-    val track = search.tracks[index]
-    val line = SubtitleLookup.nearMoment(search.lines[track.number].orEmpty(), search.atMs) ?: return null
-    val meaning = if (track.isPersian) {
-        null
-    } else {
-        search.tracks.firstOrNull { it.isPersian }
-            ?.let { persian -> SubtitleLookup.overlapping(search.lines[persian.number].orEmpty(), line) }
-    }
-    return LineResult.Subtitle(
-        startMs = max(0L, line.startMs - margins.beforeMs),
-        endMs = line.endMs + margins.afterMs,
-        text = line.text,
-        meaning = meaning ?: "",
-        note = context.getString(R.string.note_track, context.trackLabel(track)),
-        search = search,
-        trackIndex = index,
-    )
-}
-
-/** How much of the shorter of two ranges the other one covers (0..1). */
-private fun overlapShare(aStart: Long, aEnd: Long, bStart: Long, bEnd: Long): Double {
-    val overlap = minOf(aEnd, bEnd) - maxOf(aStart, bStart)
-    val shorter = minOf(aEnd - aStart, bEnd - bStart)
-    return if (overlap <= 0 || shorter <= 0) 0.0 else overlap.toDouble() / shorter
-}
+/** A line found in a built-in track, with a note naming the track for the editor. */
+private fun Context.subtitleResult(found: FoundLine, search: BuiltInSearch) = LineResult.Subtitle(
+    startMs = found.startMs,
+    endMs = found.endMs,
+    text = found.text,
+    meaning = found.meaning,
+    note = getString(R.string.note_track, trackLabel(search.tracks[found.trackIndex])),
+    search = search,
+    trackIndex = found.trackIndex,
+)
 
 /** Small, faint button that turns repeating the current line on and off. */
 @Composable
@@ -350,23 +329,6 @@ private fun QuickSaveButton(
             }
         }
     }
-}
-
-/**
- * Track indexes to try, best first. Cards are for learning the film's language, so a
- * non-Persian track is preferred for the text (the one on screen, then the default), and
- * the Persian one is used for the meaning.
- */
-private fun preferredOrder(tracks: List<MkvSubtitleTrack>, shown: MkvSubtitleTrack?): List<Int> {
-    val order = mutableListOf<Int>()
-    fun addFirst(predicate: (MkvSubtitleTrack) -> Boolean) {
-        tracks.indices.firstOrNull { it !in order && predicate(tracks[it]) }?.let(order::add)
-    }
-    addFirst { it == shown && !it.isPersian }
-    addFirst { it.isDefault && !it.isPersian }
-    addFirst { !it.isPersian }
-    tracks.indices.filter { it !in order }.forEach(order::add)
-    return order
 }
 
 @Composable
@@ -561,12 +523,12 @@ fun PlayerScreen(
     suspend fun findLine(now: Long, onStage: (String) -> Unit = {}): LineResult {
         val margins = currentMargins.value
         externalLines?.let { lines ->
-            SubtitleLookup.nearMoment(lines, now)?.let { line ->
+            LineSearch.fromFile(lines, now, margins)?.let { found ->
                 return LineResult.Subtitle(
-                    max(0L, line.startMs - margins.beforeMs),
-                    line.endMs + margins.afterMs,
-                    line.text,
-                    "",
+                    found.startMs,
+                    found.endMs,
+                    found.text,
+                    found.meaning,
                     context.getString(R.string.note_subtitle_file),
                     null,
                     0,
@@ -580,9 +542,7 @@ fun PlayerScreen(
             lines.onFailure { Log.w(TAG, "Could not read subtitle lines", it) }
             lines.getOrNull()?.let { found ->
                 val search = BuiltInSearch(now, found, textTracks)
-                for (i in preferredOrder(textTracks, shownTrack(index))) {
-                    lineFromTrack(context, search, i, margins)?.let { return it }
-                }
+                LineSearch.best(search, shownTrack(index), margins)?.let { return context.subtitleResult(it, search) }
             }
         }
         onStage(context.getString(R.string.finding_sentence))
@@ -630,8 +590,7 @@ fun PlayerScreen(
     suspend fun lineRangeAt(now: Long): Pair<Long, Long>? {
         val margins = currentMargins.value
         externalLines?.let { lines ->
-            return SubtitleLookup.nearMoment(lines, now)
-                ?.let { max(0L, it.startMs - margins.beforeMs) to it.endMs + margins.afterMs }
+            return LineSearch.fromFile(lines, now, margins)?.let { it.startMs to it.endMs }
         }
         val index = builtIn.await() ?: return null
         val textTracks = index.textTracks
@@ -641,11 +600,9 @@ fun PlayerScreen(
                 ?.let { BuiltInSearch(now, it, textTracks) }
                 ?.also { lineCache = it }
             ?: return null
-        for (i in preferredOrder(textTracks, shownTrack(index))) {
-            val line = SubtitleLookup.nearMoment(search.lines[textTracks[i].number].orEmpty(), now) ?: continue
-            return max(0L, line.startMs - margins.beforeMs) to line.endMs + margins.afterMs
-        }
-        return null
+        // The cached lines may have been read a little earlier; look for the line at [now].
+        return LineSearch.best(BuiltInSearch(now, search.lines, textTracks), shownTrack(index), margins)
+            ?.let { it.startMs to it.endMs }
     }
 
     /** Reads scene lines from the subtitle file if loaded, else from the best built-in text track. */
@@ -657,7 +614,7 @@ fun PlayerScreen(
         val index = builtIn.await() ?: return emptyList()
         val tracks = index.textTracks
         if (tracks.isEmpty()) return emptyList()
-        val track = tracks[preferredOrder(tracks, shownTrack(index)).first()]
+        val track = tracks[LineSearch.preferredOrder(tracks, shownTrack(index)).first()]
         return withContext(Dispatchers.IO) {
             runCatching { fromTrack(index, track.number) }
                 .onFailure { Log.w(TAG, "Could not read the scene", it) }
@@ -778,7 +735,7 @@ fun PlayerScreen(
                     }
                 }
                 // A second tap on the same line would only make a duplicate card.
-                if (savedRanges.any { (s, e) -> overlapShare(s, e, line.startMs, line.endMs) > 0.5 }) {
+                if (LineSearch.isDuplicate(savedRanges, line.startMs, line.endMs)) {
                     notice = QuickNotice(context.getString(R.string.quick_already))
                     return@launch
                 }
@@ -1156,7 +1113,7 @@ fun PlayerScreen(
             selectedTrack = selectedTrack,
             onSelectTrack = { index ->
                 val search = builtInSearch
-                val line = search?.let { lineFromTrack(context, it, index, currentMargins.value) }
+                val line = search?.let { s -> LineSearch.fromTrack(s, index, currentMargins.value)?.let { context.subtitleResult(it, s) } }
                 if (line != null) {
                     applyToDialog(line)
                 } else {

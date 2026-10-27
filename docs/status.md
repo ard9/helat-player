@@ -36,8 +36,6 @@ Last update: 2026-10-27, release `build-43`.
 ## Proposals waiting for a decision
 
 - Leave stream URLs (`sourceUri`) out of card backups, or offer it as a choice.
-- Move logic out of `ui/PlayerScreen.kt` (~1270 lines) into a testable class without changing
-  behaviour (see `docs/architecture.md`).
 - Online subtitle search (OpenSubtitles); the owner said "not now".
 - Read subtitle lines ahead while playing, so Loop/Repeat are instant on online films.
   Approved at first, then put back to the owner: over HTTP the reader downloads whole clusters

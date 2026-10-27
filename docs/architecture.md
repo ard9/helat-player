@@ -10,7 +10,7 @@ Kotlin, Jetpack Compose (Material 3), one activity. Package `io.github.ard9.ling
 | `LinguaApp.kt` | App singletons: repositories, `ClipService`, `SpeechFinder`, libVLC instances (one per subtitle style, reference counted). | `player.md` |
 | `MainActivity.kt` | "Open with" intents, app language (`attachBaseContext`), theme, state-based navigation (`Screen`), http warning dialog, backup/restore calls. | `i18n.md` |
 | `data/` | `Card` + `Leitner`, `CardRepository` (JSON + clip/image files), `CardBackup` (ZIP), `RecentRepository` (+ resume positions, `ResumePolicy`), `SettingsRepository` (language, subtitle style, clip margins, role-play choices, welcome card), `PlaybackSource`. | `cards-and-review.md` |
-| `player/` | `VlcMedia` opens content:// via file descriptor or http(s) URL for libVLC; `FrameGrabber` copies the video surface (PixelCopy) for card pictures; `LineLoop` decides when a loop jumps back. | `player.md` |
+| `player/` | `VlcMedia` opens content:// via file descriptor or http(s) URL for libVLC; `FrameGrabber` copies the video surface (PixelCopy) for card pictures; `LineLoop` decides when a loop jumps back; `LineSearch` picks the line for a moment (track order, margins, meaning, duplicates). | `player.md`, `saving-lines.md` |
 | `ui/PlayerScreen.kt` | The player: libVLC + `VLCVideoLayout`, controls, rotation, quick save, editor, line finding, repeat/loop, role-play hookup. Largest file. | `player.md`, `saving-lines.md` |
 | `ui/RolePlayUi.kt` | Role-play setup dialog and overlay. | `roleplay.md` |
 | `ui/` (others) | Home (welcome card), `BoxScreen`, `CardScreen`, `ReviewScreen`, `SettingsScreen`, `GuideScreen`, dialogs, `Theme` (cinema palette, fonts), `PlayerIcons`. | |
@@ -48,6 +48,7 @@ rules), because stream URLs may contain tokens:
 Logic that can run without Android goes in plain classes with unit tests (as `SentenceFinder`,
 `MkvSubtitles`, `WavTrim`, `RolePlayLogic` are). UI files call them.
 
-Known debt: `PlayerScreen.kt` still holds line finding, quick save, repeat and role-play
-wiring inside the composable, so that logic has no tests. Moving it out is a proposal in
-`status.md`.
+`PlayerScreen.kt` keeps the wiring (reading files, libVLC, state, UI); the decisions are in
+tested classes: `LineSearch` (which line), `LineLoop` (loop jumps), `SceneRange` and `Roles`
+(role-play), `SpeechFinder`/`SentenceFinder` (no subtitles). When adding player logic, put the
+decision in such a class first.

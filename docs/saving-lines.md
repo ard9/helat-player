@@ -17,7 +17,8 @@ Code: `ui/PlayerScreen.kt` (`findLine`, `quickSave`, `openEditor`), `ui/CardEdit
 1. **External subtitle file** loaded by the user (`SubtitleLookup.nearMoment`) → exact times
    and text.
 2. **Built-in MKV/WebM text track** → `MkvSubtitles.linesAround(now)` reads only ~12 s of the
-   file before the moment (HTTP Range for links). Track order (`preferredOrder`): the track
+   file before the moment (HTTP Range for links). `player/LineSearch` (pure, tested) picks the
+   line. Track order (`LineSearch.preferredOrder`): the track
    shown in VLC if it can be matched and is not Persian, then the default non-Persian, then
    any non-Persian, then the rest. A Persian track fills the meaning
    (`SubtitleLookup.overlapping`).
