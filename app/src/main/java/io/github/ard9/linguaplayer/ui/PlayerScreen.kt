@@ -7,11 +7,24 @@ import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Build
+import android.view.HapticFeedbackConstants
 import android.view.View
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
@@ -91,6 +104,8 @@ import io.github.ard9.linguaplayer.subtitle.SubtitleParser
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -150,6 +165,136 @@ private class BuiltInSearch(
     val tracks: List<MkvSubtitleTrack>,
 )
 
+/** Where a line is and what it says, and how that was found. */
+private sealed interface LineResult {
+    data class Subtitle(
+        val startMs: Long,
+        val endMs: Long,
+        val text: String,
+        val meaning: String,
+        val note: String,
+        /** Kept so the editor can switch to another subtitle track. */
+        val search: BuiltInSearch?,
+        val trackIndex: Int,
+    ) : LineResult
+
+    data class Speech(val startMs: Long, val endMs: Long, val note: String) : LineResult
+
+    data class None(val note: String) : LineResult
+}
+
+private data class QuickLine(val startMs: Long, val endMs: Long, val text: String, val meaning: String)
+
+/** A short message next to the quick save button; [undo] offers to remove the card just saved. */
+private class QuickNotice(val text: String, val undo: Card? = null)
+
+private val SAVED_HAPTIC = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+    HapticFeedbackConstants.CONFIRM
+} else {
+    HapticFeedbackConstants.KEYBOARD_TAP
+}
+
+/** The line of track [index] at the saved moment, with its Persian translation as the meaning. */
+private fun lineFromTrack(search: BuiltInSearch, index: Int): LineResult.Subtitle? {
+    val track = search.tracks[index]
+    val line = SubtitleLookup.nearMoment(search.lines[track.number].orEmpty(), search.atMs) ?: return null
+    val meaning = if (track.isPersian) {
+        null
+    } else {
+        search.tracks.firstOrNull { it.isPersian }
+            ?.let { persian -> SubtitleLookup.overlapping(search.lines[persian.number].orEmpty(), line) }
+    }
+    return LineResult.Subtitle(
+        startMs = max(0L, line.startMs - CLIP_PADDING_MS),
+        endMs = line.endMs + CLIP_PADDING_MS,
+        text = line.text,
+        meaning = meaning ?: "",
+        note = "Times and text from the subtitle track \"${track.label}\".",
+        search = search,
+        trackIndex = index,
+    )
+}
+
+/** How much of the shorter of two ranges the other one covers (0..1). */
+private fun overlapShare(aStart: Long, aEnd: Long, bStart: Long, bEnd: Long): Double {
+    val overlap = minOf(aEnd, bEnd) - maxOf(aStart, bStart)
+    val shorter = minOf(aEnd - aStart, bEnd - bStart)
+    return if (overlap <= 0 || shorter <= 0) 0.0 else overlap.toDouble() / shorter
+}
+
+/**
+ * Small, faint save button that stays on screen while watching. Tap saves the current line
+ * in the background; holding opens the editor.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun QuickSaveButton(
+    busy: Boolean,
+    notice: QuickNotice?,
+    onTap: () -> Unit,
+    onHold: () -> Unit,
+    onUndo: (Card) -> Unit,
+    onNoticeShown: (QuickNotice) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val haptics = LocalHapticFeedback.current
+    if (notice != null) {
+        LaunchedEffect(notice) {
+            delay(if (notice.undo != null) 3_500 else 2_500)
+            onNoticeShown(notice)
+        }
+    }
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
+        AnimatedVisibility(visible = notice != null, enter = fadeIn(), exit = fadeOut()) {
+            val shown = notice
+            if (shown != null) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .background(Cinema.Night.copy(alpha = 0.85f), RoundedCornerShape(50))
+                        .padding(start = 14.dp, end = if (shown.undo != null) 4.dp else 14.dp, top = 6.dp, bottom = 6.dp),
+                ) {
+                    Text(shown.text, color = Cinema.Screen, style = MaterialTheme.typography.bodySmall)
+                    shown.undo?.let { card ->
+                        TextButton(onClick = { onUndo(card) }) { Text("Undo") }
+                    }
+                }
+            }
+        }
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.35f))
+                .combinedClickable(
+                    onClickLabel = "Save this line",
+                    onLongClickLabel = "Save with options",
+                    onClick = onTap,
+                    onLongClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onHold()
+                    },
+                ),
+        ) {
+            Icon(
+                PlayerIcons.Bookmark,
+                contentDescription = "Save this line",
+                tint = Color.White.copy(alpha = if (busy) 0.9f else 0.6f),
+                modifier = Modifier.size(22.dp),
+            )
+            if (busy) {
+                CircularProgressIndicator(
+                    color = MaterialTheme.colorScheme.primary,
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(40.dp),
+                )
+            }
+        }
+    }
+}
+
 /**
  * Track indexes to try, best first. Cards are for learning the film's language, so a
  * non-Persian track is preferred for the text (the one on screen, then the default), and
@@ -200,6 +345,11 @@ fun PlayerScreen(
     var externalLines by remember { mutableStateOf<List<SubtitleLine>?>(null) }
     var externalName by remember { mutableStateOf<String?>(null) }
     var savingCount by remember { mutableIntStateOf(0) }
+    var quickBusy by remember { mutableIntStateOf(0) }
+    var notice by remember { mutableStateOf<QuickNotice?>(null) }
+    // Lines saved while this video is open, to skip a second tap on the same line.
+    val savedRanges = remember { mutableListOf<Pair<Long, Long>>() }
+    val view = LocalView.current
     var draft by remember { mutableStateOf<SaveDraft?>(null) }
     var draftImage by remember { mutableStateOf<Bitmap?>(null) }
     var videoLayout by remember { mutableStateOf<VLCVideoLayout?>(null) }
@@ -241,7 +391,15 @@ fun PlayerScreen(
         player.setTime(ms.coerceIn(0L, upper))
     }
 
-    fun saveClip(startMs: Long, endMs: Long, text: String, meaning: String, image: Bitmap?) {
+    /** Cuts the audio and adds the card; [onDone] gets the card, or null if it failed. */
+    fun saveClip(
+        startMs: Long,
+        endMs: Long,
+        text: String,
+        meaning: String,
+        image: Bitmap?,
+        onDone: (Card?) -> Unit,
+    ) {
         val id = Card.newId()
         val imageFile = image?.let { bitmap ->
             repository.newImageFile(id).takeIf { FrameGrabber.saveJpeg(bitmap, it) }
@@ -252,89 +410,29 @@ fun PlayerScreen(
             result
                 .onSuccess { file ->
                     val now = System.currentTimeMillis()
-                    repository.add(
-                        Card(
-                            id = id,
-                            text = text,
-                            meaning = meaning,
-                            sourceTitle = source.title,
-                            sourceUri = source.uri.toString(),
-                            startMs = startMs,
-                            endMs = endMs,
-                            audioFileName = file.name,
-                            imageFileName = imageFile?.name,
-                            box = 1,
-                            createdAt = now,
-                            nextReviewAt = now,
-                        )
+                    val card = Card(
+                        id = id,
+                        text = text,
+                        meaning = meaning,
+                        sourceTitle = source.title,
+                        sourceUri = source.uri.toString(),
+                        startMs = startMs,
+                        endMs = endMs,
+                        audioFileName = file.name,
+                        imageFileName = imageFile?.name,
+                        box = 1,
+                        createdAt = now,
+                        nextReviewAt = now,
                     )
-                    message("Saved to Box 1")
+                    repository.add(card)
+                    savedRanges.add(startMs to endMs)
+                    onDone(card)
                 }
                 .onFailure {
+                    Log.w(TAG, "Could not cut the audio", it)
                     imageFile?.delete()
-                    message("Could not cut the audio: ${it.message}", sticky = true)
+                    onDone(null)
                 }
-        }
-    }
-
-    fun openDraft(startMs: Long, endMs: Long, text: String, note: String? = null) {
-        player.pause()
-        draftId++
-        draft = SaveDraft(startMs, endMs, text)
-        autoFill = null
-        finding = null
-        timeNote = note
-        builtInSearch = null
-        selectedTrack = 0
-        draftImage = null
-        videoLayout?.let { layout -> FrameGrabber.grab(layout) { draftImage = it } }
-    }
-
-    /** Fills the dialog from the line of track [index] at the saved moment; false if it has none. */
-    fun useTrack(search: BuiltInSearch, index: Int): Boolean {
-        val track = search.tracks[index]
-        val line = SubtitleLookup.nearMoment(search.lines[track.number].orEmpty(), search.atMs) ?: return false
-        // The Persian track, when there is one, gives the meaning of a line in another language.
-        val meaning = if (track.isPersian) {
-            null
-        } else {
-            search.tracks.firstOrNull { it.isPersian }
-                ?.let { persian -> SubtitleLookup.overlapping(search.lines[persian.number].orEmpty(), line) }
-        }
-        autoFill = AutoFill(
-            version = ++fillVersion,
-            startMs = max(0L, line.startMs - CLIP_PADDING_MS),
-            endMs = line.endMs + CLIP_PADDING_MS,
-            text = line.text,
-            meaning = meaning ?: "",
-        )
-        selectedTrack = index
-        timeNote = "Times and text from the subtitle track \"${track.label}\"."
-        return true
-    }
-
-    /** No usable subtitle line: find the pauses around the sentence instead. */
-    fun searchSpeech(now: Long, id: Int) {
-        finding = "Finding where the sentence starts and ends…"
-        speechFinder.find(scope, source.uri, now) { result ->
-            if (id != draftId) return@find
-            finding = null
-            result
-                .onSuccess { outcome ->
-                    val found = outcome.found
-                    if (found == null) {
-                        timeNote = "No speech found near this moment (${outcome.details}). Set the times by hand."
-                    } else {
-                        autoFill = AutoFill(++fillVersion, found.startMs, found.endMs, null, null)
-                        timeNote = when {
-                            found.cutAtStart && found.cutAtEnd -> "Found speech, but it is longer than the part checked. Check both times."
-                            found.cutAtStart -> "The sentence may start earlier. Check the start time."
-                            found.cutAtEnd -> "The sentence may continue. Check the end time."
-                            else -> "Times found from the pauses around the sentence."
-                        }
-                    }
-                }
-                .onFailure { timeNote = "Could not check the audio: ${it.message}. Set the times by hand." }
         }
     }
 
@@ -345,41 +443,125 @@ fun PlayerScreen(
         return if (position >= 0 && listed.size == index.tracks.size) index.tracks[position] else null
     }
 
-    fun onSaveClicked() {
-        val now = player.time
-        val fileLine = externalLines?.let { SubtitleLookup.lineForSave(it, now) }
-        if (fileLine != null) {
-            openDraft(
-                max(0L, fileLine.startMs - CLIP_PADDING_MS),
-                fileLine.endMs + CLIP_PADDING_MS,
-                fileLine.text,
-                "Times and text from the subtitle file.",
-            )
-            return
+    /** Where the line around [now] starts and ends, and what it says, from the best source. */
+    suspend fun findLine(now: Long, onStage: (String) -> Unit = {}): LineResult {
+        externalLines?.let { lines ->
+            SubtitleLookup.nearMoment(lines, now)?.let { line ->
+                return LineResult.Subtitle(
+                    max(0L, line.startMs - CLIP_PADDING_MS),
+                    line.endMs + CLIP_PADDING_MS,
+                    line.text,
+                    "",
+                    "Times and text from the subtitle file.",
+                    null,
+                    0,
+                )
+            }
         }
-        openDraft(max(0L, now - 5_000L), now, "")
-        val id = draftId
-        finding = "Looking for this line in the subtitles…"
-        scope.launch {
-            val index = builtIn.await()
-            val textTracks = index?.textTracks.orEmpty()
-            if (index != null && textTracks.isNotEmpty()) {
-                val lines = withContext(Dispatchers.IO) { runCatching { index.linesAround(now) } }
-                if (id != draftId) return@launch
-                lines.onFailure { Log.w(TAG, "Could not read subtitle lines", it) }
-                lines.getOrNull()?.let { found ->
-                    val search = BuiltInSearch(now, found, textTracks)
-                    builtInSearch = search
-                    for (i in preferredOrder(textTracks, shownTrack(index))) {
-                        if (useTrack(search, i)) {
-                            finding = null
-                            return@launch
-                        }
-                    }
-                    builtInSearch = null
+        val index = builtIn.await()
+        val textTracks = index?.textTracks.orEmpty()
+        if (index != null && textTracks.isNotEmpty()) {
+            val lines = withContext(Dispatchers.IO) { runCatching { index.linesAround(now) } }
+            lines.onFailure { Log.w(TAG, "Could not read subtitle lines", it) }
+            lines.getOrNull()?.let { found ->
+                val search = BuiltInSearch(now, found, textTracks)
+                for (i in preferredOrder(textTracks, shownTrack(index))) {
+                    lineFromTrack(search, i)?.let { return it }
                 }
             }
-            if (id == draftId) searchSpeech(now, id)
+        }
+        onStage("Finding where the sentence starts and ends…")
+        val result = suspendCancellableCoroutine { continuation ->
+            speechFinder.find(scope, source.uri, now) { continuation.resume(it) }
+        }
+        val outcome = result.getOrElse {
+            return LineResult.None("Could not check the audio: ${it.message}.")
+        }
+        val found = outcome.found ?: return LineResult.None("No speech found near this moment (${outcome.details}).")
+        return LineResult.Speech(
+            found.startMs,
+            found.endMs,
+            when {
+                found.cutAtStart && found.cutAtEnd -> "Found speech, but it is longer than the part checked. Check both times."
+                found.cutAtStart -> "The sentence may start earlier. Check the start time."
+                found.cutAtEnd -> "The sentence may continue. Check the end time."
+                else -> "Times found from the pauses around the sentence."
+            },
+        )
+    }
+
+    fun applyToDialog(result: LineResult) {
+        when (result) {
+            is LineResult.Subtitle -> {
+                autoFill = AutoFill(++fillVersion, result.startMs, result.endMs, result.text, result.meaning)
+                builtInSearch = result.search
+                selectedTrack = result.trackIndex
+                timeNote = result.note
+            }
+            is LineResult.Speech -> {
+                autoFill = AutoFill(++fillVersion, result.startMs, result.endMs, null, null)
+                timeNote = result.note
+            }
+            is LineResult.None -> timeNote = result.note + " Set the times by hand."
+        }
+    }
+
+    /** Long press: pause and open the editor, filling it in as the line is found. */
+    fun openEditor() {
+        val now = player.time
+        player.pause()
+        draftId++
+        val id = draftId
+        draft = SaveDraft(max(0L, now - 5_000L), now, "")
+        autoFill = null
+        timeNote = null
+        builtInSearch = null
+        selectedTrack = 0
+        draftImage = null
+        videoLayout?.let { layout -> FrameGrabber.grab(layout) { draftImage = it } }
+        finding = "Looking for this line…"
+        scope.launch {
+            val result = findLine(now) { stage -> if (id == draftId) finding = stage }
+            if (id != draftId) return@launch
+            finding = null
+            applyToDialog(result)
+        }
+    }
+
+    /** Tap: save the line in the background while the film keeps playing. */
+    fun quickSave() {
+        val now = player.time
+        quickBusy++
+        scope.launch {
+            try {
+                val image = videoLayout?.let { layout ->
+                    suspendCancellableCoroutine { c -> FrameGrabber.grab(layout) { c.resume(it) } }
+                }
+                val line = when (val result = findLine(now)) {
+                    is LineResult.Subtitle -> QuickLine(result.startMs, result.endMs, result.text, result.meaning)
+                    is LineResult.Speech -> QuickLine(result.startMs, result.endMs, "", "")
+                    is LineResult.None -> {
+                        notice = QuickNotice("No line found. Hold the button to save by hand.")
+                        return@launch
+                    }
+                }
+                // A second tap on the same line would only make a duplicate card.
+                if (savedRanges.any { (s, e) -> overlapShare(s, e, line.startMs, line.endMs) > 0.5 }) {
+                    notice = QuickNotice("Already saved")
+                    return@launch
+                }
+                val card = suspendCancellableCoroutine { c ->
+                    saveClip(line.startMs, line.endMs, line.text, line.meaning, image) { c.resume(it) }
+                }
+                notice = if (card == null) {
+                    QuickNotice("Could not save this line")
+                } else {
+                    view.performHapticFeedback(SAVED_HAPTIC)
+                    QuickNotice("Saved", undo = card)
+                }
+            } finally {
+                quickBusy--
+            }
         }
     }
 
@@ -549,16 +731,6 @@ fun PlayerScreen(
                 )
             }
 
-            ExtendedFloatingActionButton(
-                onClick = ::onSaveClicked,
-                icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text(if (savingCount > 0) "Saving…" else "Save") },
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .windowInsetsPadding(WindowInsets.safeDrawing)
-                    .padding(end = 16.dp),
-            )
-
             Row(
                 horizontalArrangement = Arrangement.spacedBy(32.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -642,6 +814,22 @@ fun PlayerScreen(
             }
         }
 
+        QuickSaveButton(
+            busy = quickBusy > 0,
+            notice = notice,
+            onTap = ::quickSave,
+            onHold = ::openEditor,
+            onUndo = { card ->
+                repository.delete(card)
+                savedRanges.remove(card.startMs to card.endMs)
+                notice = QuickNotice("Removed")
+            },
+            onNoticeShown = { shown -> if (notice === shown) notice = null },
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(end = 12.dp),
+        )
 
         SnackbarHost(
             snackbar,
@@ -661,7 +849,10 @@ fun PlayerScreen(
             selectedTrack = selectedTrack,
             onSelectTrack = { index ->
                 val search = builtInSearch
-                if (search != null && !useTrack(search, index)) {
+                val line = search?.let { lineFromTrack(it, index) }
+                if (line != null) {
+                    applyToDialog(line)
+                } else {
                     selectedTrack = index
                     timeNote = "This track has no line at this moment."
                 }
@@ -686,7 +877,9 @@ fun PlayerScreen(
                 draftImage = null
                 previewEndMs = null
                 player.pause()
-                saveClip(s, e, text, meaning, image)
+                saveClip(s, e, text, meaning, image) { card ->
+                    message(if (card != null) "Saved to Box 1" else "Could not cut the audio", sticky = card == null)
+                }
             },
         )
     }

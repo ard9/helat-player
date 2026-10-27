@@ -26,4 +26,19 @@ object PlayerIcons {
         horizontalLineTo(14f)
         close()
     }.build()
+
+    val Bookmark: ImageVector = ImageVector.Builder(
+        name = "Bookmark",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).path(fill = SolidColor(Color.White)) {
+        moveTo(6f, 3f)
+        horizontalLineTo(18f)
+        verticalLineTo(21f)
+        lineTo(12f, 17f)
+        lineTo(6f, 21f)
+        close()
+    }.build()
 }
