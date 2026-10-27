@@ -66,7 +66,7 @@ Package `io.github.ard9.linguaplayer` (`app/src/main/java/...`):
 | --- | --- |
 | `LinguaApp.kt` | App singletons: repositories, `ClipService`, `SpeechFinder`, libVLC instances (one per subtitle style, reference counted). |
 | `MainActivity.kt` | "Open with" intents, theme, simple state-based navigation (`Screen`), http warning dialog. |
-| `data/` | `Card` + `Leitner` scheduling, `CardRepository` (JSON file + clip/image files), `RecentRepository`, `SettingsRepository` (subtitle style, clip margins). |
+| `data/` | `Card` + `Leitner` scheduling, `CardRepository` (JSON file + clip/image files), `CardBackup` (ZIP export/import, treats imports as untrusted), `RecentRepository` (+ resume positions, `ResumePolicy`), `SettingsRepository` (subtitle style, clip margins). |
 | `player/` | `VlcMedia` opens content:// via file descriptor or http(s) URL for libVLC; `FrameGrabber` copies the video surface (PixelCopy) for card pictures. |
 | `ui/PlayerScreen.kt` | The player: libVLC + `VLCVideoLayout`, controls, rotation/full screen, quick save button, save editor, line finding. The largest and most central file. |
 | `ui/` (others) | Home, cards list (`BoxScreen`), card detail, review, dialogs, theme ("cinema" palette, Atkinson Hyperlegible + Archivo fonts). |
@@ -122,6 +122,8 @@ because Android's is a stub). They cover the logic that can run without a device
 | `speech/SentenceFinderTest` | Sentence boundaries from speech probabilities (pauses, short gaps, long speech, noise). |
 | `clip/WavTest` | `WavTrim` (VLC start-time bug) and `WavReader` (downmix, resample, limits). |
 | `data/CardTest` | Leitner scheduling, card JSON round trip and loading cards from older versions, clock text. |
+| `data/CardBackupTest` | Backup round trip, skipping existing cards, and hostile backups (paths outside the folders, overwriting files, other ZIPs, damaged or newer data). |
+| `data/ResumePolicyTest` | Which playback positions are worth resuming. |
 
 Fixtures are in `app/src/test/resources/media/` (a few small files) and are recreated with
 `tools/make-test-media.sh` (needs ffmpeg). Their subtitle lines are listed in `MkvSubtitlesTest`.
@@ -141,13 +143,16 @@ App-private storage only, excluded from backup (`allowBackup=false`, data extrac
 - `files/cards.json` — list of `Card` JSON objects. New fields must be optional when reading
   (`optString`, null checks) so old cards still load. A corrupt file is renamed, never overwritten.
 - `files/clips/<id>.m4a|wav`, `files/images/<id>.jpg`.
-- SharedPreferences `settings` and `recents`.
+- SharedPreferences `settings` and `recents` (recent sources and resume positions).
+- Backups (user-chosen location): ZIP with `cards.json` (`{"format":1,"cards":[...]}`) first,
+  then `clips/` and `images/`. Bump `CardBackup.FORMAT` only for incompatible changes.
 
 ## Security notes
 
 - Only permission: `INTERNET`. No analytics, no own server.
 - `usesCleartextTraffic=true` so http streams play; the app warns before opening any http link.
-- Stream URLs (may contain tokens) are stored in recents and cards; hence no backup.
+- Stream URLs (may contain tokens) are stored in recents and cards; hence no Android backup.
+  The user's own card backup includes `sourceUri`; the app tells them to keep it private.
 - Untrusted input: media files and network data. Size limits exist everywhere they are read
   (subtitle file 5 MB, EBML element/block caps, HTTP read budget 64 MB, WAV handling).
   Keep such limits when adding parsers.

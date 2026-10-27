@@ -11,6 +11,11 @@ An Android video player for language learning.
   around the sentence. Everything can be checked with Preview and adjusted before saving.
 - **Cards**: each saved line keeps its audio, a frame of the video, the text and your meaning.
   Tap a card to open it; review them as flashcards in a 5-box Leitner system.
+- **Listening practice**: Repeat plays the current line again, Loop line repeats it until
+  turned off, and Speed slows playback down (0.5×–1.25×).
+- Videos continue where you left them.
+- **Backup**: Back up saves all cards in one ZIP file; Restore adds the cards from such a file.
+  Cards are otherwise kept only on the phone.
 
 Built with Kotlin, Jetpack Compose, libVLC (playback) and Media3 (audio clipping).
 
