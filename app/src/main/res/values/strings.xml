@@ -314,6 +314,9 @@
     <string name="lang_english" translatable="false">English</string>
     <string name="lang_persian" translatable="false">فارسی</string>
     <string name="settings_guide_text">How to use the app, step by step.</string>
+    <string name="about">About</string>
+    <string name="about_made_by">Made by %1$s</string>
+    <string name="about_github" translatable="false">GitHub</string>
     <string name="settings_other">Clip margins and subtitle style are in the player menu.</string>
 
     <string name="reminder">Daily review reminder</string>
@@ -349,7 +352,7 @@
     <string name="guide_backup_body">Cards are kept only on this phone; uninstalling the app deletes them.\n• Back up (home screen) saves all cards, with their audio and pictures, in one ZIP file wherever you choose, for example Google Drive.\n• Restore adds the cards from such a file. Cards that are already here are skipped.\n• If there has been no backup for 14 days, the home screen reminds you. ✕ hides the reminder for a week.\n\nThe backup also lists the links of the videos the cards came from, so keep it private.</string>
 
     <string name="guide_settings_title">Settings</string>
-    <string name="guide_settings_body">• Language (Settings on the home screen): the phone\'s language, English or Persian. Cards and subtitles are not translated.\n• Daily review reminder (Settings): a notification at the time you choose (20:00 at first) when cards are due. Android asks to allow notifications when you turn it on.\n• Clip margins (player menu): how much audio is kept before and after each saved line, from 0 to 1.5 seconds. Applies to the next lines you save.\n• Subtitle style (player menu): colour and size of subtitles, also used for the text on cards.</string>
+    <string name="guide_settings_body">• Language (Settings on the home screen): the phone\'s language, English or Persian. Cards and subtitles are not translated.\n• Daily review reminder (Settings): a notification at the time you choose (20:00 at first) when cards are due. Android asks to allow notifications when you turn it on.\n• Clip margins (player menu): how much audio is kept before and after each saved line, from 0 to 1.5 seconds. Applies to the next lines you save.\n• Subtitle style (player menu): colour and size of subtitles, also used for the text on cards.\n• About (Settings): the version, who made the app and a link to GitHub.</string>
 
     <string name="guide_tips_title">Tips</string>
     <string name="guide_tips_body">• Use headphones for role-play and when you listen closely.\n• Watch with subtitles in the language you are learning; a Persian track fills in the meaning.\n• Save fewer but useful lines, and review a little every day.\n• For online films, a direct link to an MKV file works best: its subtitle tracks are read from the link too. A slow connection makes saving slower.\n• For hard sentences, lower the speed and use the loop button.</string>

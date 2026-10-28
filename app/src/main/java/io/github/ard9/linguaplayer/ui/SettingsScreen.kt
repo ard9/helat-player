@@ -3,6 +3,8 @@ package io.github.ard9.linguaplayer.ui
 import io.github.ard9.linguaplayer.reminder.ReviewReminder
 import io.github.ard9.linguaplayer.data.ReminderPrefs
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
+import android.util.Log
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
@@ -51,7 +53,11 @@ import androidx.compose.ui.unit.dp
 import io.github.ard9.linguaplayer.R
 import io.github.ard9.linguaplayer.data.AppLanguage
 
-/** App settings: the language, and a way to the guide. */
+/** Who made the app; shown under About. */
+private const val DEVELOPER = "ard9"
+private const val DEVELOPER_URL = "https://github.com/ard9"
+
+/** App settings: the language, the reminder, a way to the guide, and About. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -131,6 +137,35 @@ fun SettingsScreen(
                 color = Cinema.Dim,
                 modifier = Modifier.padding(horizontal = 4.dp),
             )
+
+            AboutSection()
+        }
+    }
+}
+
+@Composable
+private fun AboutSection() {
+    val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
+    Surface(color = Cinema.Seat, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(stringResource(R.string.about), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.app_name) + " · " + stringResource(R.string.home_version, appVersion(context)),
+                style = MaterialTheme.typography.bodyMedium,
+                color = Cinema.Dim,
+            )
+            Text(stringResource(R.string.about_made_by, DEVELOPER), style = MaterialTheme.typography.bodyMedium)
+            TextButton(
+                onClick = {
+                    // A fixed https address; no browser on the phone is the only expected failure.
+                    try {
+                        uriHandler.openUri(DEVELOPER_URL)
+                    } catch (e: IllegalArgumentException) {
+                        Log.w("Settings", "No app can open $DEVELOPER_URL", e)
+                    }
+                },
+            ) { Text(stringResource(R.string.about_github)) }
         }
     }
 }

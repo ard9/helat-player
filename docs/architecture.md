@@ -13,7 +13,7 @@ Kotlin, Jetpack Compose (Material 3), one activity. Package `io.github.ard9.ling
 | `player/` | `VlcMedia` opens content:// via file descriptor or http(s) URL for libVLC; `FrameGrabber` copies the video surface (PixelCopy) for card pictures; `LineLoop` decides when a loop jumps back; `LineSearch` picks the line for a moment (track order, margins, meaning, duplicates). | `player.md`, `saving-lines.md` |
 | `ui/PlayerScreen.kt` | The player: libVLC + `VLCVideoLayout`, controls, rotation, quick save, editor, line finding, repeat/loop, role-play hookup. Largest file. | `player.md`, `saving-lines.md` |
 | `ui/RolePlayUi.kt` | Role-play setup dialog and overlay. | `roleplay.md` |
-| `ui/` (others) | Home (welcome card), `BoxScreen`, `CardScreen`, `ReviewScreen`, `SettingsScreen`, `GuideScreen`, dialogs, `Theme` (cinema palette, fonts), `PlayerIcons`. | |
+| `ui/` (others) | Home (welcome card), `BoxScreen`, `CardScreen`, `ReviewScreen`, `SettingsScreen` (language, reminder, guide, About with the developer link), `GuideScreen`, dialogs, `Theme` (cinema palette, fonts), `PlayerIcons`. | |
 | `subtitle/SubtitleParser.kt` | External SRT/VTT parsing; `SubtitleLookup` (line for a moment, overlapping translation, scenes). | `saving-lines.md` |
 | `subtitle/mkv/` | Built-in MKV/WebM subtitle tracks: `ByteSource`, `EbmlReader`, `MkvSubtitles` (lines around a moment, scenes, all lines), text cleanup. | `saving-lines.md` |
 | `subtitle/SubtitleSearch.kt`, `SubtitleIndexCache.kt` | Searching a film's lines; caching all lines of a film. | `player.md` |

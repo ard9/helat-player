@@ -423,7 +423,7 @@ private fun ContinueCard(source: PlaybackSource, resumeAtMs: Long?, onRemove: ()
 }
 
 /** The version shown on the home screen; its last number is the GitHub build number. */
-private fun appVersion(context: android.content.Context): String = try {
+internal fun appVersion(context: android.content.Context): String = try {
     context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "?"
 } catch (e: Exception) {
     "?"

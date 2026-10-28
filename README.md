@@ -2,6 +2,12 @@
 
 An Android video player for language learning.
 
+<p align="center"><img src="docs/media/helat-player-demo.gif" width="360" alt="Saving a line from a film and seeing it as a card"></p>
+
+**[Watch the full demo with sound (60 s)](docs/media/helat-player-demo.mp4)**: saving lines,
+cards, review, subtitle search and role-play. The film scene and the voices in the demo are
+made for it (voices generated with Kokoro TTS); in the app, role-play records your own voice.
+
 - Plays local files and direct links or streams in every format VLC supports (powered by libVLC).
 - Aspect ratio modes (best fit, fit screen, fill, 16:9, 4:3, original), full screen, audio and subtitle track selection.
 - Shows subtitles from an external file (SRT or VTT) or from a subtitle track inside the video,
@@ -28,6 +34,7 @@ An Android video player for language learning.
 - **English and Persian**: the app follows the phone's language, or choose one under Settings
   (gear icon on the home screen). Persian uses a right-to-left layout and the Vazirmatn font.
 - **Guide**: the "?" icon on the home screen opens a step-by-step guide to every feature.
+- **About** (Settings): the version, who made the app and a link to GitHub.
 - **Daily reminder** (Settings, off by default): a notification at the time you choose when
   cards are due.
 - **Backup**: Back up saves all cards in one ZIP file; Restore adds the cards from such a file.
@@ -94,3 +101,7 @@ Without these secrets the workflow builds a debug APK instead. Never commit the 
 
 Requires JDK 17 and the Android SDK. Open the project in Android Studio, or run
 `gradle assembleDebug`.
+
+## Author
+
+Made by [ard9](https://github.com/ard9).
