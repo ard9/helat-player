@@ -55,7 +55,10 @@ Main libraries: `org.videolan.android:libvlc-all` 3.7.x, Media3 1.5.1 (exoplayer
 transformer), ONNX Runtime Android 1.20.0, WorkManager 2.10.1 (review reminder), Compose BOM 2024.12.01, `material-icons-core`
 (not the extended set, to keep the APK small; extra icons are drawn in `ui/PlayerIcons.kt`).
 
-The APK is **arm64-v8a only** to limit size (~80 MB: libVLC, ONNX Runtime, Media3).
+The APK is **arm64-v8a only** to limit size. Native libraries (libVLC 46 MB, ONNX Runtime
+18 MB, libc++ 9 MB) are stored **compressed** (`useLegacyPackaging`): the APK went from 85 MB
+(build-63) to about 42 MB; Android unpacks them at install, so the app takes ~30 MB more on
+the phone (`decisions.md`).
 
 ## Commits
 

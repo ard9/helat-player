@@ -60,6 +60,14 @@ jump back to the line start was a new HTTP request whenever the buffer had fille
 buffer only delays that. The app now plays online films through `CachingProxy`, which keeps
 downloaded chunks on disk (200 MB), so jumps back are local.
 
+## 2026-10-28 Compressed native libraries; ONNX Runtime kept
+
+The owner downloads every build on the phone, so download size matters more than install
+size. Compressing the native libraries halves the APK (85 → ~42 MB) at the cost of ~30 MB
+more on the phone. Removing ONNX Runtime (~7 MB compressed) was considered and rejected: the
+Silero model also detects the end of the user's speech in role-play and pronunciation
+practice, and a loudness detector is much worse on film audio.
+
 ## 2026-10-27 Docs split by area
 
 `AGENTS.md` is a short entry point; details live in `docs/`, one file per area, each under

@@ -45,6 +45,14 @@ android {
         }
     }
 
+    // Native libraries (libVLC, ONNX Runtime: ~74 MB) are compressed in the APK, which halves
+    // the download; Android unpacks them at install (more space used on the phone).
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
