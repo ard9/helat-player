@@ -26,11 +26,11 @@ messages) in a check-run annotation titled **Build errors**; the HTML test repor
 as the `test-report` artifact.
 
 ```sh
-RUN=$(gh api repos/ard9/lingua-player/actions/runs --jq '.workflow_runs[0].id')
-gh api repos/ard9/lingua-player/actions/runs/$RUN --jq '.status, .conclusion'
-JOB=$(gh api repos/ard9/lingua-player/actions/runs/$RUN/jobs --jq '.jobs[0].id')
-gh api repos/ard9/lingua-player/check-runs/$JOB/annotations --jq '.[].message'
-gh api repos/ard9/lingua-player/releases --jq '.[0].html_url'
+RUN=$(gh api repos/ard9/helat-player/actions/runs --jq '.workflow_runs[0].id')
+gh api repos/ard9/helat-player/actions/runs/$RUN --jq '.status, .conclusion'
+JOB=$(gh api repos/ard9/helat-player/actions/runs/$RUN/jobs --jq '.jobs[0].id')
+gh api repos/ard9/helat-player/check-runs/$JOB/annotations --jq '.[].message'
+gh api repos/ard9/helat-player/releases --jq '.[0].html_url'
 ```
 
 Raw job logs may not be downloadable from agent sandboxes; use the annotation. In the agent
