@@ -1,5 +1,7 @@
 package io.github.ard9.linguaplayer.ui
 
+import kotlinx.coroutines.flow.first
+import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runInterruptible
 import io.github.ard9.linguaplayer.subtitle.mkv.NoSubtitleIndexException
@@ -150,6 +152,14 @@ import kotlin.math.max
 private const val SKIP_MS = 10_000L
 private const val REPEAT_FALLBACK_MS = 5_000L
 private const val CONTROLS_TIMEOUT_MS = 4_000L
+/** Wait after playback starts before reading the film's subtitle lines in the background. */
+private const val PRELOAD_DELAY_MS = 3_000L
+/**
+ * The loop jumps back this much before the end of its range: the player reports time in
+ * steps, and the jump itself takes a moment, so this shortens the pause between repeats. The
+ * range already includes the after-line clip margin.
+ */
+private const val LOOP_EARLY_MS = 150L
 /** A found line plays from a moment before it, so its first word is heard. */
 private const val SEARCH_LEAD_MS = 300L
 
@@ -445,6 +455,8 @@ fun PlayerScreen(
     var searchOpen by remember { mutableStateOf(false) }
     var resumeAfterSearch by remember { mutableStateOf(false) }
     var builtInSearchIndex by remember { mutableStateOf<SearchIndex?>(null) }
+    // Every line of the film's text tracks, once read: finding a line then needs no download.
+    var filmLines by remember { mutableStateOf<Map<Long, List<SubtitleLine>>?>(null) }
     var searchJob by remember { mutableStateOf<Job?>(null) }
     val indexCache = remember { SubtitleIndexCache(File(context.cacheDir, "subtitle-index")) }
 
@@ -550,7 +562,8 @@ fun PlayerScreen(
         val index = builtIn.await()
         val textTracks = index?.textTracks.orEmpty()
         if (index != null && textTracks.isNotEmpty()) {
-            val lines = withContext(Dispatchers.IO) { runCatching { index.linesAround(now) } }
+            val lines = filmLines?.let { Result.success(it) }
+                ?: withContext(Dispatchers.IO) { runCatching { index.linesAround(now) } }
             lines.onFailure { Log.w(TAG, "Could not read subtitle lines", it) }
             lines.getOrNull()?.let { found ->
                 val search = BuiltInSearch(now, found, textTracks)
@@ -607,7 +620,8 @@ fun PlayerScreen(
         val index = builtIn.await() ?: return null
         val textTracks = index.textTracks
         if (textTracks.isEmpty()) return null
-        val search = lineCache?.takeIf { now <= it.atMs + 500 && now >= it.atMs - 6_000 }
+        val search = filmLines?.let { BuiltInSearch(now, it, textTracks) }
+            ?: lineCache?.takeIf { now <= it.atMs + 500 && now >= it.atMs - 6_000 }
             ?: withContext(Dispatchers.IO) { runCatching { index.linesAround(now) }.getOrNull() }
                 ?.let { BuiltInSearch(now, it, textTracks) }
                 ?.also { lineCache = it }
@@ -627,6 +641,7 @@ fun PlayerScreen(
         val tracks = index.textTracks
         if (tracks.isEmpty()) return emptyList()
         val track = tracks[LineSearch.preferredOrder(tracks, shownTrack(index)).first()]
+        filmLines?.let { return fromFile(it[track.number].orEmpty()) }
         return withContext(Dispatchers.IO) {
             runCatching { fromTrack(index, track.number) }
                 .onFailure { Log.w(TAG, "Could not read the scene", it) }
@@ -645,21 +660,31 @@ fun PlayerScreen(
         }
 
     /** Reads every line of the film's text tracks (from the cache if read before). */
-    fun loadSearchIndex() {
+    /**
+     * Reads every line of the film's text tracks (from the cache if read before), for search and
+     * for finding lines without a download. In the [background] (when the film opens) it only
+     * reads when that is cheap: from the cache, or through the subtitle cues; it fails quietly.
+     */
+    fun loadSearchIndex(background: Boolean = false) {
         searchJob?.cancel()
         builtInSearchIndex = SearchIndex.Loading(0f)
         searchJob = scope.launch {
             val index = builtIn.await()
             val tracks = index?.textTracks.orEmpty()
             if (index == null || tracks.isEmpty()) {
-                builtInSearchIndex = SearchIndex.NoSubtitles
+                builtInSearchIndex = if (background) null else SearchIndex.NoSubtitles
                 return@launch
             }
             val ordered = LineSearch.preferredOrder(tracks, shownTrack(index)).map { tracks[it] }
             val key = source.uri.toString()
             val online = source.uri.scheme == "http" || source.uri.scheme == "https"
+            val cached = withContext(Dispatchers.IO) { runCatching { indexCache.load(key, tracks.map { it.number }.toSet()) }.getOrNull() }
+            if (background && cached == null && !index.canReadAllLinesCheaply) {
+                builtInSearchIndex = null // Reading would mean the whole file; wait for a search.
+                return@launch
+            }
             builtInSearchIndex = try {
-                val lines = withContext(Dispatchers.IO) { indexCache.load(key, tracks.map { it.number }.toSet()) }
+                val lines = cached
                     ?: runInterruptible(Dispatchers.IO) {
                         index.allLines(
                             onProgress = { p -> builtInSearchIndex = SearchIndex.Loading(p) },
@@ -667,6 +692,7 @@ fun PlayerScreen(
                             parallelism = if (online) 6 else 1,
                         )
                     }.also { read -> withContext(Dispatchers.IO) { runCatching { indexCache.save(key, read) } } }
+                filmLines = lines
                 SearchIndex.Ready(ordered.map { context.trackLabel(it) to lines[it.number].orEmpty() })
             } catch (e: CancellationException) {
                 throw e
@@ -674,7 +700,7 @@ fun PlayerScreen(
                 SearchIndex.NeedsFile
             } catch (e: Exception) {
                 Log.w(TAG, "Could not read all subtitle lines", e)
-                SearchIndex.Failed(e)
+                if (background) null else SearchIndex.Failed(e)
             }
         }
     }
@@ -861,12 +887,20 @@ fun PlayerScreen(
         }
     }
 
+    // Once the film plays, read its subtitle lines in the background when that is cheap, so
+    // Loop, Repeat, saving and role-play find lines without waiting for a download.
+    LaunchedEffect(Unit) {
+        snapshotFlow { isPlaying }.first { it }
+        delay(PRELOAD_DELAY_MS) // Let playback settle before using the network for this.
+        if (builtInSearchIndex == null) loadSearchIndex(background = true)
+    }
+
     // While looping, jump back to the start at the end of the line (see LineLoop).
     LaunchedEffect(loopRange) {
         val (start, end) = loopRange ?: return@LaunchedEffect
         player.setTime(start)
         if (!player.isPlaying) player.play()
-        val loop = LineLoop(start, end, jumpedAtMs = SystemClock.elapsedRealtime())
+        val loop = LineLoop(start, end, jumpedAtMs = SystemClock.elapsedRealtime(), earlyMs = LOOP_EARLY_MS)
         while (true) {
             if (loop.next(player.time, SystemClock.elapsedRealtime())) player.setTime(start)
             delay(50)

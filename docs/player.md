@@ -44,6 +44,8 @@ the orientation and system bars. The activity handles orientation changes itself
   the file and can take seconds on online links), then repeats that range. `player/LineLoop`
   (pure, tested) decides when to jump back: after each jump it waits until libVLC reports a
   time near the start again (or 4 s pass), because libVLC may still report the old position.
+  It jumps back 150 ms before the end of its range (`LOOP_EARLY_MS`; the range already has the
+  after-line margin) to shorten the pause between repeats, never before the middle of the line.
   The loop never ends by itself; it ends on the button, a user seek (seek bar, ±10s, Repeat),
   opening the editor or role-play, or the end of the film, each with "Loop off" (role-play
   silently).
@@ -57,10 +59,16 @@ the orientation and system bars. The activity handles orientation changes itself
 case, ي/ك, half space; every word must appear) and `TextMatch.highlights` marks the words. A
 result plays the film from 0.3 s before the line; closing resumes playback if it was playing.
 
-The film's lines come from `MkvSubtitles.allLines` (`saving-lines.md`), read once per film in
-the background with progress, and kept in `cacheDir/subtitle-index/` (`SubtitleIndexCache`,
+The film's lines come from `MkvSubtitles.allLines` (`saving-lines.md`), read once per film with
+progress, and kept in `cacheDir/subtitle-index/` (`SubtitleIndexCache`,
 file named by a SHA-256 of the address, last 20 films). An online file without subtitle cues
 shows "load a subtitle file" instead of downloading the film.
+
+**Preloading:** 3 s after playback starts, the lines are read in the background when that is
+cheap (from the cache, or through the subtitle cues: `canReadAllLinesCheaply`); a local file
+without cues is only scanned when the user searches. Once read (`filmLines`), Loop, Repeat,
+saving and role-play look lines up in memory instead of downloading ~12 s of the film. Before
+that, or without cues, they read around the moment as before.
 
 ## History
 

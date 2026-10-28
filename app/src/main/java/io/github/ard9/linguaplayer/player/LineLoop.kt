@@ -16,7 +16,11 @@ class LineLoop(
     /** Clock time of the first jump to [startMs] (the caller makes it when the loop starts). */
     jumpedAtMs: Long,
     private val settleTimeoutMs: Long = 4_000,
+    /** Jump this long before [endMs] (never before the middle of the range). */
+    earlyMs: Long = 0,
 ) {
+    private val jumpAtMs = maxOf(endMs - earlyMs, (startMs + endMs) / 2)
+
     private var jumpedAt: Long? = jumpedAtMs
 
     /** Returns true when the player should jump to [startMs] now. */
@@ -26,7 +30,7 @@ class LineLoop(
             if (!arrived && clockMs - since < settleTimeoutMs) return false
             jumpedAt = null
         }
-        if (timeMs < endMs) return false
+        if (timeMs < jumpAtMs) return false
         jumpedAt = clockMs
         return true
     }

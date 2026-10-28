@@ -193,6 +193,13 @@ class MkvSubtitlesTest {
     }
 
     @Test
+    fun `knows when all lines can be read cheaply`() {
+        assertTrue(open("subs.mkv").canReadAllLinesCheaply)
+        assertTrue(open("cues-front.mkv").canReadAllLinesCheaply)
+        assertFalse(open("no-cues.mkv").canReadAllLinesCheaply)
+    }
+
+    @Test
     fun `without cues an online file is not downloaded`() {
         val mkv = MkvSubtitles.open(RecordingSource(fixture("no-cues.mkv")))!!
         assertThrows(NoSubtitleIndexException::class.java) { mkv.allLines() }

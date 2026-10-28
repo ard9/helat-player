@@ -43,6 +43,22 @@ class LineLoopTest {
     }
 
     @Test
+    fun `can jump a little before the end`() {
+        val loop = LineLoop(startMs = 10_000, endMs = 13_000, jumpedAtMs = 0, earlyMs = 150)
+        assertFalse(loop.next(10_000, 100))
+        assertFalse(loop.next(12_800, 3_000))
+        assertTrue(loop.next(12_860, 3_050))
+    }
+
+    @Test
+    fun `jumping early never cuts a short line in half`() {
+        val loop = LineLoop(startMs = 10_000, endMs = 10_200, jumpedAtMs = 0, earlyMs = 150)
+        assertFalse(loop.next(10_000, 100))
+        assertFalse(loop.next(10_090, 200))
+        assertTrue(loop.next(10_100, 300))
+    }
+
+    @Test
     fun `never ends by itself when playback is elsewhere`() {
         val loop = loop()
         assertFalse(loop.next(10_000, 100))

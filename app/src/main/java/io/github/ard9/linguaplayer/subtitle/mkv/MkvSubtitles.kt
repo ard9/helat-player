@@ -208,10 +208,9 @@ class MkvSubtitles private constructor(
     ): Map<Long, List<SubtitleLine>> {
         val wanted = textTracks.associateBy { it.number }
         if (wanted.isEmpty()) return emptyMap()
-        val refs = cueEntries.filter { it.track != null && it.track in wanted && it.relativePosition != null }
-        val indexed = wanted.keys.all { track -> refs.any { it.track == track } }
+        val refs = subtitleCues(wanted.keys)
         val raw = when {
-            indexed -> linesFromCues(refs, wanted, onProgress, parallelism, blockWindow)
+            canReadAllLinesCheaply -> linesFromCues(refs, wanted, onProgress, parallelism, blockWindow)
             !source.isRemote -> {
                 val lines = wanted.keys.associateWith { mutableListOf<RawLine>() }
                 val from = firstCluster ?: clusterBefore(0) ?: return emptyMap()
@@ -225,6 +224,19 @@ class MkvSubtitles private constructor(
         onProgress(1f)
         return raw.mapValues { (_, lines) -> finish(lines.take(MAX_LINES_PER_TRACK)) }
     }
+
+    /**
+     * True when the cues point at every text track's blocks, so [allLines] reads only those
+     * small blocks (and works online).
+     */
+    val canReadAllLinesCheaply: Boolean by lazy {
+        val tracks = textTracks.map { it.number }.toSet()
+        val refs = subtitleCues(tracks)
+        tracks.isNotEmpty() && tracks.all { track -> refs.any { it.track == track } }
+    }
+
+    private fun subtitleCues(tracks: Set<Long>): List<CueEntry> =
+        cueEntries.filter { it.track != null && it.track in tracks && it.relativePosition != null }
 
     /** Reads the blocks the cues point at, cluster by cluster; nearby blocks share one read. */
     private fun linesFromCues(
