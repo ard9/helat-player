@@ -1,13 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Status bar icon: the launcher shapes (play triangle above two subtitle lines), in white. -->
+<!-- Status bar icon: the launcher shapes (rising sun with a play button), in white. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="56"
-    android:viewportHeight="56">
-    <group android:translateX="-26" android:translateY="-28">
-        <path android:fillColor="#FFFFFFFF" android:pathData="M46,30 L68,44 L46,58 Z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M34,66 h40 v5 h-40 z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M42,76 h24 v5 h-24 z" />
+    android:viewportWidth="58"
+    android:viewportHeight="58">
+    <group android:translateX="-25" android:translateY="-23">
+        <!-- Half sun on the horizon, with a play triangle cut out (even-odd). -->
+        <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd"
+            android:pathData="M34,66 A20,20 0 0 1 74,66 Z M50,51 L61,58.5 L50,66 Z" />
+        <!-- Horizon. -->
+        <path android:fillColor="#FFFFFFFF"
+            android:pathData="M28.5,70 h51 a2.5,2.5 0 0 1 0,5 h-51 a2.5,2.5 0 0 1 0,-5 z" />
+        <!-- Rays. -->
+        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="3.6" android:strokeLineCap="round"
+            android:pathData="M54.00,30.80 L54.00,35.20 M38.24,32.44 L41.36,35.56 M69.76,32.44 L66.64,35.56 M27.16,46.06 L30.44,46.94 M80.84,46.06 L77.56,46.94" />
     </group>
 </vector>

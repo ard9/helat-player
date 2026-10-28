@@ -60,6 +60,17 @@ jump back to the line start was a new HTTP request whenever the buffer had fille
 buffer only delays that. The app now plays online films through `CachingProxy`, which keeps
 downloaded chunks on disk (200 MB), so jumps back are local.
 
+## 2026-10-28 Name: Helat Player
+
+"Lingua Player" was already the name of another Android app for learning languages from films
+(a VLC fork on Google Play, Cafebazaar and Myket), with the same audience. The owner wants one
+Kurdish brand for all products ("Helat AI", "Helat Player", ...): Helat (Sorani "hełat", the sun
+rising). Checked: no software product named Helat (one inactive events app in Indonesia);
+Berbang (sunset in Sorani), Hevi, Kani, Zana, Pasho and Roj were rejected for meaning or
+existing products. The icon is the rising sun with a play button cut into it (one colour, so it
+also works as the themed icon). `applicationId` and the Kotlin package stay
+`io.github.ard9.linguaplayer`, so updates install over the old app and cards are kept.
+
 ## 2026-10-28 Compressed native libraries; ONNX Runtime kept
 
 The owner downloads every build on the phone, so download size matters more than install

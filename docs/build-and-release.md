@@ -14,7 +14,7 @@ annotated tags):
    is published.
 2. **Build**: a signed `release` APK if the signing secrets exist, otherwise a `debug` APK.
 3. **Release**: every successful run publishes the GitHub Release `build-<run number>` with
-   `LinguaPlayer.apk`. The owner installs from the release page on the phone.
+   `HelatPlayer.apk`. The owner installs from the release page on the phone.
 
 Version: `versionCode` is the run number and `versionName` is `0.1.<run number>`
 (`GITHUB_RUN_NUMBER`, see `app/build.gradle.kts`). The home screen shows the version.

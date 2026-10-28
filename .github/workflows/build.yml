@@ -55,10 +55,10 @@ jobs:
           set -o pipefail
           if [ "$SIGNED" = "true" ]; then
             gradle --no-daemon assembleRelease 2>&1 | tee build.log
-            cp app/build/outputs/apk/release/app-release.apk LinguaPlayer.apk
+            cp app/build/outputs/apk/release/app-release.apk HelatPlayer.apk
           else
             gradle --no-daemon assembleDebug 2>&1 | tee build.log
-            cp app/build/outputs/apk/debug/app-debug.apk LinguaPlayer.apk
+            cp app/build/outputs/apk/debug/app-debug.apk HelatPlayer.apk
           fi
 
       - name: Summarize build errors
@@ -84,13 +84,13 @@ jobs:
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: LinguaPlayer
-          path: LinguaPlayer.apk
+          name: HelatPlayer
+          path: HelatPlayer.apk
 
       - name: Publish release
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: build-${{ github.run_number }}
           name: Build ${{ github.run_number }}
-          files: LinguaPlayer.apk
+          files: HelatPlayer.apk
           prerelease: ${{ steps.signing.outputs.signed != 'true' }}

@@ -1,4 +1,4 @@
-# Lingua Player
+# Helat Player
 
 An Android video player for language learning.
 
@@ -38,7 +38,7 @@ Built with Kotlin, Jetpack Compose, libVLC (playback) and Media3 (audio clipping
 ## Install
 
 Every push to `main` builds an APK with GitHub Actions and publishes it on the
-[Releases](../../releases) page. Download `LinguaPlayer.apk` on your phone and open it
+[Releases](../../releases) page. Download `HelatPlayer.apk` on your phone and open it
 (you may need to allow "Install unknown apps" for your browser or file manager).
 
 ## How to use

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Entry point for coding agents (and people) working on Lingua Player. Read this file fully,
+Entry point for coding agents (and people) working on Helat Player. Read this file fully,
 then read the docs for the area you are going to change. User documentation is in `README.md`.
 
 ## What the app is

@@ -2,7 +2,7 @@
 
 Current state of the project. Update at the end of every task.
 
-Last update: 2026-10-28, release `build-66`.
+Last update: 2026-10-28, release `build-67`.
 
 ## Features
 
@@ -35,7 +35,8 @@ Last update: 2026-10-28, release `build-66`.
 | Search subtitles in the player, play from a found line | build-57 | Yes ("fast and good", online) |
 | Online films through a local caching proxy (jumps back read from the phone) | build-63 | **No**. build-61 failed on the phone ("VLC could not play"); fixed binding to 127.0.0.1, with automatic fallback to the direct link and a diagnostics message |
 | Smaller APK: native libraries compressed (85 → 42 MB) | build-65 | **No** (install and start the app) |
-| R8 shrinking of the release APK (no obfuscation) | build-66 | **No**: check playback, saving with and without subtitles, role-play, practice, reminder |
+| R8 shrinking of the release APK (no obfuscation) | build-66 | Partly: home, online player, subtitle search, cards, review, role-play setup and guide open fine (owner's screenshots). Not seen: saving without subtitles, role-play recording, practice, reminder |
+| Name Helat Player, new icon (rising sun with play), APK `HelatPlayer.apk` | build-67 | **No** |
 | Lines preloaded in the background; Loop/Repeat/save find lines without a download; loop jumps 150 ms early | build-59 | **No** (owner: start of Loop was slow, pauses between repeats a little) |
 
 "No" means only tests and CI passed; the behaviour on a device is unknown.
@@ -57,13 +58,13 @@ Actions pinned by SHA on `ubuntu-24.04` since build-45; no deprecation warnings 
 
 - Leave stream URLs (`sourceUri`) out of card backups, or offer it as a choice.
 - Online subtitle search (OpenSubtitles); the owner said "not now".
-- New name, logo and animated splash (paused 2026-10-27 until the owner has tested build-54).
-  The owner rejected three icon concepts and wants a name first: a Kurdish (Kurmanji) word in
-  Latin letters, logo drawn from the name. Shortlist offered: Hevok (sentence, preferred),
-  Bibêje (say it!), Ziman, Deng, Dengbêj, Dîmen (meaning not yet confirmed). "Cuecard" is taken.
-  Keep `applicationId` unchanged when renaming, or the update will not install over the old app.
-  Design review findings to address then: text-only player controls, home emphasis on today's
-  review, default dialogs, plain empty states, 44 dp buttons on the video, no screen transitions.
+- Animated splash and the design review findings: text-only player controls, home emphasis on
+  today's review, default dialogs, plain empty states, 44 dp buttons on the video, no screen
+  transitions. Name and icon are done (Helat Player, `decisions.md`).
+- LinkedIn demo video from the owner's screenshots: replace the copyrighted series frames,
+  file name and server address; English line with Persian meaning on the cards.
+- Rename the GitHub repository (owner's action) and check Cafebazaar, Myket and domains for
+  "Helat" (owner).
 - YouTube links (2026-10-27): the owner said "not now". Options were NewPipe Extractor
   (GPLv3, breaks when YouTube changes, against YouTube's terms) or yt-dlp (~30 MB). Meanwhile
   a downloaded file plus an SRT works with every feature.

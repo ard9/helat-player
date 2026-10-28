@@ -334,7 +334,7 @@ fun HomeScreen(
             confirmButton = {
                 TextButton(onClick = {
                     confirmBackup = false
-                    backupTarget.launch("lingua-cards-${LocalDate.now()}.zip")
+                    backupTarget.launch("helat-cards-${LocalDate.now()}.zip")
                 }) { Text(stringResource(R.string.backup_choose)) }
             },
             dismissButton = { TextButton(onClick = { confirmBackup = false }) { Text(stringResource(R.string.cancel)) } },

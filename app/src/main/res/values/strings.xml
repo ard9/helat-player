@@ -4,7 +4,7 @@
     string here must also be there (checked by StringsTranslationTest).
 -->
 <resources>
-    <string name="app_name" translatable="false">Lingua Player</string>
+    <string name="app_name" translatable="false">Helat Player</string>
 
     <!-- Common -->
     <string name="cancel">Cancel</string>
@@ -58,7 +58,7 @@
     <string name="restore_failed">Could not restore: %s</string>
 
     <!-- Error explanations (ErrorText.describe) -->
-    <string name="err_not_backup">this is not a Lingua Player backup</string>
+    <string name="err_not_backup">this is not a Helat Player backup</string>
     <string name="err_backup_damaged">the backup is damaged</string>
     <string name="err_backup_newer">the backup is from a newer version of the app; update the app first</string>
     <string name="err_backup_too_large">a file in the backup is too large</string>
@@ -117,7 +117,7 @@
     <string name="source_link">Link</string>
     <string name="settings">Settings</string>
     <string name="guide">Guide</string>
-    <string name="welcome_title">Welcome to Lingua Player</string>
+    <string name="welcome_title">Welcome to Helat Player</string>
     <string name="welcome_text">New here? The guide explains in a few minutes how to watch, save lines and review them.</string>
     <string name="welcome_open">Open the guide</string>
 
@@ -325,7 +325,7 @@
     <string name="reminder_title">Time to review</string>
 
     <!-- Guide -->
-    <string name="guide_intro">Lingua Player is a video player for learning a language from films. While you watch, save the lines you want to learn: each one becomes a card with its audio, a picture from the film, the text and your meaning. Then review the cards a little every day until you know them.</string>
+    <string name="guide_intro">Helat Player is a video player for learning a language from films. While you watch, save the lines you want to learn: each one becomes a card with its audio, a picture from the film, the text and your meaning. Then review the cards a little every day until you know them.</string>
 
     <string name="guide_start_title">Getting started</string>
     <string name="guide_start_body">• Open file: choose a video or audio file on your phone. You can also open a video from another app with \"Open with\".\n• Paste link: play a direct link or stream URL (http:// or https://). The app warns you before it opens an unencrypted http:// link.\n• Videos continue where you left them. The last one is at the top of the home screen; older ones are under Recently played. The ✕ removes one; Clear history removes all of them (your cards are kept).</string>

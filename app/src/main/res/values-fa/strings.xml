@@ -55,7 +55,7 @@
     <string name="restore_failed">بازیابی انجام نشد: %s</string>
 
     <!-- Error explanations (ErrorText.describe) -->
-    <string name="err_not_backup">این فایل پشتیبان Lingua Player نیست</string>
+    <string name="err_not_backup">این فایل پشتیبان Helat Player نیست</string>
     <string name="err_backup_damaged">فایل پشتیبان خراب است</string>
     <string name="err_backup_newer">این پشتیبان با نسخه‌ی جدیدتر برنامه ساخته شده؛ اول برنامه را به‌روز کنید</string>
     <string name="err_backup_too_large">یکی از فایل‌های پشتیبان بیش از حد بزرگ است</string>
@@ -114,7 +114,7 @@
     <string name="source_link">لینک</string>
     <string name="settings">تنظیمات</string>
     <string name="guide">راهنما</string>
-    <string name="welcome_title">به Lingua Player خوش آمدید</string>
+    <string name="welcome_title">به Helat Player خوش آمدید</string>
     <string name="welcome_text">تازه آمده‌اید؟ راهنما در چند دقیقه توضیح می‌دهد چطور فیلم ببینید، جمله‌ها را ذخیره کنید و مرورشان کنید.</string>
     <string name="welcome_open">باز کردن راهنما</string>
 
@@ -318,7 +318,7 @@
     <string name="reminder_title">وقت مرور است</string>
 
     <!-- Guide -->
-    <string name="guide_intro">Lingua Player پخش‌کننده‌ی ویدیو برای یادگیری زبان با فیلم است. هنگام تماشا، جمله‌هایی را که می‌خواهید یاد بگیرید ذخیره کنید: هر کدام کارتی می‌شود با صدا، تصویری از فیلم، متن و معنی‌ای که خودتان می‌نویسید. بعد هر روز کمی کارت‌ها را مرور کنید تا یادشان بگیرید.</string>
+    <string name="guide_intro">Helat Player پخش‌کننده‌ی ویدیو برای یادگیری زبان با فیلم است. هنگام تماشا، جمله‌هایی را که می‌خواهید یاد بگیرید ذخیره کنید: هر کدام کارتی می‌شود با صدا، تصویری از فیلم، متن و معنی‌ای که خودتان می‌نویسید. بعد هر روز کمی کارت‌ها را مرور کنید تا یادشان بگیرید.</string>
 
     <string name="guide_start_title">شروع کار</string>
     <string name="guide_start_body">• باز کردن فایل: یک فایل ویدیو یا صوتی روی گوشی انتخاب کنید. از برنامه‌های دیگر هم می‌توانید با «باز کردن با» ویدیو را در این برنامه باز کنید.\n• وارد کردن لینک: یک لینک مستقیم یا آدرس استریم (http://‎ یا https://‎) را پخش کنید. برنامه پیش از باز کردن لینک رمزنگاری‌نشده‌ی http://‎ هشدار می‌دهد.\n• ویدیوها از همان جایی که رها کرده‌اید ادامه پیدا می‌کنند. آخرین ویدیو بالای صفحه‌ی اصلی است و قبلی‌ها زیر «اخیراً پخش‌شده». ✕ یکی را حذف می‌کند و «پاک کردن تاریخچه» همه را (کارت‌هایتان می‌مانند).</string>

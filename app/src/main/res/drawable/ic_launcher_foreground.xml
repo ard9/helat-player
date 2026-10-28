@@ -1,17 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Play triangle above two subtitle lines. -->
+<!-- Helat Player: the sun rising (Helat) with a play button cut into it. One colour with a real
+     hole, so it also works as the monochrome (themed) icon. Scaled to stay in the safe zone. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:fillColor="#FFD84D"
-        android:pathData="M46,30 L68,44 L46,58 Z" />
-    <path
-        android:fillColor="#FFD84D"
-        android:pathData="M34,66 h40 v5 h-40 z" />
-    <path
-        android:fillColor="#FFD84D"
-        android:pathData="M42,76 h24 v5 h-24 z" />
+    <group android:pivotX="54" android:pivotY="52" android:scaleX="0.9" android:scaleY="0.9" android:translateY="2">
+        <!-- Half sun on the horizon, with a play triangle cut out (even-odd). -->
+        <path android:fillColor="#FFD84D" android:fillType="evenOdd"
+            android:pathData="M34,66 A20,20 0 0 1 74,66 Z M50,51 L61,58.5 L50,66 Z" />
+        <!-- Horizon. -->
+        <path android:fillColor="#FFD84D"
+            android:pathData="M28.5,70 h51 a2.5,2.5 0 0 1 0,5 h-51 a2.5,2.5 0 0 1 0,-5 z" />
+        <!-- Rays. -->
+        <path android:strokeColor="#FFD84D" android:strokeWidth="3.6" android:strokeLineCap="round"
+            android:pathData="M54.00,30.80 L54.00,35.20 M38.24,32.44 L41.36,35.56 M69.76,32.44 L66.64,35.56 M27.16,46.06 L30.44,46.94 M80.84,46.06 L77.56,46.94" />
+    </group>
 </vector>
