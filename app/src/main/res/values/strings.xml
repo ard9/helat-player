@@ -314,6 +314,8 @@
     <string name="lang_english" translatable="false">English</string>
     <string name="lang_persian" translatable="false">فارسی</string>
     <string name="settings_guide_text">How to use the app, step by step.</string>
+    <string name="subtitle_file_entry">%1$s (file)</string>
+    <string name="subtitle_file_unnamed">Subtitle file</string>
     <string name="about">About</string>
     <string name="about_made_by">Made by %1$s</string>
     <string name="about_github" translatable="false">GitHub</string>
@@ -334,7 +336,7 @@
     <string name="guide_start_body">• Open file: choose a video or audio file on your phone. You can also open a video from another app with \"Open with\".\n• Paste link: play a direct link or stream URL (http:// or https://). The app warns you before it opens an unencrypted http:// link.\n• Videos continue where you left them. The last one is at the top of the home screen; older ones are under Recently played. The ✕ removes one; Clear history removes all of them (your cards are kept).</string>
 
     <string name="guide_subs_title">Subtitles</string>
-    <string name="guide_subs_body">• Most MKV and WebM films have subtitle tracks inside. Choose one with Subtitles in the player menu.\n• Load subtitle file: use an .srt or .vtt file from your phone instead.\n• Subtitle style: choose the colour and size. Built-in tracks use the new style the next time you open a video.\n• Saved lines take their text and exact times from the subtitles, so a film with subtitles gives the best cards. If the film also has a Persian track, it fills in the meaning.</string>
+    <string name="guide_subs_body">• Most MKV and WebM films have subtitle tracks inside. Choose one with Subtitles in the player menu.\n• Load subtitle file: use an .srt or .vtt file from your phone instead. It then appears at the top of the Subtitles list; choosing another track or turning subtitles off puts it away (load it again to bring it back).\n• Subtitle style: choose the colour and size. Built-in tracks use the new style the next time you open a video.\n• Saved lines take their text and exact times from the subtitles, so a film with subtitles gives the best cards. If the film also has a Persian track, it fills in the meaning.</string>
 
     <string name="guide_player_title">Player controls</string>
     <string name="guide_player_body">Tap the video to show or hide the controls. They stay while your finger is on the screen and hide 4 seconds after you let go.\n• −10s and +10s jump back or forward; the bar below shows where you are.\n• Repeat plays the current line again.\n• The small loop button at the side repeats the current line until you tap it again, seek, or reach the end. It lights up at once; on online films finding the line can take a moment.\n• Search subtitles: type a word or part of a line to list every line that has it; tap one to play the film from there. The first search of a film reads all its subtitles (online, only if the file indexes them; otherwise load an SRT file).\n• Speed: 1×, 0.75×, 0.5× or 1.25×. Slower speech is easier to follow.\n• Aspect changes how the picture fits the screen; Audio chooses the sound track.\n• The player turns with the phone, and landscape is full screen. Full screen and Portrait lock one direction; Auto-rotate unlocks it.</string>

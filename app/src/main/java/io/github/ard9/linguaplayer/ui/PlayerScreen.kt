@@ -175,6 +175,9 @@ private val SCALES = listOf(
 
 private enum class TrackKind { Audio, Subtitle }
 
+/** Id of the loaded subtitle file in the subtitle list (libVLC ids are -1 or more). */
+private const val FILE_TRACK_ID = Int.MIN_VALUE
+
 private val RATES = listOf(1f to "1×", 0.75f to "0.75×", 0.5f to "0.5×", 1.25f to "1.25×")
 
 /** Starts playback once, after both the media is set and the video view is attached. */
@@ -391,6 +394,11 @@ fun PlayerScreen(
     // Read when a line is found, so a change applies to the next save without reopening.
     val currentMargins = rememberUpdatedState(clipMargins)
     var scaleIndex by remember { mutableIntStateOf(0) }
+    // Video outputs libVLC has open. A scale set before there is one ends up wrong (black
+    // picture), so the chosen scale is applied when the video output appears.
+    var voutCount by remember { mutableIntStateOf(0) }
+    // Set when the video views were detached because the app went to the background.
+    var viewsDetachedForStop by remember { mutableStateOf(false) }
     var seekFraction by remember { mutableStateOf<Float?>(null) }
     var externalLines by remember { mutableStateOf<List<SubtitleLine>?>(null) }
     var externalName by remember { mutableStateOf<String?>(null) }
@@ -842,6 +850,11 @@ fun PlayerScreen(
         player.setEventListener(MediaPlayer.EventListener { event ->
             when (event.type) {
                 MediaPlayer.Event.TimeChanged -> timeMs = event.timeChanged
+                MediaPlayer.Event.Vout -> {
+                    voutCount = event.voutCount
+                    // A new video helper (first start, or after the background) starts at best fit.
+                    if (voutCount > 0 && scaleIndex != 0) player.setVideoScale(SCALES[scaleIndex].first)
+                }
                 MediaPlayer.Event.LengthChanged -> lengthMs = event.lengthChanged
                 MediaPlayer.Event.Playing -> {
                     isPlaying = true
@@ -932,14 +945,31 @@ fun PlayerScreen(
         }
     }
 
-    // Pause when the app goes to the background.
+    // Pause when the app goes to the background (also while the subtitle file picker is open).
+    // libVLC turns the video off when its surface is destroyed and does not turn it back on,
+    // which left a black picture with sound; so the views are detached here and attached again
+    // on return, as the VLC app does.
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_STOP) {
-                session?.stop()
-                player.pause()
-                if (resumePending == null) savePosition(player.time, player.length)
+            when (event) {
+                Lifecycle.Event.ON_STOP -> {
+                    session?.stop()
+                    player.pause()
+                    if (resumePending == null) savePosition(player.time, player.length)
+                    if (videoLayout?.isAttachedToWindow == true) {
+                        player.detachViews()
+                        viewsDetachedForStop = true
+                    }
+                }
+                Lifecycle.Event.ON_START -> {
+                    val layout = videoLayout
+                    if (viewsDetachedForStop && layout != null && layout.isAttachedToWindow) {
+                        viewsDetachedForStop = false
+                        player.attachViews(layout, null, true, false)
+                    }
+                }
+                else -> Unit
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -1031,6 +1061,7 @@ fun PlayerScreen(
                     // left the video black while the audio played.
                     addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
                         override fun onViewAttachedToWindow(v: View) {
+                            viewsDetachedForStop = false
                             player.attachViews(this@apply, null, true, false)
                             startGate.viewReady()
                         }
@@ -1145,7 +1176,8 @@ fun PlayerScreen(
                     val scale = SCALES[scaleIndex]
                     ControlButton(stringResource(R.string.aspect, scale.second?.let { stringResource(it) } ?: scale.third)) {
                         scaleIndex = (scaleIndex + 1) % SCALES.size
-                        player.setVideoScale(SCALES[scaleIndex].first)
+                        // Before the picture appears, only remember it (see voutCount).
+                        if (voutCount > 0) player.setVideoScale(SCALES[scaleIndex].first)
                         touch()
                     }
                     ControlButton(stringResource(R.string.audio)) { trackDialog = TrackKind.Audio; touch() }
@@ -1350,21 +1382,31 @@ fun PlayerScreen(
     }
 
     trackDialog?.let { kind ->
+        val vlcTracks = (if (kind == TrackKind.Audio) player.audioTracks else player.spuTracks)
+            ?.map { it.id to it.name }
+            .orEmpty()
+        // A loaded subtitle file is shown by the app, not libVLC, so it is listed here too.
+        val fileEntry = if (kind == TrackKind.Subtitle && externalLines != null) {
+            FILE_TRACK_ID to stringResource(R.string.subtitle_file_entry, externalName ?: stringResource(R.string.subtitle_file_unnamed))
+        } else {
+            null
+        }
         TrackDialog(
             title = stringResource(if (kind == TrackKind.Audio) R.string.audio_track else R.string.subtitle_track),
-            tracks = (if (kind == TrackKind.Audio) player.audioTracks else player.spuTracks)
-                ?.map { it.id to it.name }
-                .orEmpty(),
-            selectedId = if (kind == TrackKind.Audio) player.audioTrack else player.spuTrack,
+            tracks = listOfNotNull(fileEntry) + vlcTracks,
+            selectedId = when {
+                fileEntry != null -> FILE_TRACK_ID
+                kind == TrackKind.Audio -> player.audioTrack
+                else -> player.spuTrack
+            },
             onSelect = { id ->
                 if (kind == TrackKind.Audio) {
                     player.setAudioTrack(id)
-                } else {
+                } else if (id != FILE_TRACK_ID) {
+                    // Another track, or off: the file's text is no longer shown or used.
                     player.setSpuTrack(id)
-                    if (id != -1) {
-                        externalLines = null
-                        externalName = null
-                    }
+                    externalLines = null
+                    externalName = null
                 }
                 trackDialog = null
             },

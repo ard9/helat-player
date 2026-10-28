@@ -12,6 +12,13 @@ Code: `ui/PlayerScreen.kt`, `player/VlcMedia.kt`, `player/FrameGrabber.kt`, `Lin
 - **`StartGate`**: playback starts only once the media is set *and* the `VLCVideoLayout` is
   attached to the window; otherwise the video was sometimes black while audio played.
 - Errors: `EncounteredError` shows a sticky message; opening errors too.
+- **Background**: on `ON_STOP` (also while the subtitle file picker is open) the player pauses
+  and the video views are detached; on `ON_START` they are attached again. libVLC's `AWindow`
+  turns the video track off when its surface is destroyed and never turns it back on, which left
+  a black picture with sound after loading a subtitle file. The VLC app does the same.
+- **Aspect** (`SCALES`): a scale set before libVLC has a video output gave a black picture, so
+  the choice is applied on `MediaPlayer.Event.Vout` (count > 0); before that the button only
+  remembers it. A re-attached view starts at best fit, so the choice is applied again there.
 - **Online films go through a caching proxy** (`stream/`): `openVlcMedia` starts a
   `CachingProxy` (HTTP server on 127.0.0.1, random secret path) and gives libVLC its address.
   The proxy fetches the film with `HttpUpstream` (Range requests, redirects) and keeps every
@@ -37,6 +44,8 @@ the player is showing.
 - Top bar: back, title. Centre: Repeat, −10s, play/pause, +10s. Bottom: seek bar and a
   scrolling row: Aspect, Audio, Subtitles, Load subtitle file, Subtitle style, Speed,
   Role-play, Clip margins, Full screen/Portrait, Auto-rotate.
+- Subtitles lists a loaded subtitle file first ("name (file)", `FILE_TRACK_ID`), because the
+  app draws it, not libVLC. Choosing another track or Off removes the file.
 - The seek bar and the centre row stay left to right in Persian.
 - On the right side of the video (left in Persian): the faint **loop** button above the faint
   **save** button (`LoopButton`, `QuickSaveButton`). They stay visible while watching.
