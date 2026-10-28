@@ -15,7 +15,9 @@ Kotlin, Jetpack Compose (Material 3), one activity. Package `io.github.ard9.ling
 | `ui/RolePlayUi.kt` | Role-play setup dialog and overlay. | `roleplay.md` |
 | `ui/` (others) | Home (welcome card), `BoxScreen`, `CardScreen`, `ReviewScreen`, `SettingsScreen`, `GuideScreen`, dialogs, `Theme` (cinema palette, fonts), `PlayerIcons`. | |
 | `subtitle/SubtitleParser.kt` | External SRT/VTT parsing; `SubtitleLookup` (line for a moment, overlapping translation, scenes). | `saving-lines.md` |
-| `subtitle/mkv/` | Built-in MKV/WebM subtitle tracks: `ByteSource`, `EbmlReader`, `MkvSubtitles`, text cleanup. | `saving-lines.md` |
+| `subtitle/mkv/` | Built-in MKV/WebM subtitle tracks: `ByteSource`, `EbmlReader`, `MkvSubtitles` (lines around a moment, scenes, all lines), text cleanup. | `saving-lines.md` |
+| `subtitle/SubtitleSearch.kt`, `SubtitleIndexCache.kt` | Searching a film's lines; caching all lines of a film. | `player.md` |
+| `text/TextMatch.kt` | Loose text matching and highlights, shared by card and subtitle search. | `player.md` |
 | `clip/` | Audio cutting: `ClipService` → `TransformerClipper` (Media3, m4a), fallback `VlcClipper` + `WavTrim`. | `saving-lines.md` |
 | `speech/` | No-subtitle fallback: `SpeechFinder`, `SileroVad`, `SentenceFinder`, `WavReader`. | `saving-lines.md` |
 | `roleplay/` | `RolePlayLogic` (pure), `VoiceRecorder`, `RolePlaySession`. | `roleplay.md` |

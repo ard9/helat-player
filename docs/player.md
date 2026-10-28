@@ -49,6 +49,19 @@ the orientation and system bars. The activity handles orientation changes itself
   silently).
 - **Speed**: 1×, 0.75×, 0.5×, 1.25× (`RATES`).
 
+## Subtitle search
+
+"Search subtitles" (player menu) pauses the film and opens `SubtitleSearchDialog`
+(`ui/SubtitleSearchUi.kt`). Every text track is searched (or the loaded subtitle file instead);
+`SubtitleSearch` (pure, tested) uses the same loose matching as card search (`text/TextMatch`:
+case, ي/ك, half space; every word must appear) and `TextMatch.highlights` marks the words. A
+result plays the film from 0.3 s before the line; closing resumes playback if it was playing.
+
+The film's lines come from `MkvSubtitles.allLines` (`saving-lines.md`), read once per film in
+the background with progress, and kept in `cacheDir/subtitle-index/` (`SubtitleIndexCache`,
+file named by a SHA-256 of the address, last 20 films). An online file without subtitle cues
+shows "load a subtitle file" instead of downloading the film.
+
 ## History
 
 Home lists recent videos (`RecentRepository`, max 10). ✕ removes one, Clear history (with a

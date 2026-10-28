@@ -1,5 +1,9 @@
 package io.github.ard9.linguaplayer.ui
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.runInterruptible
+import io.github.ard9.linguaplayer.subtitle.mkv.NoSubtitleIndexException
+import io.github.ard9.linguaplayer.subtitle.SubtitleIndexCache
 import io.github.ard9.linguaplayer.player.LineSearch
 import io.github.ard9.linguaplayer.player.FoundLine
 import io.github.ard9.linguaplayer.player.BuiltInSearch
@@ -146,6 +150,8 @@ import kotlin.math.max
 private const val SKIP_MS = 10_000L
 private const val REPEAT_FALLBACK_MS = 5_000L
 private const val CONTROLS_TIMEOUT_MS = 4_000L
+/** A found line plays from a moment before it, so its first word is heard. */
+private const val SEARCH_LEAD_MS = 300L
 
 /** Scale types with their names: a string resource, or null for a ratio shown as is. */
 private val SCALES = listOf(
@@ -435,6 +441,12 @@ fun PlayerScreen(
     var selectedTrack by remember { mutableIntStateOf(0) }
     var previewEndMs by remember { mutableStateOf<Long?>(null) }
     var trackDialog by remember { mutableStateOf<TrackKind?>(null) }
+    // Subtitle search: the dialog, and the whole film's built-in lines once read.
+    var searchOpen by remember { mutableStateOf(false) }
+    var resumeAfterSearch by remember { mutableStateOf(false) }
+    var builtInSearchIndex by remember { mutableStateOf<SearchIndex?>(null) }
+    var searchJob by remember { mutableStateOf<Job?>(null) }
+    val indexCache = remember { SubtitleIndexCache(File(context.cacheDir, "subtitle-index")) }
 
     fun message(text: String, sticky: Boolean = false) {
         scope.launch {
@@ -631,6 +643,49 @@ fun PlayerScreen(
         readScene({ SubtitleLookup.between(it, range.fromMs, range.toMs).take(RolePlayPrefs.MAX_LINES) }) { index, track ->
             index.linesBetween(range.fromMs, range.toMs, track, RolePlayPrefs.MAX_LINES)
         }
+
+    /** Reads every line of the film's text tracks (from the cache if read before). */
+    fun loadSearchIndex() {
+        searchJob?.cancel()
+        builtInSearchIndex = SearchIndex.Loading(0f)
+        searchJob = scope.launch {
+            val index = builtIn.await()
+            val tracks = index?.textTracks.orEmpty()
+            if (index == null || tracks.isEmpty()) {
+                builtInSearchIndex = SearchIndex.NoSubtitles
+                return@launch
+            }
+            val ordered = LineSearch.preferredOrder(tracks, shownTrack(index)).map { tracks[it] }
+            val key = source.uri.toString()
+            val online = source.uri.scheme == "http" || source.uri.scheme == "https"
+            builtInSearchIndex = try {
+                val lines = withContext(Dispatchers.IO) { indexCache.load(key, tracks.map { it.number }.toSet()) }
+                    ?: runInterruptible(Dispatchers.IO) {
+                        index.allLines(
+                            onProgress = { p -> builtInSearchIndex = SearchIndex.Loading(p) },
+                            // Online, each line is a small request; a few at once is much faster.
+                            parallelism = if (online) 6 else 1,
+                        )
+                    }.also { read -> withContext(Dispatchers.IO) { runCatching { indexCache.save(key, read) } } }
+                SearchIndex.Ready(ordered.map { context.trackLabel(it) to lines[it.number].orEmpty() })
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: NoSubtitleIndexException) {
+                SearchIndex.NeedsFile
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not read all subtitle lines", e)
+                SearchIndex.Failed(e)
+            }
+        }
+    }
+
+    fun openSearch() {
+        resumeAfterSearch = player.isPlaying
+        player.pause()
+        searchOpen = true
+        val current = builtInSearchIndex
+        if (externalLines == null && (current == null || current is SearchIndex.Failed)) loadSearchIndex()
+    }
 
     fun openRolePlay() {
         player.pause()
@@ -851,7 +906,7 @@ fun PlayerScreen(
     }
 
     // A dialog opened from the controls keeps them on screen too.
-    val dialogOpen = styleDialog || marginsDialog || trackDialog != null || draft != null || rolePlaySetup
+    val dialogOpen = styleDialog || marginsDialog || trackDialog != null || draft != null || rolePlaySetup || searchOpen
     LaunchedEffect(controlsVisible, isPlaying, interaction, fingerDown, dialogOpen) {
         if (controlsVisible && isPlaying && !fingerDown && !dialogOpen) {
             delay(CONTROLS_TIMEOUT_MS)
@@ -1036,6 +1091,7 @@ fun PlayerScreen(
                     }
                     ControlButton(stringResource(R.string.audio)) { trackDialog = TrackKind.Audio; touch() }
                     ControlButton(stringResource(R.string.subtitles)) { trackDialog = TrackKind.Subtitle; touch() }
+                    ControlButton(stringResource(R.string.search_subtitles)) { openSearch(); touch() }
                     ControlButton(stringResource(R.string.load_sub_file)) { subtitlePicker.launch(arrayOf("*/*")); touch() }
                     ControlButton(stringResource(R.string.subtitle_style)) { styleDialog = true; touch() }
                     ControlButton(stringResource(R.string.speed, RATES[rateIndex].second)) {
@@ -1202,6 +1258,27 @@ fun PlayerScreen(
             current = clipMargins,
             onChange = onClipMarginsChange,
             onDismiss = { marginsDialog = false },
+        )
+    }
+
+    if (searchOpen) {
+        // A loaded subtitle file is searched instead of the film's own tracks.
+        val fileIndex = remember(externalLines, externalName) {
+            externalLines?.let { SearchIndex.Ready(listOf(externalName.orEmpty() to it)) }
+        }
+        SubtitleSearchDialog(
+            index = fileIndex ?: builtInSearchIndex ?: SearchIndex.Loading(0f),
+            onPick = { line ->
+                searchOpen = false
+                seekTo(max(0L, line.startMs - SEARCH_LEAD_MS))
+                player.play()
+            },
+            onLoadFile = { subtitlePicker.launch(arrayOf("*/*")) },
+            onRetry = ::loadSearchIndex,
+            onDismiss = {
+                searchOpen = false
+                if (resumeAfterSearch) player.play()
+            },
         )
     }
 

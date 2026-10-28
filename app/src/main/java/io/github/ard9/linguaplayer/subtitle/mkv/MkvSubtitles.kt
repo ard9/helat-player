@@ -5,6 +5,10 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.util.Locale
+import java.util.concurrent.Callable
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.zip.Inflater
 
 internal const val ID_EBML = 0x1A45DFA3L
@@ -34,6 +38,10 @@ internal const val ID_CUE_POINT = 0xBBL
 internal const val ID_CUE_TIME = 0xB3L
 internal const val ID_CUE_TRACK_POSITIONS = 0xB7L
 internal const val ID_CUE_CLUSTER_POSITION = 0xF1L
+internal const val ID_CUE_TRACK = 0xF7L
+internal const val ID_CUE_RELATIVE_POSITION = 0xF0L
+internal const val ID_CUE_DURATION = 0xB2L
+internal const val ID_DURATION = 0x4489L
 internal const val ID_CLUSTER = 0x1F43B675L
 internal const val ID_CLUSTER_TIMESTAMP = 0xE7L
 internal const val ID_SIMPLE_BLOCK = 0xA3L
@@ -105,6 +113,18 @@ data class MkvSubtitleTrack(
     }
 }
 
+/** The file has no index of its subtitle lines, and reading them all would mean downloading it. */
+class NoSubtitleIndexException : IOException("The subtitle lines are not indexed in this file")
+
+/** One CueTrackPositions entry: where a block of [track] at [ticks] is stored. */
+internal class CueEntry(
+    val ticks: Long,
+    val track: Long?,
+    val clusterPosition: Long,
+    val relativePosition: Long?,
+    val durationTicks: Long?,
+)
+
 /**
  * Reads the built-in subtitle tracks of a Matroska/WebM file. Only the headers and the part
  * of the file around a given moment are read, so it also works for online files.
@@ -118,7 +138,11 @@ class MkvSubtitles private constructor(
     val tracks: List<MkvSubtitleTrack>,
     /** (time in ms, cluster position relative to the segment), sorted by time. */
     private val cues: List<Pair<Long, Long>>,
+    /** Every cue entry, with track and position inside the cluster when the file has them. */
+    private val cueEntries: List<CueEntry>,
     private val firstCluster: Long?,
+    /** Length of the film in ms, if the file says. */
+    private val durationMs: Long?,
 ) {
     val textTracks: List<MkvSubtitleTrack> get() = tracks.filter { it.isText }
 
@@ -169,6 +193,156 @@ class MkvSubtitles private constructor(
         return finish(lines).filter { it.startMs in fromMs until stopMs }.take(max)
     }
 
+    /**
+     * Every line of every text track, keyed by track number, for searching the whole film.
+     *
+     * When the file's index (Cues) points at each subtitle block, as mkvmerge and ffmpeg write
+     * it, only those small blocks are read: a few requests per line, not the film. Otherwise a
+     * local file is read from start to end; for an online file that would download the whole
+     * film, so [NoSubtitleIndexException] is thrown instead. [onProgress] gets 0..1.
+     */
+    fun allLines(
+        onProgress: (Float) -> Unit = {},
+        parallelism: Int = 1,
+        blockWindow: Int = BLOCK_WINDOW,
+    ): Map<Long, List<SubtitleLine>> {
+        val wanted = textTracks.associateBy { it.number }
+        if (wanted.isEmpty()) return emptyMap()
+        val refs = cueEntries.filter { it.track != null && it.track in wanted && it.relativePosition != null }
+        val indexed = wanted.keys.all { track -> refs.any { it.track == track } }
+        val raw = when {
+            indexed -> linesFromCues(refs, wanted, onProgress, parallelism, blockWindow)
+            !source.isRemote -> {
+                val lines = wanted.keys.associateWith { mutableListOf<RawLine>() }
+                val from = firstCluster ?: clusterBefore(0) ?: return emptyMap()
+                scan(from, Long.MAX_VALUE, wanted, lines, partialOk = false, onClusterMs = { ms ->
+                    durationMs?.takeIf { it > 0 }?.let { onProgress((ms.toFloat() / it).coerceIn(0f, 1f)) }
+                }) { false }
+                lines
+            }
+            else -> throw NoSubtitleIndexException()
+        }
+        onProgress(1f)
+        return raw.mapValues { (_, lines) -> finish(lines.take(MAX_LINES_PER_TRACK)) }
+    }
+
+    /** Reads the blocks the cues point at, cluster by cluster; nearby blocks share one read. */
+    private fun linesFromCues(
+        refs: List<CueEntry>,
+        wanted: Map<Long, MkvSubtitleTrack>,
+        onProgress: (Float) -> Unit,
+        parallelism: Int,
+        blockWindow: Int,
+    ): Map<Long, MutableList<RawLine>> {
+        val done = AtomicInteger()
+        val failed = AtomicInteger()
+        val clusters = refs.groupBy { it.clusterPosition }
+        val tasks = clusters.map { (cluster, inCluster) ->
+            Callable {
+                val found = mutableListOf<Pair<Long, RawLine>>()
+                try {
+                    val payload = clusterPayload(segmentStart + cluster)
+                    for (run in runs(inCluster.sortedBy { it.relativePosition }, blockWindow)) {
+                        found += readRun(payload, run, wanted, blockWindow)
+                    }
+                } catch (e: IOException) {
+                    failed.addAndGet(inCluster.size) // A damaged part loses its lines, not the search.
+                }
+                onProgress(done.addAndGet(inCluster.size).toFloat() / refs.size)
+                found
+            }
+        }
+        val results = if (parallelism <= 1) {
+            tasks.map { it.call() }
+        } else {
+            val pool = Executors.newFixedThreadPool(parallelism)
+            try {
+                pool.invokeAll(tasks).map {
+                    try {
+                        it.get()
+                    } catch (e: ExecutionException) {
+                        throw (e.cause as? RuntimeException) ?: IOException(e.cause)
+                    }
+                }
+            } finally {
+                pool.shutdownNow()
+            }
+        }
+        // Mostly unreadable means something is wrong with the file or the connection.
+        if (failed.get() > refs.size / 2) throw IOException("Could not read the subtitle lines")
+        val lines = wanted.keys.associateWith { mutableListOf<RawLine>() }
+        results.flatten().forEach { (track, line) -> lines.getValue(track).add(line) }
+        return lines
+    }
+
+    /** Groups blocks that lie close together, so each group is one read. */
+    private fun runs(sorted: List<CueEntry>, window: Int): List<List<CueEntry>> {
+        val runs = mutableListOf<MutableList<CueEntry>>()
+        for (entry in sorted) {
+            val run = runs.lastOrNull()
+            if (run != null && entry.relativePosition!! - run.first().relativePosition!! < window) {
+                run.add(entry)
+            } else {
+                runs.add(mutableListOf(entry))
+            }
+        }
+        return runs
+    }
+
+    /** Where the data of the cluster at [clusterStart] begins (after its id and size). */
+    private fun clusterPayload(clusterStart: Long): Long =
+        source.open(clusterStart, clusterStart + CLUSTER_HEADER_MAX - 1).use { stream ->
+            val r = EbmlReader(stream, clusterStart, CLUSTER_HEADER_MAX.toLong())
+            val h = r.header() ?: throw IOException("Missing cluster")
+            if (h.id != ID_CLUSTER) throw IOException("Cue does not point at a cluster")
+            h.payload
+        }
+
+    /** Reads the blocks of one run (positions relative to the cluster [payload]). */
+    private fun readRun(payload: Long, run: List<CueEntry>, wanted: Map<Long, MkvSubtitleTrack>, window: Int): List<Pair<Long, RawLine>> {
+        val from = payload + run.first().relativePosition!!
+        val to = payload + run.last().relativePosition!! + window - 1
+        val found = mutableListOf<Pair<Long, RawLine>>()
+        source.open(from, to).use { stream ->
+            val r = EbmlReader(stream, from, to - from + 1)
+            for (cue in run) {
+                val at = payload + cue.relativePosition!!
+                if (at < r.position) continue
+                r.skip(at - r.position)
+                val h = r.header() ?: break
+                val block = try {
+                    readBlockElement(r, h, wanted)
+                } catch (e: IOException) {
+                    null // Larger than the window or damaged: this line is skipped.
+                } ?: continue
+                val (track, data, duration) = block
+                val track0 = wanted.getValue(track)
+                line(track0, cue.ticks, duration ?: cue.durationTicks, data)?.let { found.add(track to it) }
+                if (h.size != EbmlReader.UNKNOWN_SIZE && r.position < h.payload + h.size) r.skip(h.payload + h.size - r.position)
+            }
+        }
+        return found
+    }
+
+    /** A SimpleBlock or BlockGroup of a wanted track: (track, data, duration in ticks). */
+    private fun readBlockElement(r: EbmlReader, h: EbmlReader.Header, wanted: Map<Long, MkvSubtitleTrack>): Triple<Long, ByteArray, Long?>? =
+        when (h.id) {
+            ID_SIMPLE_BLOCK -> readBlock(r, h.payload + h.size, wanted)?.let { (track, _, data) -> Triple(track, data, null) }
+            ID_BLOCK_GROUP -> {
+                var block: Triple<Long, Long, ByteArray>? = null
+                var duration: Long? = null
+                r.children(h.payload + h.size) { g ->
+                    when (g.id) {
+                        ID_BLOCK -> block = readBlock(r, g.payload + g.size, wanted)
+                        ID_BLOCK_DURATION -> duration = r.uint(g.size)
+                    }
+                    true
+                }
+                block?.let { (track, _, data) -> Triple(track, data, duration) }
+            }
+            else -> null
+        }
+
     /** File position of the cluster to start reading from for [ms]. */
     private fun clusterBefore(ms: Long): Long? =
         cues.lastOrNull { it.first <= ms }?.let { segmentStart + it.second }
@@ -182,6 +356,7 @@ class MkvSubtitles private constructor(
         wanted: Map<Long, MkvSubtitleTrack>,
         raw: Map<Long, MutableList<RawLine>>,
         partialOk: Boolean,
+        onClusterMs: (Long) -> Unit = {},
         done: () -> Boolean,
     ) {
         val budget = if (source.isRemote) REMOTE_CLUSTER_BUDGET else LOCAL_CLUSTER_BUDGET
@@ -191,7 +366,7 @@ class MkvSubtitles private constructor(
                 r.children(end = null, topLevel = true) { top ->
                     when {
                         top.id != ID_CLUSTER -> top.size != EbmlReader.UNKNOWN_SIZE
-                        else -> readCluster(r, top, stopMs, wanted, raw, done)
+                        else -> readCluster(r, top, stopMs, wanted, raw, onClusterMs, done)
                     }
                 }
             }
@@ -209,6 +384,7 @@ class MkvSubtitles private constructor(
         stopMs: Long,
         wanted: Map<Long, MkvSubtitleTrack>,
         raw: Map<Long, MutableList<RawLine>>,
+        onClusterMs: (Long) -> Unit,
         done: () -> Boolean,
     ): Boolean {
         var clusterTicks = 0L
@@ -217,6 +393,7 @@ class MkvSubtitles private constructor(
             when (child.id) {
                 ID_CLUSTER_TIMESTAMP -> {
                     clusterTicks = r.uint(child.size)
+                    onClusterMs(toMs(clusterTicks))
                     toMs(clusterTicks) <= stopMs && !done()
                 }
                 ID_SIMPLE_BLOCK -> {
@@ -258,19 +435,24 @@ class MkvSubtitles private constructor(
     }
 
     private fun add(raw: Map<Long, MutableList<RawLine>>, track: MkvSubtitleTrack, ticks: Long, duration: Long?, data: ByteArray) {
+        line(track, ticks, duration, data)?.let { raw.getValue(track.number).add(it) }
+    }
+
+    /** The line stored in a block, or null if it is empty or cannot be decoded. */
+    private fun line(track: MkvSubtitleTrack, ticks: Long, duration: Long?, data: ByteArray): RawLine? {
         val payload = try {
             when (track.compression) {
                 null -> data
                 0 -> inflate(data)
                 3 -> track.compressionSettings + data
-                else -> return
+                else -> return null
             }
         } catch (e: Exception) {
-            return // A damaged block loses one line, not the whole search.
+            return null // A damaged block loses one line, not the whole search.
         }
         val text = SubtitleTextCleaner.clean(track.codec, String(payload, Charsets.UTF_8))
-        if (text.isEmpty()) return
-        raw.getValue(track.number).add(RawLine(toMs(ticks), duration?.let { toMs(ticks + it) }, text))
+        if (text.isEmpty()) return null
+        return RawLine(toMs(ticks), duration?.let { toMs(ticks + it) }, text)
     }
 
     private fun finish(lines: List<RawLine>): List<SubtitleLine> {
@@ -301,15 +483,21 @@ class MkvSubtitles private constructor(
         private const val REMOTE_SCENE_BUDGET = 256L * 1024 * 1024
         private const val MAX_SCENE_MS = 15L * 60 * 1000
         private const val LOCAL_CLUSTER_BUDGET = 16L * 1024 * 1024 * 1024
+        /** Bytes read for one subtitle block (and from there to the next nearby one). */
+        private const val BLOCK_WINDOW = 16 * 1024
+        /** A cluster id (4 bytes) and size (up to 8 bytes). */
+        private const val CLUSTER_HEADER_MAX = 12
+        private const val MAX_LINES_PER_TRACK = 20_000
 
         /** Reads the file's headers. Null if it is not a Matroska/WebM file. */
         fun open(source: ByteSource): MkvSubtitles? {
             var segmentStart = 0L
             var segmentEnd: Long? = null
             var scale = 1_000_000L
+            var durationTicks: Double? = null
             var infoFound = false
             var tracks: List<MkvSubtitleTrack>? = null
-            var cues: List<Pair<Long, Long>>? = null
+            var cues: List<CueEntry>? = null
             var firstCluster: Long? = null
             val seeks = mutableMapOf<Long, Long>()
 
@@ -334,7 +522,9 @@ class MkvSubtitles private constructor(
                             ID_SEEKHEAD -> parseSeekHead(payload(r, h), seeks)
                             ID_INFO -> {
                                 infoFound = true
-                                scale = parseScale(payload(r, h)) ?: scale
+                                val info = payload(r, h)
+                                scale = parseScale(info) ?: scale
+                                durationTicks = parseDuration(info)
                             }
                             ID_TRACKS -> tracks = parseTracks(payload(r, h))
                             ID_CUES -> cues = parseCues(payload(r, h))
@@ -357,7 +547,10 @@ class MkvSubtitles private constructor(
                 }
             }
             if (tracks == null) tracks = readAt(ID_TRACKS)?.let(::parseTracks)
-            if (!infoFound) readAt(ID_INFO)?.let { scale = parseScale(it) ?: scale }
+            if (!infoFound) readAt(ID_INFO)?.let {
+                scale = parseScale(it) ?: scale
+                durationTicks = parseDuration(it)
+            }
             if (cues == null) cues = runCatching { readAt(ID_CUES)?.let(::parseCues) }.getOrNull()
 
             val all = tracks ?: return null
@@ -368,9 +561,12 @@ class MkvSubtitles private constructor(
                 timestampScaleNs = scaleNs,
                 tracks = all,
                 cues = cues.orEmpty()
-                    .map { (ticks, position) -> ticks * scaleNs / 1_000_000 to position }
+                    .map { it.ticks * scaleNs / 1_000_000 to it.clusterPosition }
+                    .distinct()
                     .sortedBy { it.first },
+                cueEntries = cues.orEmpty(),
                 firstCluster = firstCluster,
+                durationMs = durationTicks?.let { (it * scaleNs / 1_000_000).toLong() },
             )
         }
 
@@ -407,6 +603,24 @@ class MkvSubtitles private constructor(
                 true
             }
             return scale
+        }
+
+        /** Segment duration in timestamp ticks (a float), if present. */
+        private fun parseDuration(bytes: ByteArray): Double? {
+            val r = reader(bytes)
+            var duration: Double? = null
+            r.children(bytes.size.toLong()) { e ->
+                if (e.id == ID_DURATION) {
+                    val raw = r.bytes(e.size, 8)
+                    duration = when (raw.size) {
+                        4 -> java.lang.Float.intBitsToFloat(raw.fold(0) { acc, b -> (acc shl 8) or (b.toInt() and 0xFF) }).toDouble()
+                        8 -> java.lang.Double.longBitsToDouble(raw.fold(0L) { acc, b -> (acc shl 8) or (b.toLong() and 0xFF) })
+                        else -> null
+                    }?.takeIf { it.isFinite() && it > 0 }
+                }
+                true
+            }
+            return duration
         }
 
         private fun parseTracks(bytes: ByteArray): List<MkvSubtitleTrack> {
@@ -462,26 +676,43 @@ class MkvSubtitles private constructor(
             return MkvSubtitleTrack(number, codec, ietf ?: language, name, isDefault, compression, settings)
         }
 
-        private fun parseCues(bytes: ByteArray): List<Pair<Long, Long>> {
+        private class Positions(val track: Long?, val cluster: Long?, val relative: Long?, val duration: Long?)
+
+        private fun parseCues(bytes: ByteArray): List<CueEntry> {
             val r = reader(bytes)
-            val result = mutableListOf<Pair<Long, Long>>()
+            val result = mutableListOf<CueEntry>()
             r.children(bytes.size.toLong()) { point ->
                 if (point.id == ID_CUE_POINT) {
                     var time: Long? = null
-                    var position: Long? = null
+                    val positions = mutableListOf<Positions>()
                     r.children(point.payload + point.size) { e ->
                         when (e.id) {
                             ID_CUE_TIME -> time = r.uint(e.size)
-                            ID_CUE_TRACK_POSITIONS -> r.children(e.payload + e.size) { p ->
-                                if (p.id == ID_CUE_CLUSTER_POSITION) position = r.uint(p.size)
-                                true
+                            ID_CUE_TRACK_POSITIONS -> {
+                                var track: Long? = null
+                                var cluster: Long? = null
+                                var relative: Long? = null
+                                var duration: Long? = null
+                                r.children(e.payload + e.size) { p ->
+                                    when (p.id) {
+                                        ID_CUE_TRACK -> track = r.uint(p.size)
+                                        ID_CUE_CLUSTER_POSITION -> cluster = r.uint(p.size)
+                                        ID_CUE_RELATIVE_POSITION -> relative = r.uint(p.size)
+                                        ID_CUE_DURATION -> duration = r.uint(p.size)
+                                    }
+                                    true
+                                }
+                                positions.add(Positions(track, cluster, relative, duration))
                             }
                         }
                         true
                     }
                     val t = time
-                    val p = position
-                    if (t != null && p != null) result.add(t to p)
+                    if (t != null) {
+                        positions.forEach { p ->
+                            p.cluster?.let { result.add(CueEntry(t, p.track, it, p.relative, p.duration)) }
+                        }
+                    }
                 }
                 true
             }

@@ -8,7 +8,10 @@ calls. CI runs them before every build (`gradle testDebugUnitTest`); there is no
 
 | Test | Covers |
 | --- | --- |
-| `subtitle/mkv/MkvSubtitlesTest` | Built-in tracks from real MKV/WebM files: track info and labels (also in Persian), line times and text, tags, a line from an earlier cluster, cues at front/back/none, WebVTT, jumping to the right part of the file, scenes by count and by time, non-Matroska and truncated input. |
+| `subtitle/mkv/MkvSubtitlesTest` | Built-in tracks from real MKV/WebM files: track info and labels (also in Persian), line times and text, tags, a line from an earlier cluster, cues at front/back/none, WebVTT, jumping to the right part of the file, scenes by count and by time, all lines through cues (only small reads), in parallel, by full scan, and refusal for online files without cues, non-Matroska and truncated input. |
+| `subtitle/SubtitleSearchTest` | Searching a film's lines: every track, time order, Persian forms, words over two lines, limits. |
+| `subtitle/SubtitleIndexCacheTest` | Cached film lines: round trip, other tracks, address not stored, damaged file, size of the cache. |
+| `text/TextMatchTest` | Loose matching and highlight ranges in the original text. |
 | `subtitle/mkv/SubtitleTextCleanerTest` | ASS fields/tags/drawings, SRT tags and entities. |
 | `subtitle/SubtitleParserTest` | SRT/VTT parsing, encodings; `SubtitleLookup` (which line a tap belongs to, translations, scenes). |
 | `speech/SentenceFinderTest` | Sentence boundaries from speech probabilities (pauses, short gaps, long speech, noise). |

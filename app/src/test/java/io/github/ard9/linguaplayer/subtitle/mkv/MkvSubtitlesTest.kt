@@ -1,5 +1,6 @@
 package io.github.ard9.linguaplayer.subtitle.mkv
 
+import org.junit.Assert.assertThrows
 import java.util.Locale
 import io.github.ard9.linguaplayer.subtitle.SubtitleLine
 import io.github.ard9.linguaplayer.subtitle.SubtitleLookup
@@ -156,6 +157,47 @@ class MkvSubtitlesTest {
         assertEquals(listOf(50_000L), open("no-cues.mkv").linesBetween(40_000, 60_000, track = 2, max = 200).map { it.startMs })
     }
 
+    private fun starts(lines: Map<Long, List<SubtitleLine>>, track: Long) = lines[track].orEmpty().map { it.startMs }
+
+    @Test
+    fun `the whole film's lines are read through the cues, in small pieces`() {
+        val source = RecordingSource(fixture("subs.mkv"))
+        val mkv = MkvSubtitles.open(source)!!
+        val before = source.opens.size
+        var progress = 0f
+        val all = mkv.allLines(onProgress = { progress = it }, blockWindow = 512)
+        assertEquals(listOf(2_000L, 5_000L, 20_100L, 50_000L), starts(all, 2))
+        assertEquals(3, all[3]!!.size)
+        assertEquals(4, all[4]!!.size)
+        assertEquals(4_500L, all[2]!!.first().endMs)
+        assertEquals("The end & more.", all[2]!!.last().text)
+        assertEquals("I'll be right back.\nWait for me.", all[4]!![2].text)
+        assertEquals(1f, progress)
+        // Every read had an end: nothing was downloaded to the end of the file.
+        assertTrue(source.ends.drop(before).all { it != null })
+    }
+
+    @Test
+    fun `reading the whole film in parallel gives the same lines`() {
+        val one = open("subs.mkv").allLines()
+        val four = open("subs.mkv").allLines(parallelism = 4)
+        assertEquals(one, four)
+        assertEquals(one, open("cues-front.mkv").allLines())
+    }
+
+    @Test
+    fun `without cues a local file is read from start to end`() {
+        val all = open("no-cues.mkv").allLines()
+        assertEquals(listOf(2_000L, 5_000L, 20_100L, 50_000L), starts(all, 2))
+        assertEquals(listOf(2_000L, 5_100L, 20_100L), starts(all, 3))
+    }
+
+    @Test
+    fun `without cues an online file is not downloaded`() {
+        val mkv = MkvSubtitles.open(RecordingSource(fixture("no-cues.mkv")))!!
+        assertThrows(NoSubtitleIndexException::class.java) { mkv.allLines() }
+    }
+
     @Test
     fun `other files are not Matroska`() {
         val notMkv = object : ByteSource {
@@ -203,9 +245,11 @@ class MkvSubtitlesTest {
     /** Remembers where each read starts, like the HTTP range requests of an online file. */
     private class RecordingSource(private val file: File) : ByteSource {
         val opens = mutableListOf<Long>()
+        val ends = mutableListOf<Long?>()
         override val isRemote = true
         override fun open(from: Long, toInclusive: Long?): InputStream {
             opens.add(from)
+            ends.add(toInclusive)
             return FileInputStream(file).also { it.channel.position(from) }
         }
     }

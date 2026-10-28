@@ -32,6 +32,7 @@ Last update: 2026-10-27, release `build-54`.
 | Backup reminder on Home after 14 days | build-50 | **No** |
 | Errors explained in the app's language (`describe`) | build-52 | **No** |
 | Line choosing moved to tested `LineSearch` (no behaviour change intended) | build-53 | **No** (re-check saving and Repeat) |
+| Search subtitles in the player, play from a found line | build-56+ | **No** (online: depends on the file having subtitle cues) |
 
 "No" means only tests and CI passed; the behaviour on a device is unknown.
 

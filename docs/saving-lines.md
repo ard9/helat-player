@@ -42,6 +42,15 @@ The found range is widened by the user's **clip margins** (default 0.45 s each s
 - Track labels: `MkvSubtitleTrack.label(display, unnamed)` names the language in the app's
   language and keeps the track's own name, e.g. "فارسی (Persian)".
 
+## Reading all lines (subtitle search)
+
+`MkvSubtitles.allLines` returns every line of every text track. If the Cues index has an
+entry with `CueRelativePosition` for each text track (mkvmerge and ffmpeg write them), it
+reads only those blocks: one small range request for each cluster header, then one for each
+group of nearby blocks (`blockWindow`, 16 KB), several at once online. Otherwise a local file
+is scanned from the first cluster to the end (progress from the Info duration), and an online
+file throws `NoSubtitleIndexException` rather than downloading the film.
+
 ## Cutting the audio (`clip/`)
 
 `ClipService` tries Media3 `TransformerClipper` (m4a) and falls back to `VlcClipper`

@@ -12,6 +12,8 @@ An Android video player for language learning.
 - **Cards**: each saved line keeps its audio, a frame of the video, the text and your meaning.
   Tap a card to open it, search them by text, meaning or film, and review them as flashcards
   in a 5-box Leitner system.
+- **Search subtitles**: type a word or part of a line to find every line that has it, and play
+  the film from there. Online films need subtitle cues in the file (or load an SRT file).
 - **Listening practice**: Repeat plays the current line again, the small loop button above the
   save button repeats it until tapped again (or until you seek), and Speed slows playback down (0.5×–1.25×).
 - **Role-play**: from the player menu, take turns with the actor over the next lines (as many
