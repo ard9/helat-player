@@ -61,8 +61,9 @@ Actions pinned by SHA on `ubuntu-24.04` since build-45; no deprecation warnings 
 - Animated splash and the design review findings: text-only player controls, home emphasis on
   today's review, default dialogs, plain empty states, 44 dp buttons on the video, no screen
   transitions. Name and icon are done (Helat Player, `decisions.md`).
-- LinkedIn demo video from the owner's screenshots: replace the copyrighted series frames,
-  file name and server address; English line with Persian meaning on the cards.
+- LinkedIn demo video (42 s, 1080x1350) made 2026-10-28 from the owner's screenshots, with the
+  series frames, file names and server address replaced by an original drawn scene; the
+  player screen is redrawn from the screenshot. Not kept in the repository.
 - Rename the GitHub repository (owner's action) and check Cafebazaar, Myket and domains for
   "Helat" (owner).
 - YouTube links (2026-10-27): the owner said "not now". Options were NewPipe Extractor
