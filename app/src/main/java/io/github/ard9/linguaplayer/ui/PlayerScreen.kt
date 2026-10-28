@@ -370,6 +370,9 @@ fun PlayerScreen(
     val snackbar = remember { SnackbarHostState() }
 
     val opened = remember { runCatching { openVlcMedia(context, libVlc, source.uri) } }
+    // The media in use; replaced when an online film falls back from the cache to the link.
+    var currentMedia by remember { mutableStateOf(opened.getOrNull()) }
+    var triedDirect by remember { mutableStateOf(false) }
     val player = remember { MediaPlayer(libVlc) }
     val startGate = remember { StartGate { player.play() } }
 
@@ -865,7 +868,29 @@ fun PlayerScreen(
                 }
                 MediaPlayer.Event.EncounteredError -> {
                     isPlaying = false
-                    message(context.getString(R.string.vlc_error), sticky = true)
+                    val proxy = currentMedia?.proxy
+                    if (proxy != null && !triedDirect) {
+                        // The cache failed: play the link directly, and say why so it can be fixed.
+                        triedDirect = true
+                        val details = proxy.diagnostics()
+                        Log.w(TAG, "Playing through the cache failed: $details")
+                        scope.launch {
+                            val position = player.time
+                            currentMedia?.close()
+                            runCatching { openVlcMedia(context, libVlc, source.uri, useCache = false) }
+                                .onSuccess { direct ->
+                                    currentMedia = direct
+                                    player.setMedia(direct.media)
+                                    direct.media.release()
+                                    player.play()
+                                    if (position > 0) player.setTime(position)
+                                    message(context.getString(R.string.cache_fallback, details), sticky = true)
+                                }
+                                .onFailure { message(context.getString(R.string.vlc_error), sticky = true) }
+                        }
+                    } else {
+                        message(context.getString(R.string.vlc_error), sticky = true)
+                    }
                 }
             }
         })
@@ -883,7 +908,7 @@ fun PlayerScreen(
             player.stop()
             player.detachViews()
             player.release()
-            opened.getOrNull()?.close()
+            currentMedia?.close()
         }
     }
 

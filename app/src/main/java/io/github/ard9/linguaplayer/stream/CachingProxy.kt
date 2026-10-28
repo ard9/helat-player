@@ -1,5 +1,6 @@
 package io.github.ard9.linguaplayer.stream
 
+import java.util.concurrent.atomic.AtomicInteger
 import java.io.BufferedOutputStream
 import java.io.Closeable
 import java.io.EOFException
@@ -37,9 +38,13 @@ class CachingProxy(
     private val key: String,
     fileName: String,
 ) : Closeable {
-    private val server = ServerSocket(0, BACKLOG, InetAddress.getLoopbackAddress())
+    // 127.0.0.1 itself: on Android getLoopbackAddress() can be the IPv6 ::1, which would not
+    // accept the IPv4 address given to the player.
+    private val server = ServerSocket(0, BACKLOG, InetAddress.getByAddress(byteArrayOf(127, 0, 0, 1)))
     private val secret = ByteArray(16).also { SecureRandom().nextBytes(it) }.joinToString("") { "%02x".format(it) }
-    private val path = "/$secret/" + fileName.filter { it.isLetterOrDigit() || it in "._-" }.ifEmpty { "media" }.take(80)
+    // ASCII only: the player percent-encodes other characters, and the path must match exactly.
+    private val path = "/$secret/" + fileName.filter { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' || it in "._-" }
+        .ifEmpty { "media" }.take(80)
     private val pool: ExecutorService = ThreadPoolExecutor(
         0, MAX_CONNECTIONS, 30, TimeUnit.SECONDS, SynchronousQueue(),
     ) { r -> Thread(r, "stream-proxy").apply { isDaemon = true } }
@@ -47,6 +52,11 @@ class CachingProxy(
     @Volatile private var closed = false
     @Volatile private var total: Long? = null
     @Volatile private var contentType: String? = null
+    private val requests = AtomicInteger()
+    @Volatile private var lastProblem: String? = null
+
+    /** What happened so far, for a message when playing through the proxy failed. */
+    fun diagnostics(): String = "requests=${requests.get()}" + (lastProblem?.let { ", $it" } ?: "")
 
     /** The address to give libVLC. */
     val url: String = "http://127.0.0.1:${server.localPort}$path"
@@ -78,12 +88,19 @@ class CachingProxy(
     private fun serve(socket: Socket) {
         try {
             socket.soTimeout = CLIENT_TIMEOUT_MS
-            val request = readRequest(socket.getInputStream()) ?: return
+            requests.incrementAndGet()
+            val request = readRequest(socket.getInputStream()) ?: run {
+                lastProblem = "unreadable request"
+                return
+            }
             val out = BufferedOutputStream(socket.getOutputStream(), OUT_BUFFER)
             handle(request, out)
             out.flush()
         } catch (e: IOException) {
             // The player closed the connection (it does when seeking), or the network failed.
+            lastProblem = "${e.javaClass.simpleName}: ${e.message}"
+        } catch (e: RuntimeException) {
+            lastProblem = "${e.javaClass.simpleName}: ${e.message}"
         } finally {
             open.remove(socket)
             try {
@@ -127,7 +144,10 @@ class CachingProxy(
     }
 
     private fun handle(request: Request, out: OutputStream) {
-        if (request.target != path) return status(out, 404, "Not Found")
+        if (request.target != path) {
+            lastProblem = "unknown path"
+            return status(out, 404, "Not Found")
+        }
         if (request.method != "GET" && request.method != "HEAD") return status(out, 405, "Method Not Allowed")
         val from = request.range?.first ?: 0L
         // Learn the length (and keep the response to use it) if this is the first request.

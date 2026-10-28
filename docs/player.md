@@ -19,7 +19,13 @@ Code: `ui/PlayerScreen.kt`, `player/VlcMedia.kt`, `player/FrameGrabber.kt`, `Lin
   used removed first). Jumps back (Loop, Repeat, −10s, seek bar) are then read from the phone.
   Why: libVLC's own prefetch buffer prefers reading ahead and drops already played data, so
   jumping back was sometimes instant and sometimes a new download (`decisions.md`). If the
-  proxy cannot start, the link is played directly.
+  proxy cannot start, the link is played directly; if libVLC reports an error while playing
+  through it, the player reopens the link directly (once) and shows the proxy's diagnostics
+  (`CachingProxy.diagnostics`: request count and last problem) so the cause can be found.
+- The proxy binds to `127.0.0.1` explicitly: on Android `InetAddress.getLoopbackAddress()`
+  can be `::1`, and build-61 failed on the phone with "VLC could not play this media" (most
+  likely this). Verified locally: desktop VLC 3.0.20 plays and seeks through the proxy, and
+  `HttpUpstream` ranges match direct downloads over HTTPS with redirects.
 
 ## Controls
 

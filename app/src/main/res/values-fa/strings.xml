@@ -220,6 +220,7 @@
     <string name="continuing_from">ادامه از %s</string>
     <string name="start_over">از اول</string>
     <string name="vlc_error">VLC نتوانست این رسانه را پخش کند</string>
+    <string name="cache_fallback">لینک مستقیم پخش می‌شود؛ حافظه‌ی موقت دانلود کار نکرد (%s).</string>
     <string name="open_failed">باز نشد: %s</string>
     <string name="no_sub_lines">در این فایل خط زیرنویسی پیدا نشد (فایل SRT یا VTT لازم است)</string>
     <plurals name="loaded_sub_lines">

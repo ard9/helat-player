@@ -224,6 +224,7 @@
     <string name="continuing_from">Continuing from %s</string>
     <string name="start_over">Start over</string>
     <string name="vlc_error">VLC could not play this media</string>
+    <string name="cache_fallback">Playing the link directly; the download cache did not work (%s).</string>
     <string name="open_failed">Could not open: %s</string>
     <string name="no_sub_lines">No subtitle lines found in this file (SRT or VTT expected)</string>
     <plurals name="loaded_sub_lines">
