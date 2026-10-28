@@ -1,15 +1,18 @@
 
 
-Uploading helat-player-demo.mp4…
-
 # Helat Player
 
 An Android video player for language learning.
 
 <p align="center"><img src="docs/media/helat-player-demo.gif" width="360" alt="Saving a line from a film and seeing it as a card"></p>
 
-**[Watch the full demo with sound (60 s)](docs/media/helat-player-demo.mp4)**: saving lines,
-cards, review, subtitle search and role-play. The film scene and the voices in the demo are
+**[Watch the full demo with sound (60 s)](docs/media/helat-player-demo.mp4)**
+
+
+https://github.com/user-attachments/assets/085846a9-9a92-454c-b65b-6a2153da20ae
+
+
+saving lines,cards, review, subtitle search and role-play. The film scene and the voices in the demo are
 made for it (voices generated with Kokoro TTS); in the app, role-play records your own voice.
 
 - Plays local files and direct links or streams in every format VLC supports (powered by libVLC).
