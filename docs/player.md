@@ -12,6 +12,14 @@ Code: `ui/PlayerScreen.kt`, `player/VlcMedia.kt`, `player/FrameGrabber.kt`, `Lin
 - **`StartGate`**: playback starts only once the media is set *and* the `VLCVideoLayout` is
   attached to the window; otherwise the video was sometimes black while audio played.
 - Errors: `EncounteredError` shows a sticky message; opening errors too.
+- **Online films go through a caching proxy** (`stream/`): `openVlcMedia` starts a
+  `CachingProxy` (HTTP server on 127.0.0.1, random secret path) and gives libVLC its address.
+  The proxy fetches the film with `HttpUpstream` (Range requests, redirects) and keeps every
+  256 KB chunk in `ChunkStore` (`cacheDir/stream-cache/`, 200 MB for all films, least recently
+  used removed first). Jumps back (Loop, Repeat, −10s, seek bar) are then read from the phone.
+  Why: libVLC's own prefetch buffer prefers reading ahead and drops already played data, so
+  jumping back was sometimes instant and sometimes a new download (`decisions.md`). If the
+  proxy cannot start, the link is played directly.
 
 ## Controls
 

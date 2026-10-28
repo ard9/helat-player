@@ -52,6 +52,14 @@ the actor's, skipping the silence before the first word, with no pauses.
 activity handles rotation itself; a full override would freeze orientation. Film times stay
 ASCII because they are typed in the editor.
 
+## 2026-10-28 Online films through a local caching proxy
+
+Loop repeats online were sometimes instant, sometimes slow. libVLC 3's `prefetch` stream filter
+keeps played data only while its buffer has room and drops it to read further ahead, so a
+jump back to the line start was a new HTTP request whenever the buffer had filled. A bigger
+buffer only delays that. The app now plays online films through `CachingProxy`, which keeps
+downloaded chunks on disk (200 MB), so jumps back are local.
+
 ## 2026-10-27 Docs split by area
 
 `AGENTS.md` is a short entry point; details live in `docs/`, one file per area, each under

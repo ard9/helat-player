@@ -1,5 +1,7 @@
 package io.github.ard9.linguaplayer
 
+import java.io.File
+import io.github.ard9.linguaplayer.stream.ChunkStore
 import android.app.Application
 import android.util.Log
 import io.github.ard9.linguaplayer.clip.ClipService
@@ -23,6 +25,9 @@ class LinguaApp : Application() {
         private set
     lateinit var speechFinder: SpeechFinder
         private set
+
+    /** Downloaded parts of online films (up to [STREAM_CACHE_BYTES]), so jumps back are local. */
+    val streamStore: ChunkStore by lazy { ChunkStore(File(cacheDir, "stream-cache"), STREAM_CACHE_BYTES) }
 
     // libVLC reads subtitle colour and size only when an instance is created, so a new
     // instance is made after the style changes. Old ones are released once nothing uses them.
@@ -88,5 +93,9 @@ class LinguaApp : Application() {
         // Never fail playback because of a style option.
         Log.w("LinguaApp", "libVLC rejected subtitle options, using defaults", e)
         LibVLC(this, arrayListOf<String>())
+    }
+
+    private companion object {
+        const val STREAM_CACHE_BYTES = 200L * 1024 * 1024
     }
 }

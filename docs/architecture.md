@@ -21,6 +21,7 @@ Kotlin, Jetpack Compose (Material 3), one activity. Package `io.github.ard9.ling
 | `clip/` | Audio cutting: `ClipService` → `TransformerClipper` (Media3, m4a), fallback `VlcClipper` + `WavTrim`. | `saving-lines.md` |
 | `speech/` | No-subtitle fallback: `SpeechFinder`, `SileroVad`, `SentenceFinder`, `WavReader`. | `saving-lines.md` |
 | `roleplay/` | `RolePlayLogic` (pure), `VoiceRecorder`, `RolePlaySession`. | `roleplay.md` |
+| `stream/` | Caching proxy for online films: `CachingProxy` (local HTTP server), `HttpUpstream`, `ChunkStore` (chunks on disk). | `player.md` |
 | `reminder/` | Daily review reminder: `ReminderTime` (pure), `ReviewReminder` + `ReminderWorker` (WorkManager, notification). | `cards-and-review.md` |
 | `AppLocale.kt` | `withLanguage` / `inAppLanguage`: a context in the chosen language (activity and notifications). | `i18n.md` |
 | `res/values*/strings.xml` | All UI text, English and Persian. | `i18n.md` |
