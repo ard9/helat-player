@@ -38,7 +38,9 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8 shrinking and optimization without obfuscation (proguard-rules.pro).
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             if (signingKeystorePath != null) {
                 signingConfig = signingConfigs.getByName("release")
             }

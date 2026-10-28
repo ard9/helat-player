@@ -51,4 +51,4 @@ libVLC and ONNX Runtime parse untrusted data in native code; keep them updated.
 | --- | --- | --- |
 | Backups contain stream URLs with possible tokens. | Low | Proposal: leave them out or make it a choice |
 | The repository is public; the owner wants it private / releases only. | — | On hold |
-| Release APK is not minified or obfuscated (R8). | Low | On hold |
+| Release APK is shrunk by R8 but not obfuscated (names readable). | Low | Obfuscation on hold |

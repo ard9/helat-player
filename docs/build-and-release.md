@@ -60,6 +60,12 @@ The APK is **arm64-v8a only** to limit size. Native libraries (libVLC 46 MB, ONN
 (build-63) to about 42 MB; Android unpacks them at install, so the app takes ~30 MB more on
 the phone (`decisions.md`).
 
+The release build runs **R8** (shrinking and optimization, `-dontobfuscate`;
+`app/proguard-rules.pro`). libVLC and ONNX Runtime are kept whole because their native code
+calls into their Java classes. Any new library used through reflection or JNI needs a keep
+rule there; such mistakes only show as crashes on the phone, not in CI. Resources are not
+shrunk (`FrameGrabber` finds libVLC's view by name).
+
 ## Commits
 
 Authored as `ard9 <ard9@users.noreply.github.com>`, with no `Co-Authored-By` or other trailers:
