@@ -2,7 +2,7 @@
 
 Current state of the project. Update at the end of every task.
 
-Last update: 2026-10-28, release `build-59`.
+Last update: 2026-10-28, release `build-61`.
 
 ## Features
 
@@ -33,7 +33,7 @@ Last update: 2026-10-28, release `build-59`.
 | Errors explained in the app's language (`describe`) | build-52 | **No** |
 | Line choosing moved to tested `LineSearch` (no behaviour change intended) | build-53 | **No** (re-check saving and Repeat) |
 | Search subtitles in the player, play from a found line | build-57 | Yes ("fast and good", online) |
-| Online films through a local caching proxy (jumps back read from the phone) | build-61+ | **No** (also check normal playback and seeking online) |
+| Online films through a local caching proxy (jumps back read from the phone) | build-61 | **No** (also check normal playback and seeking online) |
 | Lines preloaded in the background; Loop/Repeat/save find lines without a download; loop jumps 150 ms early | build-59 | **No** (owner: start of Loop was slow, pauses between repeats a little) |
 
 "No" means only tests and CI passed; the behaviour on a device is unknown.
