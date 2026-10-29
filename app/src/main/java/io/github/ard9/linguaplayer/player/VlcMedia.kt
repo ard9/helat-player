@@ -7,11 +7,11 @@ import android.util.Log
 import io.github.ard9.linguaplayer.LinguaApp
 import io.github.ard9.linguaplayer.stream.CachingProxy
 import io.github.ard9.linguaplayer.stream.HttpUpstream
+import io.github.ard9.linguaplayer.stream.streamKey
 import org.videolan.libvlc.LibVLC
 import org.videolan.libvlc.Media
 import java.io.Closeable
 import java.io.IOException
-import java.security.MessageDigest
 
 /**
  * A libVLC media plus what must stay open while it is used: the file descriptor of a local
@@ -57,7 +57,7 @@ fun openStreamProxy(context: Context, uri: Uri, trustKnownLength: Boolean = fals
         CachingProxy(
             upstream = HttpUpstream(uri.toString()),
             store = app.streamStore,
-            key = sha256(uri.toString()),
+            key = streamKey(uri.toString()),
             fileName = uri.lastPathSegment.orEmpty(),
             trustKnownLength = trustKnownLength,
         ).start()
@@ -66,6 +66,3 @@ fun openStreamProxy(context: Context, uri: Uri, trustKnownLength: Boolean = fals
         null
     }
 }
-
-private fun sha256(text: String): String =
-    MessageDigest.getInstance("SHA-256").digest(text.toByteArray()).joinToString("") { "%02x".format(it) }

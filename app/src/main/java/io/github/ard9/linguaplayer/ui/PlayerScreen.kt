@@ -144,6 +144,7 @@ import kotlin.coroutines.resume
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.videolan.libvlc.LibVLC
 import org.videolan.libvlc.MediaPlayer
 import org.videolan.libvlc.util.VLCVideoLayout
@@ -166,6 +167,8 @@ private const val LOOP_EARLY_MS = 150L
 private const val SEARCH_LEAD_MS = 300L
 /** Lines read ahead for the forward button before all lines of the film are known. */
 private const val STEP_READ_LINES = 3
+/** How long back/forward waits for lines it has to download before it moves 5 s instead. */
+private const val STEP_WAIT_MS = 3_000L
 
 /** Scale types with their names: a string resource, or null for a ratio shown as is. */
 private val SCALES = listOf(
@@ -401,8 +404,8 @@ fun PlayerScreen(
     // Video outputs libVLC has open. A scale set before there is one ends up wrong (black
     // picture), so the chosen scale is applied when the video output appears.
     var voutCount by remember { mutableIntStateOf(0) }
-    // The back/forward jump being worked out (finding the line can take a moment online).
-    var stepJob by remember { mutableStateOf<Job?>(null) }
+    // True while a back/forward jump is being worked out (finding the line can take a moment online).
+    var stepBusy by remember { mutableStateOf(false) }
     // Whether the film has built-in text tracks, and whether one is shown: the back/forward
     // buttons step by the lines of the subtitles on screen, and by 5 s when none are shown.
     var hasTextTracks by remember { mutableStateOf(false) }
@@ -783,23 +786,33 @@ fun PlayerScreen(
         if (tracks.isEmpty()) return emptyList()
         val track = shownTrack(index) ?: tracks[LineSearch.preferredOrder(tracks, null).first()]
         filmLines?.let { return it[track.number].orEmpty() }
-        return withContext(Dispatchers.IO) {
+        // Online, the parts already played or read ahead are read from the phone; anything
+        // else is a download, so the caller waits only so long for it (STEP_WAIT_MS). The read
+        // runs on (in the app's scope) if the wait ends, as it cannot be interrupted midway.
+        val read = scope.async(Dispatchers.IO) {
             runCatching {
                 if (forward) index.linesFrom(now, track.number, STEP_READ_LINES) else index.linesAround(now)[track.number].orEmpty()
             }.onFailure { Log.w(TAG, "Could not read lines to step through", it) }.getOrDefault(emptyList())
         }
+        return withTimeoutOrNull(STEP_WAIT_MS) { read.await() } ?: emptyList()
     }
 
     /** Back or forward one subtitle line, or [SKIP_MS] without lines. */
     fun stepLine(forward: Boolean) {
+        // A press while the last one is still finding its line is ignored, so it can finish.
+        if (stepBusy) return
         stopLoop()
         val now = player.time
-        stepJob?.cancel()
-        stepJob = scope.launch {
-            val lines = stepLines(now, forward)
-            val start = if (forward) LineStep.nextStart(lines, now) else LineStep.previousStart(lines, now)
-            val target = start?.let { max(0L, it - SEARCH_LEAD_MS) } ?: (if (forward) now + SKIP_MS else now - SKIP_MS)
-            seekTo(target)
+        stepBusy = true
+        scope.launch {
+            try {
+                val lines = stepLines(now, forward)
+                val start = if (forward) LineStep.nextStart(lines, now) else LineStep.previousStart(lines, now)
+                val target = start?.let { max(0L, it - SEARCH_LEAD_MS) } ?: (if (forward) now + SKIP_MS else now - SKIP_MS)
+                seekTo(target)
+            } finally {
+                stepBusy = false
+            }
         }
     }
 
@@ -1178,7 +1191,9 @@ fun PlayerScreen(
                     Text(stringResource(R.string.repeat), color = Color.White)
                 }
                 val byLine = externalLines != null || (hasTextTracks && builtInShown)
+                val stepping = stepBusy
                 TextButton(onClick = { stepLine(forward = false); touch() }) {
+                    if (stepping) StepBusy()
                     Text(stringResource(if (byLine) R.string.line_back else R.string.skip_back), color = Color.White)
                 }
                 IconButton(
@@ -1197,6 +1212,7 @@ fun PlayerScreen(
                 }
                 TextButton(onClick = { stepLine(forward = true); touch() }) {
                     Text(stringResource(if (byLine) R.string.line_forward else R.string.skip_forward), color = Color.White)
+                    if (stepping) StepBusy()
                 }
             } }
 
@@ -1504,6 +1520,16 @@ private fun TrackDialog(
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) } },
+    )
+}
+
+/** Shown on the back/forward buttons while the line to jump to is being found. */
+@Composable
+private fun StepBusy() {
+    CircularProgressIndicator(
+        color = Color.White,
+        strokeWidth = 2.dp,
+        modifier = Modifier.padding(horizontal = 6.dp).size(14.dp),
     )
 }
 

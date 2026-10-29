@@ -3,6 +3,9 @@ package io.github.ard9.linguaplayer.subtitle.mkv
 import android.content.Context
 import android.net.Uri
 import android.os.ParcelFileDescriptor
+import io.github.ard9.linguaplayer.LinguaApp
+import io.github.ard9.linguaplayer.stream.CachedByteSource
+import io.github.ard9.linguaplayer.stream.streamKey
 import java.io.FilterInputStream
 import java.io.IOException
 import java.io.InputStream
@@ -22,7 +25,12 @@ class RangeNotSupportedException : IOException("The server does not allow readin
 
 fun byteSourceFor(context: Context, uri: Uri): ByteSource? = when (uri.scheme) {
     "content", "file" -> LocalByteSource(context, uri)
-    "http", "https" -> HttpByteSource(uri.toString())
+    // Online: the parts the player has kept are read from the phone (see CachedByteSource).
+    "http", "https" -> HttpByteSource(uri.toString()).let { http ->
+        (context.applicationContext as? LinguaApp)
+            ?.let { app -> CachedByteSource(app.streamStore, streamKey(uri.toString()), http) }
+            ?: http
+    }
     else -> null
 }
 
@@ -43,7 +51,7 @@ private class LocalByteSource(private val context: Context, private val uri: Uri
     }
 }
 
-private class HttpByteSource(private val url: String) : ByteSource {
+internal class HttpByteSource(private val url: String) : ByteSource {
     override val isRemote = true
 
     override fun open(from: Long, toInclusive: Long?): InputStream {

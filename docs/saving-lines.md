@@ -33,6 +33,11 @@ The found range is widened by the user's **clip margins** (default 0.45 s each s
 ## Reading MKV/WebM (`subtitle/mkv/`)
 
 - `ByteSource`: local file descriptor or HTTP Range requests, with a total read budget (64 MB).
+  Online, `stream/CachedByteSource` serves the parts the player has kept in the stream cache
+  and uses the network from the first part that is not kept (it adds nothing to the cache:
+  cue reads are small pieces far apart). Lines around the moment are then read without a
+  download; before, each Repeat/back/forward on a link without cues downloaded megabytes of
+  video interleaved with the subtitles.
 - `EbmlReader`: streaming EBML with element and block size caps; `ReadLimitException`.
 - `MkvSubtitles`: track headers (codec, language, name, default, compression), SeekHead and
   Cues to jump near the moment, clusters before it (a line may start in an earlier cluster),

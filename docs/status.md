@@ -2,7 +2,7 @@
 
 Current state of the project. Update at the end of every task.
 
-Last update: 2026-10-28, release `build-74`.
+Last update: 2026-10-28, release `build-75`.
 
 ## Features
 
@@ -39,8 +39,9 @@ Last update: 2026-10-28, release `build-74`.
 | Name Helat Player, new icon (rising sun with play), APK `HelatPlayer.apk` | build-67 | **No** |
 | About in Settings (version, "Made by ard9", GitHub link); demo GIF and video in the README | build-68 | **No** |
 | ‹ Line / Line › step by subtitle line (±5 s without); clips of online films cut through the cache | build-72 | Partly: owner says it works; with subtitles off a press jumped 50 minutes |
-| Fix: step by the subtitle track on screen; ±5 s when subtitles are off | build-73 | Owner: does not work with built-in (MKV) subtitles, local or online; details asked |
+| Fix: step by the subtitle track on screen; ±5 s when subtitles are off | build-73 | Owner: back/forward did nothing on online links with built-in subtitles |
 | Line stepping: 5 s when the line is more than 10 s away; subtitle-on state also read on time updates | build-74 | **No** |
+| Online subtitle reads from the stream cache (Repeat, Loop, saving, back/forward); back/forward waits at most 3 s, spinner, presses not cancelled | build-75 | **No** |
 | Fix: black picture with sound after loading a subtitle file or returning from the background (views re-attached); aspect chosen before the picture applied when it appears; loaded subtitle file in the Subtitles list | build-71 | **No** |
 | Lines preloaded in the background; Loop/Repeat/save find lines without a download; loop jumps 150 ms early | build-59 | **No** (owner: start of Loop was slow, pauses between repeats a little) |
 

@@ -79,7 +79,10 @@ the orientation and system bars. The activity handles orientation changes itself
   that line. A line more than 10 s away (`MAX_STEP_MS`, a long silence) is not stepped to.
   Lines: the subtitle file, else the built-in track on screen (all lines once
   preloaded, else read around the moment). With subtitles off, without lines, or past the
-  first/last line: 5 s (`SKIP_MS`); the labels then say −5s/+5s. (build-72 used the best
+  first/last line: 5 s (`SKIP_MS`); the labels then say −5s/+5s. Lines that must be
+  downloaded are waited for at most 3 s (`STEP_WAIT_MS`), then it moves 5 s; while a press is
+  being worked out a small spinner shows and further presses are ignored (each new press used
+  to cancel the last, so on slow links nothing ever happened). (build-72 used the best
   track when subtitles were off; with a sparse track a press jumped 50 minutes.)
 - **Speed**: 1×, 0.75×, 0.5×, 1.25× (`RATES`).
 
