@@ -893,7 +893,11 @@ fun PlayerScreen(
     DisposableEffect(player) {
         player.setEventListener(MediaPlayer.EventListener { event ->
             when (event.type) {
-                MediaPlayer.Event.TimeChanged -> timeMs = event.timeChanged
+                MediaPlayer.Event.TimeChanged -> {
+                    timeMs = event.timeChanged
+                    // Also read here: track events alone did not keep this right.
+                    builtInShown = player.spuTrack != -1
+                }
                 MediaPlayer.Event.ESAdded, MediaPlayer.Event.ESSelected, MediaPlayer.Event.ESDeleted ->
                     builtInShown = player.spuTrack != -1
                 MediaPlayer.Event.Vout -> {

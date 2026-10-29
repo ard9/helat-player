@@ -38,7 +38,7 @@ class LineStepTest {
     fun `forward goes to the next line`() {
         assertEquals(14_000L, LineStep.nextStart(lines, 11_000))
         assertEquals(20_000L, LineStep.nextStart(lines, 17_000))
-        assertEquals(10_000L, LineStep.nextStart(lines, 0))
+        assertEquals(10_000L, LineStep.nextStart(lines, 1_000))
     }
 
     @Test
@@ -61,6 +61,17 @@ class LineStepTest {
         assertEquals(14_000L, LineStep.nextStart(split, 11_000))
         assertEquals(10_000L, LineStep.previousStart(split, 15_500))
         assertEquals(14_000L, LineStep.previousStart(split, 17_000))
+    }
+
+    @Test
+    fun `a line more than 10 s away is not stepped to`() {
+        val far = listOf(SubtitleLine(20_000, 22_000, "later"))
+        assertNull("next line 10 s + 1 ms away", LineStep.nextStart(far, 9_999))
+        assertEquals(20_000L, LineStep.nextStart(far, 10_000))
+        val sparse = listOf(SubtitleLine(10_000, 12_000, "one"), SubtitleLine(3_010_000, 3_012_000, "much later"))
+        assertNull("50 minutes of silence", LineStep.nextStart(sparse, 13_000))
+        assertNull("the line heard is long ago", LineStep.previousStart(sparse, 40_000))
+        assertEquals(10_000L, LineStep.previousStart(sparse, 19_000))
     }
 
     @Test
