@@ -76,9 +76,10 @@ the orientation and system bars. The activity handles orientation changes itself
 - **‹ Line / Line ›** (`stepLine`): to the start of the previous or next subtitle line, 0.3 s
   early. `player/LineStep` (pure, tested) picks it; a jump lands in the lead-in of a line, which
   still counts as current, so pressing again moves on; in the pause after a line, back goes to
-  that line. Lines: the subtitle file, else the best text track (all lines once preloaded, else
-  read around the moment). Without lines, or past the first/last line: 5 s (`SKIP_MS`). The
-  labels say −5s/+5s when the film has no text track and no file is loaded.
+  that line. Lines: the subtitle file, else the built-in track on screen (all lines once
+  preloaded, else read around the moment). With subtitles off, without lines, or past the
+  first/last line: 5 s (`SKIP_MS`); the labels then say −5s/+5s. (build-72 used the best
+  track when subtitles were off; with a sparse track a press jumped 50 minutes.)
 - **Speed**: 1×, 0.75×, 0.5×, 1.25× (`RATES`).
 
 ## Subtitle search

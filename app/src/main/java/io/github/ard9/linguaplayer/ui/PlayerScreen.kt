@@ -403,8 +403,10 @@ fun PlayerScreen(
     var voutCount by remember { mutableIntStateOf(0) }
     // The back/forward jump being worked out (finding the line can take a moment online).
     var stepJob by remember { mutableStateOf<Job?>(null) }
-    // Whether the film has built-in text tracks; the back/forward buttons then step by line.
+    // Whether the film has built-in text tracks, and whether one is shown: the back/forward
+    // buttons step by the lines of the subtitles on screen, and by 5 s when none are shown.
     var hasTextTracks by remember { mutableStateOf(false) }
+    var builtInShown by remember { mutableStateOf(false) }
     // Set when the video views were detached because the app went to the background.
     var viewsDetachedForStop by remember { mutableStateOf(false) }
     var seekFraction by remember { mutableStateOf<Float?>(null) }
@@ -773,10 +775,13 @@ fun PlayerScreen(
      */
     suspend fun stepLines(now: Long, forward: Boolean): List<SubtitleLine> {
         externalLines?.let { return it }
+        // Subtitles off: step by time. Another track's lines (say a forced track with a few
+        // lines) could be far away; a press once jumped 50 minutes.
+        if (player.spuTrack == -1) return emptyList()
         val index = builtIn.await() ?: return emptyList()
         val tracks = index.textTracks
         if (tracks.isEmpty()) return emptyList()
-        val track = tracks[LineSearch.preferredOrder(tracks, shownTrack(index)).first()]
+        val track = shownTrack(index) ?: tracks[LineSearch.preferredOrder(tracks, null).first()]
         filmLines?.let { return it[track.number].orEmpty() }
         return withContext(Dispatchers.IO) {
             runCatching {
@@ -889,6 +894,8 @@ fun PlayerScreen(
         player.setEventListener(MediaPlayer.EventListener { event ->
             when (event.type) {
                 MediaPlayer.Event.TimeChanged -> timeMs = event.timeChanged
+                MediaPlayer.Event.ESAdded, MediaPlayer.Event.ESSelected, MediaPlayer.Event.ESDeleted ->
+                    builtInShown = player.spuTrack != -1
                 MediaPlayer.Event.Vout -> {
                     voutCount = event.voutCount
                     // A new video helper (first start, or after the background) starts at best fit.
@@ -1070,6 +1077,7 @@ fun PlayerScreen(
                         externalLines = lines
                         externalName = SourceNames.displayName(context, uri)
                         player.setSpuTrack(-1) // Hide built-in subtitles so text is not shown twice.
+                        builtInShown = false
                         message(context.resources.getQuantityString(R.plurals.loaded_sub_lines, lines.size, lines.size))
                     }
                 }
@@ -1165,7 +1173,7 @@ fun PlayerScreen(
                 TextButton(onClick = { repeatLine(); touch() }) {
                     Text(stringResource(R.string.repeat), color = Color.White)
                 }
-                val byLine = externalLines != null || hasTextTracks
+                val byLine = externalLines != null || (hasTextTracks && builtInShown)
                 TextButton(onClick = { stepLine(forward = false); touch() }) {
                     Text(stringResource(if (byLine) R.string.line_back else R.string.skip_back), color = Color.White)
                 }
@@ -1447,6 +1455,7 @@ fun PlayerScreen(
                 } else if (id != FILE_TRACK_ID) {
                     // Another track, or off: the file's text is no longer shown or used.
                     player.setSpuTrack(id)
+                    builtInShown = id != -1
                     externalLines = null
                     externalName = null
                 }
