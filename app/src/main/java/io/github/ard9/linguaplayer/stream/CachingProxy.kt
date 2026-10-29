@@ -271,12 +271,13 @@ class CachingProxy(
         val loader = downloader ?: return
         val size = store.chunkSize
         var pos = from
+        val reader = loader.newReader()
         while (pos <= end && !closed) {
             val index = pos / size
             val chunkStart = index * size
             val chunkLength = min(size.toLong(), length - chunkStart).toInt()
             val lastInChunk = min(end, chunkStart + chunkLength - 1)
-            loader.reading(index)
+            loader.reading(reader, index)
             val chunk = store.get(key, index, chunkLength) ?: loader.await(index, chunkLength)
             out.write(chunk, (pos - chunkStart).toInt(), (lastInChunk - pos + 1).toInt())
             pos = lastInChunk + 1
@@ -305,8 +306,14 @@ class CachingProxy(
         private var pending: UpstreamResponse? = null
         @Volatile private var connection: UpstreamResponse? = null
 
-        fun reading(index: Long) = synchronized(lock) {
-            if (!started || index != playing) {
+        // The newest request is where the player reads now; an older one may still drain after
+        // a jump (seen with VLC), and following it too made the downloader hop back and forth.
+        private var newestReader = 0
+
+        fun newReader(): Int = synchronized(lock) { ++newestReader }
+
+        fun reading(reader: Int, index: Long) = synchronized(lock) {
+            if (reader == newestReader && (!started || index != playing)) {
                 started = true
                 playing = index
                 lock.notifyAll()

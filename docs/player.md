@@ -35,6 +35,9 @@ Code: `ui/PlayerScreen.kt`, `player/VlcMedia.kt`, `player/FrameGrabber.kt`, `Lin
   fewer than 8 MB past the player's position are kept it downloads at full speed until 48 MB
   are, then closes the connection, so the radio can rest instead of trickling (battery). Up to
   48 MB may be downloaded and not watched. Clip and subtitle readers do not read ahead.
+  Read-ahead follows the newest request only: after a jump VLC keeps reading the old position
+  for a moment on another connection. Verified locally: desktop VLC 3.0.20 plays a file and
+  plays from the middle through it (a slow fake server).
 - The proxy binds to `127.0.0.1` explicitly: on Android `InetAddress.getLoopbackAddress()`
   can be `::1`, and build-61 failed on the phone with "VLC could not play this media" (most
   likely this). Verified locally: desktop VLC 3.0.20 plays and seeks through the proxy, and
