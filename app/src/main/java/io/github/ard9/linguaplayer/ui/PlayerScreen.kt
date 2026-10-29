@@ -12,6 +12,7 @@ import io.github.ard9.linguaplayer.player.BuiltInSearch
 import kotlinx.coroutines.Job
 import android.os.SystemClock
 import io.github.ard9.linguaplayer.player.LineLoop
+import io.github.ard9.linguaplayer.player.LineStep
 import io.github.ard9.linguaplayer.data.parseClock
 import io.github.ard9.linguaplayer.data.formatClock
 import io.github.ard9.linguaplayer.roleplay.SceneRange
@@ -149,7 +150,8 @@ import org.videolan.libvlc.util.VLCVideoLayout
 import kotlin.math.max
 
 /** Extra audio kept before and after each subtitle line so words are not cut off. */
-private const val SKIP_MS = 10_000L
+/** Back and forward without subtitle lines. */
+private const val SKIP_MS = 5_000L
 private const val REPEAT_FALLBACK_MS = 5_000L
 private const val CONTROLS_TIMEOUT_MS = 4_000L
 /** Wait after playback starts before reading the film's subtitle lines in the background. */
@@ -162,6 +164,8 @@ private const val PRELOAD_DELAY_MS = 3_000L
 private const val LOOP_EARLY_MS = 150L
 /** A found line plays from a moment before it, so its first word is heard. */
 private const val SEARCH_LEAD_MS = 300L
+/** Lines read ahead for the forward button before all lines of the film are known. */
+private const val STEP_READ_LINES = 3
 
 /** Scale types with their names: a string resource, or null for a ratio shown as is. */
 private val SCALES = listOf(
@@ -397,6 +401,10 @@ fun PlayerScreen(
     // Video outputs libVLC has open. A scale set before there is one ends up wrong (black
     // picture), so the chosen scale is applied when the video output appears.
     var voutCount by remember { mutableIntStateOf(0) }
+    // The back/forward jump being worked out (finding the line can take a moment online).
+    var stepJob by remember { mutableStateOf<Job?>(null) }
+    // Whether the film has built-in text tracks; the back/forward buttons then step by line.
+    var hasTextTracks by remember { mutableStateOf(false) }
     // Set when the video views were detached because the app went to the background.
     var viewsDetachedForStop by remember { mutableStateOf(false) }
     var seekFraction by remember { mutableStateOf<Float?>(null) }
@@ -759,6 +767,37 @@ fun PlayerScreen(
         session = null
     }
 
+    /**
+     * The lines the back and forward buttons step through: the subtitle file, else the best
+     * built-in text track (all lines once read, else the lines near [now] in that direction).
+     */
+    suspend fun stepLines(now: Long, forward: Boolean): List<SubtitleLine> {
+        externalLines?.let { return it }
+        val index = builtIn.await() ?: return emptyList()
+        val tracks = index.textTracks
+        if (tracks.isEmpty()) return emptyList()
+        val track = tracks[LineSearch.preferredOrder(tracks, shownTrack(index)).first()]
+        filmLines?.let { return it[track.number].orEmpty() }
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                if (forward) index.linesFrom(now, track.number, STEP_READ_LINES) else index.linesAround(now)[track.number].orEmpty()
+            }.onFailure { Log.w(TAG, "Could not read lines to step through", it) }.getOrDefault(emptyList())
+        }
+    }
+
+    /** Back or forward one subtitle line, or [SKIP_MS] without lines. */
+    fun stepLine(forward: Boolean) {
+        stopLoop()
+        val now = player.time
+        stepJob?.cancel()
+        stepJob = scope.launch {
+            val lines = stepLines(now, forward)
+            val start = if (forward) LineStep.nextStart(lines, now) else LineStep.previousStart(lines, now)
+            val target = start?.let { max(0L, it - SEARCH_LEAD_MS) } ?: (if (forward) now + SKIP_MS else now - SKIP_MS)
+            seekTo(target)
+        }
+    }
+
     /** Plays the current line again (or the last 5 seconds without subtitles). */
     fun repeatLine() {
         stopLoop()
@@ -924,6 +963,8 @@ fun PlayerScreen(
             currentMedia?.close()
         }
     }
+
+    LaunchedEffect(Unit) { hasTextTracks = builtIn.await()?.textTracks?.isNotEmpty() == true }
 
     // Once the film plays, read its subtitle lines in the background when that is cheap, so
     // Loop, Repeat, saving and role-play find lines without waiting for a download.
@@ -1124,8 +1165,9 @@ fun PlayerScreen(
                 TextButton(onClick = { repeatLine(); touch() }) {
                     Text(stringResource(R.string.repeat), color = Color.White)
                 }
-                TextButton(onClick = { seekTo(player.time - SKIP_MS); touch() }) {
-                    Text(stringResource(R.string.skip_back), color = Color.White)
+                val byLine = externalLines != null || hasTextTracks
+                TextButton(onClick = { stepLine(forward = false); touch() }) {
+                    Text(stringResource(if (byLine) R.string.line_back else R.string.skip_back), color = Color.White)
                 }
                 IconButton(
                     onClick = {
@@ -1141,8 +1183,8 @@ fun PlayerScreen(
                         modifier = Modifier.size(56.dp),
                     )
                 }
-                TextButton(onClick = { seekTo(player.time + SKIP_MS); touch() }) {
-                    Text(stringResource(R.string.skip_forward), color = Color.White)
+                TextButton(onClick = { stepLine(forward = true); touch() }) {
+                    Text(stringResource(if (byLine) R.string.line_forward else R.string.skip_forward), color = Color.White)
                 }
             } }
 

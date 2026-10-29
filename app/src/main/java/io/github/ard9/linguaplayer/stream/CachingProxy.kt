@@ -37,6 +37,13 @@ class CachingProxy(
     /** Names the film's folder in the store; must not contain the film's address. */
     private val key: String,
     fileName: String,
+    /**
+     * Use the length the store recorded for this film instead of asking the server first, so
+     * parts already kept are served without any network request. Only for a film the player has
+     * just opened (which checked the length); a file that changed is still noticed when a
+     * missing part is downloaded.
+     */
+    trustKnownLength: Boolean = false,
 ) : Closeable {
     // 127.0.0.1 itself: on Android getLoopbackAddress() can be the IPv6 ::1, which would not
     // accept the IPv4 address given to the player.
@@ -50,7 +57,7 @@ class CachingProxy(
     ) { r -> Thread(r, "stream-proxy").apply { isDaemon = true } }
     private val open = Collections.synchronizedSet(mutableSetOf<Socket>())
     @Volatile private var closed = false
-    @Volatile private var total: Long? = null
+    @Volatile private var total: Long? = if (trustKnownLength) store.knownLength(key) else null
     @Volatile private var contentType: String? = null
     private val requests = AtomicInteger()
     @Volatile private var lastProblem: String? = null

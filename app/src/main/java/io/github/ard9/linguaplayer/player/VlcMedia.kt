@@ -39,23 +39,32 @@ fun openVlcMedia(context: Context, libVlc: LibVLC, uri: Uri, useCache: Boolean =
             ?: throw IOException("Cannot open the file")
         return OpenedMedia(Media(libVlc, descriptor.fileDescriptor), descriptor)
     }
-    val online = uri.scheme == "http" || uri.scheme == "https"
-    val proxy = (context.applicationContext as? LinguaApp)?.takeIf { online && useCache }?.let { app ->
-        try {
-            CachingProxy(
-                upstream = HttpUpstream(uri.toString()),
-                store = app.streamStore,
-                key = sha256(uri.toString()),
-                fileName = uri.lastPathSegment.orEmpty(),
-            ).start()
-        } catch (e: Exception) {
-            Log.w("VlcMedia", "Playing the link directly; the cache could not start", e)
-            null
-        }
-    }
+    val proxy = if (useCache) openStreamProxy(context, uri) else null
     val media = Media(libVlc, proxy?.let { Uri.parse(it.url) } ?: uri)
     media.addOption(":network-caching=1500")
     return OpenedMedia(media, null, proxy)
+}
+
+/**
+ * A [CachingProxy] for an online film ([uri] http or https), sharing the kept parts with every
+ * other reader of the same film; null for other addresses or if it cannot start (then read the
+ * link directly). The caller closes it. [trustKnownLength]: see [CachingProxy].
+ */
+fun openStreamProxy(context: Context, uri: Uri, trustKnownLength: Boolean = false): CachingProxy? {
+    if (uri.scheme != "http" && uri.scheme != "https") return null
+    val app = context.applicationContext as? LinguaApp ?: return null
+    return try {
+        CachingProxy(
+            upstream = HttpUpstream(uri.toString()),
+            store = app.streamStore,
+            key = sha256(uri.toString()),
+            fileName = uri.lastPathSegment.orEmpty(),
+            trustKnownLength = trustKnownLength,
+        ).start()
+    } catch (e: Exception) {
+        Log.w("VlcMedia", "Reading the link directly; the cache could not start", e)
+        null
+    }
 }
 
 private fun sha256(text: String): String =

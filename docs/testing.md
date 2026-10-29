@@ -21,8 +21,9 @@ calls. CI runs them before every build (`gradle testDebugUnitTest`); there is no
 | `data/BackupReminderTest` | When Home suggests a backup (no cards, never, recent backup, snoozed). |
 | `data/CardBackupTest` | Backup round trip, skipping existing cards, hostile backups (paths outside the folders, overwriting files, other ZIPs, damaged or newer data). |
 | `player/LineSearchTest` | Which line is saved: track order, margins, Persian meaning, tracks without a line, duplicates. |
+| `player/LineStepTest` | Back/forward by line: previous and next start, the pause after a line, pressing again from a lead-in, first/last line, lines sharing a start. |
 | `player/LineLoopTest` | Loop jumps: waiting for the old position after a jump, repeating, early landing, giving up waiting, jumping a little early, never ending by itself. |
-| `stream/CachingProxyTest` | The proxy over real sockets: whole film, ranges, second read from the phone, mixed kept and new chunks, servers without ranges, a new proxy reusing chunks, refused paths/methods/ranges, loopback address with a secret. |
+| `stream/CachingProxyTest` | The proxy over real sockets: whole film, ranges, second read from the phone, mixed kept and new chunks, servers without ranges, a new proxy reusing chunks, refused paths/methods/ranges, loopback address with a secret, a clip proxy serving kept parts without asking the server. |
 | `stream/ChunkStoreTest` | Kept chunks after a restart, least recently used removed first, changed file length, wrong chunk size. |
 | `reminder/ReminderTimeTest` | When the next daily reminder is due (later today, tomorrow, on time, around midnight). |
 | `data/ResumePolicyTest` | Which playback positions are worth resuming. |

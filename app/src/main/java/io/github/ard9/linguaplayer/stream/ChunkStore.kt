@@ -43,6 +43,14 @@ class ChunkStore(private val root: File, private val maxBytes: Long, val chunkSi
         meta.writeText(totalLength.toString())
     }
 
+    /** The length [prepare] recorded for film [key], or null if it was never prepared. */
+    @Synchronized
+    fun knownLength(key: String): Long? {
+        load()
+        val meta = File(File(root, key), META)
+        return if (meta.isFile) meta.readText().trim().toLongOrNull() else null
+    }
+
     /** Chunk [index] of film [key], if kept and of the [expectedSize]. */
     @Synchronized
     fun get(key: String, index: Long, expectedSize: Int): ByteArray? {

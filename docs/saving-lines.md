@@ -54,6 +54,8 @@ file throws `NoSubtitleIndexException` rather than downloading the film.
 ## Cutting the audio (`clip/`)
 
 `ClipService` tries Media3 `TransformerClipper` (m4a) and falls back to `VlcClipper`
+(both read online films through a `CachingProxy`; Transformer's trusts the length the player
+recorded, so a just-played line is cut without any network request)
 (libVLC sout → wav). libVLC may ignore `:start-time`, so `VlcClipper` also stops on
 `TimeChanged` past the end and `WavTrim.keepLast` keeps only the requested duration.
 `WavReader` is tolerant (any channels/rate, unset sizes) and resamples for VAD.

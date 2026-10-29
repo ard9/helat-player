@@ -2,7 +2,7 @@
 
 Current state of the project. Update at the end of every task.
 
-Last update: 2026-10-28, release `build-71`.
+Last update: 2026-10-28, release `build-72`.
 
 ## Features
 
@@ -38,6 +38,7 @@ Last update: 2026-10-28, release `build-71`.
 | R8 shrinking of the release APK (no obfuscation) | build-66 | Partly: home, online player, subtitle search, cards, review, role-play setup and guide open fine (owner's screenshots). Not seen: saving without subtitles, role-play recording, practice, reminder |
 | Name Helat Player, new icon (rising sun with play), APK `HelatPlayer.apk` | build-67 | **No** |
 | About in Settings (version, "Made by ard9", GitHub link); demo GIF and video in the README | build-68 | **No** |
+| ‹ Line / Line › step by subtitle line (±5 s without); clips of online films cut through the cache | build-72 | **No** |
 | Fix: black picture with sound after loading a subtitle file or returning from the background (views re-attached); aspect chosen before the picture applied when it appears; loaded subtitle file in the Subtitles list | build-71 | **No** |
 | Lines preloaded in the background; Loop/Repeat/save find lines without a download; loop jumps 150 ms early | build-59 | **No** (owner: start of Loop was slow, pauses between repeats a little) |
 

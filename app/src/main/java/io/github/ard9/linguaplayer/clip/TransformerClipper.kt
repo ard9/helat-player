@@ -11,6 +11,7 @@ import androidx.media3.transformer.EditedMediaItem
 import androidx.media3.transformer.ExportException
 import androidx.media3.transformer.ExportResult
 import androidx.media3.transformer.Transformer
+import io.github.ard9.linguaplayer.player.openStreamProxy
 import java.io.File
 
 /**
@@ -23,8 +24,15 @@ class TransformerClipper(private val context: Context) {
     private val active = mutableSetOf<Transformer>()
 
     fun clip(source: Uri, startMs: Long, endMs: Long, output: File, onDone: (Result<Unit>) -> Unit) {
+        // Online films are read through the cache: the line was just played, so its part of the
+        // file is usually on the phone and nothing is downloaded again.
+        val proxy = openStreamProxy(context, source, trustKnownLength = true)
+        val done: (Result<Unit>) -> Unit = { result ->
+            proxy?.close()
+            onDone(result)
+        }
         val mediaItem = MediaItem.Builder()
-            .setUri(source)
+            .setUri(proxy?.url ?: source.toString())
             .setClippingConfiguration(
                 MediaItem.ClippingConfiguration.Builder()
                     .setStartPositionMs(startMs)
@@ -42,7 +50,7 @@ class TransformerClipper(private val context: Context) {
             .addListener(object : Transformer.Listener {
                 override fun onCompleted(composition: Composition, exportResult: ExportResult) {
                     active.remove(transformer)
-                    onDone(Result.success(Unit))
+                    done(Result.success(Unit))
                 }
 
                 override fun onError(
@@ -52,7 +60,7 @@ class TransformerClipper(private val context: Context) {
                 ) {
                     active.remove(transformer)
                     output.delete()
-                    onDone(Result.failure(exportException))
+                    done(Result.failure(exportException))
                 }
             })
             .build()
@@ -62,7 +70,7 @@ class TransformerClipper(private val context: Context) {
         } catch (e: Exception) {
             active.remove(transformer)
             output.delete()
-            onDone(Result.failure(e))
+            done(Result.failure(e))
         }
     }
 }

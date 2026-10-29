@@ -54,6 +54,23 @@ class CachingProxyTest {
     }
 
     @Test
+    fun `a proxy trusting the known length serves kept parts without asking the server`() {
+        val store = ChunkStore(temp.root, 1L shl 30, chunk)
+        val up = FakeUpstream(50_000)
+        get(proxy(up, store).url, "bytes=8192-24575") // The player reads (and keeps) this part.
+        val opens = up.opens.get()
+        val clipper = CachingProxy(up, store, "film", "film.mkv", trustKnownLength = true).start().also { proxies.add(it) }
+        val (code, headers, body) = get(clipper.url, "bytes=10000-20000")
+        assertEquals(206, code)
+        assertEquals("bytes 10000-20000/50000", headers["Content-Range"])
+        assertArrayEquals(up.data.copyOfRange(10_000, 20_001), body)
+        assertEquals("no request to the server", opens, up.opens.get())
+        // A part that is not kept is still downloaded.
+        assertArrayEquals(up.data.copyOfRange(40_000, 45_000), get(clipper.url, "bytes=40000-44999").third)
+        assertTrue(up.opens.get() > opens)
+    }
+
+    @Test
     fun `serves the whole film`() {
         val up = FakeUpstream(50_000)
         val (code, headers, body) = get(proxy(up).url)

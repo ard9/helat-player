@@ -23,7 +23,8 @@ Code: `ui/PlayerScreen.kt`, `player/VlcMedia.kt`, `player/FrameGrabber.kt`, `Lin
   `CachingProxy` (HTTP server on 127.0.0.1, random secret path) and gives libVLC its address.
   The proxy fetches the film with `HttpUpstream` (Range requests, redirects) and keeps every
   256 KB chunk in `ChunkStore` (`cacheDir/stream-cache/`, 200 MB for all films, least recently
-  used removed first). Jumps back (Loop, Repeat, −10s, seek bar) are then read from the phone.
+  used removed first). Jumps back (Loop, Repeat, ‹ Line, seek bar) are then read from the phone.
+  Clips are cut through the cache too (`saving-lines.md`).
   Why: libVLC's own prefetch buffer prefers reading ahead and drops already played data, so
   jumping back was sometimes instant and sometimes a new download (`decisions.md`). If the
   proxy cannot start, the link is played directly; if libVLC reports an error while playing
@@ -41,7 +42,7 @@ stay while a finger is on the screen (an `Initial`-pass pointer observer on the 
 every touch, also scrolling the control row, without taking it) and while a dialog opened from
 the player is showing.
 
-- Top bar: back, title. Centre: Repeat, −10s, play/pause, +10s. Bottom: seek bar and a
+- Top bar: back, title. Centre: Repeat, ‹ Line, play/pause, Line ›. Bottom: seek bar and a
   scrolling row: Aspect, Audio, Subtitles, Load subtitle file, Subtitle style, Speed,
   Role-play, Clip margins, Full screen/Portrait, Auto-rotate.
 - Subtitles lists a loaded subtitle file first ("name (file)", `FILE_TRACK_ID`), because the
@@ -69,9 +70,15 @@ the orientation and system bars. The activity handles orientation changes itself
   time near the start again (or 4 s pass), because libVLC may still report the old position.
   It jumps back 150 ms before the end of its range (`LOOP_EARLY_MS`; the range already has the
   after-line margin) to shorten the pause between repeats, never before the middle of the line.
-  The loop never ends by itself; it ends on the button, a user seek (seek bar, ±10s, Repeat),
+  The loop never ends by itself; it ends on the button, a user seek (seek bar, ‹ Line / Line ›, Repeat),
   opening the editor or role-play, or the end of the film, each with "Loop off" (role-play
   silently).
+- **‹ Line / Line ›** (`stepLine`): to the start of the previous or next subtitle line, 0.3 s
+  early. `player/LineStep` (pure, tested) picks it; a jump lands in the lead-in of a line, which
+  still counts as current, so pressing again moves on; in the pause after a line, back goes to
+  that line. Lines: the subtitle file, else the best text track (all lines once preloaded, else
+  read around the moment). Without lines, or past the first/last line: 5 s (`SKIP_MS`). The
+  labels say −5s/+5s when the film has no text track and no file is loaded.
 - **Speed**: 1×, 0.75×, 0.5×, 1.25× (`RATES`).
 
 ## Subtitle search

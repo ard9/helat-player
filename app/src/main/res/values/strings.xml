@@ -233,8 +233,10 @@
     </plurals>
     <string name="read_sub_failed">Could not read subtitles: %s</string>
     <string name="repeat">Repeat</string>
-    <string name="skip_back">−10s</string>
-    <string name="skip_forward">+10s</string>
+    <string name="skip_back">−5s</string>
+    <string name="skip_forward">+5s</string>
+    <string name="line_back">‹ Line</string>
+    <string name="line_forward">Line ›</string>
     <string name="aspect">Aspect: %s</string>
     <string name="audio">Audio</string>
     <string name="subtitles">Subtitles</string>
@@ -339,7 +341,7 @@
     <string name="guide_subs_body">• Most MKV and WebM films have subtitle tracks inside. Choose one with Subtitles in the player menu.\n• Load subtitle file: use an .srt or .vtt file from your phone instead. It then appears at the top of the Subtitles list; choosing another track or turning subtitles off puts it away (load it again to bring it back).\n• Subtitle style: choose the colour and size. Built-in tracks use the new style the next time you open a video.\n• Saved lines take their text and exact times from the subtitles, so a film with subtitles gives the best cards. If the film also has a Persian track, it fills in the meaning.</string>
 
     <string name="guide_player_title">Player controls</string>
-    <string name="guide_player_body">Tap the video to show or hide the controls. They stay while your finger is on the screen and hide 4 seconds after you let go.\n• −10s and +10s jump back or forward; the bar below shows where you are.\n• Repeat plays the current line again.\n• The small loop button at the side repeats the current line until you tap it again, seek, or reach the end. It lights up at once; on online films finding the line can take a moment.\n• Search subtitles: type a word or part of a line to list every line that has it; tap one to play the film from there. The first search of a film reads all its subtitles (online, only if the file indexes them; otherwise load an SRT file).\n• Speed: 1×, 0.75×, 0.5× or 1.25×. Slower speech is easier to follow.\n• Aspect changes how the picture fits the screen; Audio chooses the sound track.\n• The player turns with the phone, and landscape is full screen. Full screen and Portrait lock one direction; Auto-rotate unlocks it.</string>
+    <string name="guide_player_body">Tap the video to show or hide the controls. They stay while your finger is on the screen and hide 4 seconds after you let go.\n• ‹ Line and Line › jump to the start of the previous or next subtitle line (in the pause after a line, ‹ Line plays that line again). Without subtitles they are −5s and +5s. The bar below shows where you are.\n• Repeat plays the current line again.\n• The small loop button at the side repeats the current line until you tap it again, seek, or reach the end. It lights up at once; on online films finding the line can take a moment.\n• Search subtitles: type a word or part of a line to list every line that has it; tap one to play the film from there. The first search of a film reads all its subtitles (online, only if the file indexes them; otherwise load an SRT file).\n• Speed: 1×, 0.75×, 0.5× or 1.25×. Slower speech is easier to follow.\n• Aspect changes how the picture fits the screen; Audio chooses the sound track.\n• The player turns with the phone, and landscape is full screen. Full screen and Portrait lock one direction; Auto-rotate unlocks it.</string>
 
     <string name="guide_save_title">Saving a line</string>
     <string name="guide_save_body">When you hear a sentence you want to learn, use the small bookmark button at the side of the video.\n• Tap: the line is saved in the background and the film keeps playing. A short message says Saved, with Undo for a moment.\n• Hold: the film pauses and an editor opens. Check the start and end times (Preview plays them), the text, the meaning and the picture. Text from switches between subtitle tracks.\n\nWhere the times and text come from, in this order:\n1. A subtitle file you loaded.\n2. A subtitle track inside the video (MKV or WebM).\n3. Without subtitles, the pauses in speech around the moment are found on the phone. The card then has no text; you can type it in the editor.\n\nClip margins (player menu) keep a little audio before and after each line, so the first and last words are not cut off.</string>

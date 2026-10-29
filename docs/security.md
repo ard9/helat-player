@@ -19,7 +19,7 @@ working agreement in `AGENTS.md`).
 - "Open with" accepts only `content`, `http` and `https` URIs.
 - Subtitle search keeps a film's subtitle lines in `cacheDir/subtitle-index/`, named by a
   SHA-256 of the address so stream tokens are not written; the last 20 films; cache only.
-- Online films are played through a local proxy (`stream/CachingProxy`): it listens only on
+- Online films are played (and their clips cut) through a local proxy (`stream/CachingProxy`): it listens only on
   127.0.0.1, answers only a path with a 128-bit random secret, GET/HEAD only, headers limited
   to 8 KB, at most 8 connections. Another app on the phone would need the secret to read the
   stream. It fetches the film with the platform's HTTPS (Android certificate checks) instead

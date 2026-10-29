@@ -27,7 +27,8 @@ made for it (voices generated with Kokoro TTS); in the app, role-play records yo
   in a 5-box Leitner system.
 - **Search subtitles**: type a word or part of a line to find every line that has it, and play
   the film from there. Online films need subtitle cues in the file (or load an SRT file).
-- **Listening practice**: Repeat plays the current line again, the small loop button above the
+- **Listening practice**: ‹ Line and Line › jump to the previous or next subtitle line (5 s
+  without subtitles), Repeat plays the current line again, the small loop button above the
   save button repeats it until tapped again (or until you seek), and Speed slows playback down (0.5×–1.25×).
 - **Role-play**: from the player menu, take turns with the actor over the next lines (as many
   as you like) or over a time range you choose (From/To, up to 10 minutes). On your lines the film goes quiet and your voice is recorded; the film either
