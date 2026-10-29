@@ -44,7 +44,19 @@ class CachingProxy(
      * missing part is downloaded.
      */
     trustKnownLength: Boolean = false,
+    /**
+     * Download ahead of the player in bursts (see [ReadAhead]); null downloads only what is
+     * asked for, as it is asked.
+     */
+    private val readAhead: ReadAhead? = null,
 ) : Closeable {
+    /**
+     * Reading ahead for playback: when less than [lowBytes] past the player's position are
+     * kept, the film is downloaded at full speed until [highBytes] are, then the connection is
+     * closed. The phone's radio can then rest between bursts instead of trickling all the time.
+     */
+    class ReadAhead(val lowBytes: Long, val highBytes: Long)
+
     // 127.0.0.1 itself: on Android getLoopbackAddress() can be the IPv6 ::1, which would not
     // accept the IPv4 address given to the player.
     private val server = ServerSocket(0, BACKLOG, InetAddress.getByAddress(byteArrayOf(127, 0, 0, 1)))
@@ -70,8 +82,11 @@ class CachingProxy(
 
     private val acceptThread = Thread({ acceptLoop() }, "stream-proxy-accept").apply { isDaemon = true }
 
+    private val downloader = readAhead?.let { Downloader(it) }
+
     fun start(): CachingProxy {
         acceptThread.start()
+        downloader?.let { Thread(it, "stream-proxy-download").apply { isDaemon = true }.start() }
         return this
     }
 
@@ -186,7 +201,12 @@ class CachingProxy(
             if (request.method == "GET") {
                 val leftover = first
                 first = null
-                stream(from, end, length, leftover, out)
+                if (downloader != null) {
+                    leftover?.let { downloader.adopt(it) }
+                    streamFromDownloader(from, end, length, out)
+                } else {
+                    stream(from, end, length, leftover, out)
+                }
             }
         } finally {
             first?.close()
@@ -246,6 +266,173 @@ class CachingProxy(
         }
     }
 
+    /** Sends bytes [from]..[end] to the player, waiting for the [downloader] for parts not kept. */
+    private fun streamFromDownloader(from: Long, end: Long, length: Long, out: OutputStream) {
+        val loader = downloader ?: return
+        val size = store.chunkSize
+        var pos = from
+        while (pos <= end && !closed) {
+            val index = pos / size
+            val chunkStart = index * size
+            val chunkLength = min(size.toLong(), length - chunkStart).toInt()
+            val lastInChunk = min(end, chunkStart + chunkLength - 1)
+            loader.reading(index)
+            val chunk = store.get(key, index, chunkLength) ?: loader.await(index, chunkLength)
+            out.write(chunk, (pos - chunkStart).toInt(), (lastInChunk - pos + 1).toInt())
+            pos = lastInChunk + 1
+        }
+    }
+
+    /**
+     * The only connection to the server in read-ahead mode: downloads the chunk a reader waits
+     * for, and the chunks after the player's position in bursts ([ReadAhead]).
+     */
+    private inner class Downloader(private val limits: ReadAhead) : Runnable {
+        @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
+        private val lock = java.lang.Object()
+        // Read ahead only once the player has asked for something (it may start mid-film).
+        private var started = false
+        private var playing = 0L
+        private var wanted = -1L
+        // Every wait for a chunk is a request; after a failure the next request retries.
+        private var request = 0
+        private var failedRequest = -1
+        private var failure: IOException? = null
+        private var bursting = false
+        // The last chunk downloaded, in case the store could not keep it (disk full).
+        private var lastIndex = -1L
+        private var lastData: ByteArray? = null
+        private var pending: UpstreamResponse? = null
+        @Volatile private var connection: UpstreamResponse? = null
+
+        fun reading(index: Long) = synchronized(lock) {
+            if (!started || index != playing) {
+                started = true
+                playing = index
+                lock.notifyAll()
+            }
+        }
+
+        /** Uses the response opened to learn the length, if it starts where the download does. */
+        fun adopt(response: UpstreamResponse) = synchronized(lock) {
+            pending?.close()
+            pending = response
+            lock.notifyAll()
+        }
+
+        /** Waits until chunk [index] is downloaded; throws if the download failed or took too long. */
+        fun await(index: Long, size: Int): ByteArray {
+            val deadline = System.currentTimeMillis() + CLIENT_TIMEOUT_MS
+            synchronized(lock) {
+                wanted = index
+                val mine = ++request
+                lock.notifyAll()
+                while (true) {
+                    if (closed) throw IOException("Closed")
+                    if (lastIndex == index) lastData?.let { return it }
+                    if (store.has(key, index, size)) break
+                    if (failedRequest == mine) throw failure ?: IOException("Download failed")
+                    val left = deadline - System.currentTimeMillis()
+                    if (left <= 0) throw IOException("The download took too long")
+                    lock.wait(min(left, 500L))
+                }
+            }
+            return store.get(key, index, size) ?: throw IOException("A downloaded part was not kept")
+        }
+
+        private fun has(index: Long, length: Long) = store.has(key, index, chunkLength(index, length))
+
+        private fun chunkLength(index: Long, length: Long) = min(store.chunkSize.toLong(), length - index * store.chunkSize).toInt()
+
+        /** The next chunk to download, or null to rest. Called holding [lock]. */
+        private fun nextTarget(length: Long): Long? {
+            val count = (length + store.chunkSize - 1) / store.chunkSize
+            if (wanted in 0 until count && failedRequest != request && !has(wanted, length)) return wanted
+            if (!started) return null
+            var index = playing.coerceIn(0, count)
+            var ahead = 0L
+            while (index < count && ahead < limits.highBytes && has(index, length)) {
+                ahead += chunkLength(index, length)
+                index++
+            }
+            val threshold = if (bursting) limits.highBytes else limits.lowBytes
+            bursting = index < count && ahead < threshold && failedRequest != request
+            return if (bursting) index else null
+        }
+
+        override fun run() {
+            var upIndex = -1L
+            try {
+                while (!closed) {
+                    val length = total
+                    val target = synchronized(lock) {
+                        var next = length?.let { nextTarget(it) }
+                        while (next == null && !closed) {
+                            // Resting: let the connection go so the radio can sleep.
+                            connection?.close()
+                            connection = null
+                            lock.wait(1_000)
+                            next = total?.let { nextTarget(it) }
+                        }
+                        next
+                    } ?: break
+                    val len = total ?: continue
+                    try {
+                        var up = connection
+                        if (up == null || upIndex != target) {
+                            up?.close()
+                            val adopted = synchronized(lock) { pending.also { pending = null } }
+                            up = if (adopted != null && adopted.start <= target * store.chunkSize) {
+                                adopted // Starts here, or at 0 on a server without ranges.
+                            } else {
+                                adopted?.close()
+                                upstream.open(target * store.chunkSize)
+                            }
+                            connection = up
+                            upIndex = up.start / store.chunkSize
+                            if (up.totalLength != len) throw IOException("The file changed on the server")
+                        }
+                        // A server without ranges starts at 0: keep the chunks on the way.
+                        while (upIndex <= target && !closed) {
+                            val data = readChunk(up.body, chunkLength(upIndex, len), null, 0, -1)
+                            store.put(key, upIndex, data)
+                            synchronized(lock) {
+                                lastIndex = upIndex
+                                lastData = data
+                                lock.notifyAll()
+                            }
+                            upIndex++
+                        }
+                    } catch (e: Exception) {
+                        // Network or server trouble: readers waiting now get the error; the next
+                        // wait for a chunk tries again.
+                        connection?.close()
+                        connection = null
+                        upIndex = -1
+                        lastProblem = "${e.javaClass.simpleName}: ${e.message}"
+                        synchronized(lock) {
+                            failure = e as? IOException ?: IOException(e)
+                            failedRequest = request
+                            bursting = false
+                            lock.notifyAll()
+                        }
+                    }
+                }
+            } catch (e: InterruptedException) {
+                // Closing.
+            } finally {
+                connection?.close()
+                connection = null
+                synchronized(lock) { pending?.close(); pending = null }
+            }
+        }
+
+        fun close() {
+            synchronized(lock) { lock.notifyAll() }
+            connection?.close()
+        }
+    }
+
     /**
      * Reads a whole chunk of [length] bytes, writing its bytes [writeFrom]..[writeTo] to [out]
      * as soon as they arrive, so playback does not wait for the whole chunk.
@@ -276,6 +463,7 @@ class CachingProxy(
 
     override fun close() {
         closed = true
+        downloader?.close()
         try {
             server.close()
         } catch (e: IOException) {

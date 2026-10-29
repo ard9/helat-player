@@ -60,6 +60,13 @@ jump back to the line start was a new HTTP request whenever the buffer had fille
 buffer only delays that. The app now plays online films through `CachingProxy`, which keeps
 downloaded chunks on disk (200 MB), so jumps back are local.
 
+## 2026-10-29 Battery: screen on only while playing, read-ahead in bursts
+
+The screen used to stay on as long as the player was open, also paused. The cellular radio
+uses much power and stays awake while data trickles; downloading 40 MB at once and then
+closing the connection lets it sleep between bursts, at the cost of up to 48 MB downloaded
+and possibly not watched.
+
 ## 2026-10-28 Name: Helat Player
 
 "Lingua Player" was already the name of another Android app for learning languages from films

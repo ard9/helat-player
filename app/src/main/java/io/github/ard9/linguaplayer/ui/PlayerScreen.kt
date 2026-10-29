@@ -87,6 +87,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -379,7 +380,8 @@ fun PlayerScreen(
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
 
-    val opened = remember { runCatching { openVlcMedia(context, libVlc, source.uri) } }
+    // Playback reads online films ahead in bursts, so the radio can rest in between.
+    val opened = remember { runCatching { openVlcMedia(context, libVlc, source.uri, readAhead = true) } }
     // The media in use; replaced when an online film falls back from the cache to the link.
     var currentMedia by remember { mutableStateOf(opened.getOrNull()) }
     var triedDirect by remember { mutableStateOf(false) }
@@ -1102,7 +1104,17 @@ fun PlayerScreen(
         }
     }
 
-    val currentText = externalLines?.let { SubtitleLookup.activeAt(it, timeMs)?.text }.orEmpty()
+    // Derived, so the screen is redrawn when the line changes, not on every time update
+    // (several a second while playing, which kept the whole player screen busy).
+    val currentText by remember {
+        derivedStateOf { externalLines?.let { SubtitleLookup.activeAt(it, timeMs)?.text }.orEmpty() }
+    }
+
+    // The screen stays on only while the film plays (or a role-play runs); paused, the phone
+    // may turn it off as usual.
+    LaunchedEffect(isPlaying, session, videoLayout) {
+        videoLayout?.keepScreenOn = isPlaying || session != null
+    }
 
     Box(
         Modifier
@@ -1121,7 +1133,7 @@ fun PlayerScreen(
         AndroidView(
             factory = { ctx ->
                 VLCVideoLayout(ctx).apply {
-                    keepScreenOn = true
+                    keepScreenOn = false // Set while playing (see above).
                     videoLayout = this
                     // Attach only once the view is in the window; attaching earlier sometimes
                     // left the video black while the audio played.

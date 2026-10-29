@@ -30,10 +30,23 @@ Code: `ui/PlayerScreen.kt`, `player/VlcMedia.kt`, `player/FrameGrabber.kt`, `Lin
   proxy cannot start, the link is played directly; if libVLC reports an error while playing
   through it, the player reopens the link directly (once) and shows the proxy's diagnostics
   (`CachingProxy.diagnostics`: request count and last problem) so the cause can be found.
+- **Read-ahead in bursts** (playback only, `CachingProxy.ReadAhead`): one downloader thread is
+  the proxy's only connection to the server. It fetches the chunk a reader waits for, and when
+  fewer than 8 MB past the player's position are kept it downloads at full speed until 48 MB
+  are, then closes the connection, so the radio can rest instead of trickling (battery). Up to
+  48 MB may be downloaded and not watched. Clip and subtitle readers do not read ahead.
 - The proxy binds to `127.0.0.1` explicitly: on Android `InetAddress.getLoopbackAddress()`
   can be `::1`, and build-61 failed on the phone with "VLC could not play this media" (most
   likely this). Verified locally: desktop VLC 3.0.20 plays and seeks through the proxy, and
   `HttpUpstream` ranges match direct downloads over HTTPS with redirects.
+
+## Battery
+
+- The screen is kept on only while the film plays or a role-play runs (`keepScreenOn` on the
+  video layout); paused, the phone turns it off as usual.
+- The subtitle-file text on screen is a `derivedStateOf`, so the player screen recomposes when
+  the line changes, not on every `TimeChanged` (several a second).
+- Online films download in bursts (above).
 
 ## Controls
 

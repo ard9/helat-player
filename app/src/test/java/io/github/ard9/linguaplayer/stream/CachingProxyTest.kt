@@ -70,6 +70,69 @@ class CachingProxyTest {
         assertTrue(up.opens.get() > opens)
     }
 
+    private fun readAheadProxy(up: Upstream, store: ChunkStore) =
+        CachingProxy(up, store, "film", "film.mkv", readAhead = CachingProxy.ReadAhead(lowBytes = 10L * chunk, highBytes = 30L * chunk))
+            .start().also { proxies.add(it) }
+
+    /** Waits until [up] has sent nothing for a while (the read-ahead is resting). */
+    private fun waitQuiet(up: FakeUpstream) {
+        var last = -1L
+        repeat(100) {
+            val now = up.sent.get()
+            if (now == last) return
+            last = now
+            Thread.sleep(150)
+        }
+        throw AssertionError("still downloading")
+    }
+
+    @Test
+    fun `reads ahead of the player in a burst, then rests`() {
+        val up = FakeUpstream(100 * chunk)
+        val store = ChunkStore(temp.root, 1L shl 30, chunk)
+        val p = readAheadProxy(up, store)
+        val (code, _, body) = get(p.url, "bytes=0-${chunk - 1}")
+        assertEquals(206, code)
+        assertArrayEquals(up.data.copyOfRange(0, chunk), body)
+        waitQuiet(up)
+        // About 30 chunks ahead of the player are kept, not the whole film.
+        assertTrue("kept ${store.size()}", store.size() in 30L * chunk..33L * chunk)
+        // Reading what was read ahead needs no download.
+        val sent = up.sent.get()
+        assertArrayEquals(up.data.copyOfRange(5 * chunk, 20 * chunk), get(p.url, "bytes=${5 * chunk}-${20 * chunk - 1}").third)
+        assertEquals(sent, up.sent.get())
+    }
+
+    @Test
+    fun `a new burst starts when the player nears the end of what is kept`() {
+        val up = FakeUpstream(100 * chunk)
+        val store = ChunkStore(temp.root, 1L shl 30, chunk)
+        val p = readAheadProxy(up, store)
+        get(p.url, "bytes=0-${chunk - 1}")
+        waitQuiet(up)
+        val before = store.size()
+        // 25 chunks in: fewer than 10 kept ahead, so it downloads until 30 are.
+        assertArrayEquals(up.data.copyOfRange(25 * chunk, 26 * chunk), get(p.url, "bytes=${25 * chunk}-${26 * chunk - 1}").third)
+        waitQuiet(up)
+        assertTrue("kept ${store.size()} after $before", store.size() >= 54L * chunk)
+        assertTrue(store.size() < 100L * chunk)
+    }
+
+    @Test
+    fun `with read-ahead, a jump elsewhere and a whole range still come back right`() {
+        val up = FakeUpstream(70 * chunk + 123)
+        val p = readAheadProxy(up, ChunkStore(temp.root, 1L shl 30, chunk))
+        assertArrayEquals(up.data.copyOfRange(60 * chunk + 7, up.data.size), get(p.url, "bytes=${60 * chunk + 7}-").third)
+        assertArrayEquals(up.data.copyOfRange(3_000, 50 * chunk), get(p.url, "bytes=3000-${50 * chunk - 1}").third)
+    }
+
+    @Test
+    fun `with read-ahead, a server that cannot start in the middle works`() {
+        val up = FakeUpstream(40 * chunk, ranges = false)
+        val p = readAheadProxy(up, ChunkStore(temp.root, 1L shl 30, chunk))
+        assertArrayEquals(up.data.copyOfRange(20 * chunk, 40 * chunk), get(p.url, "bytes=${20 * chunk}-").third)
+    }
+
     @Test
     fun `serves the whole film`() {
         val up = FakeUpstream(50_000)

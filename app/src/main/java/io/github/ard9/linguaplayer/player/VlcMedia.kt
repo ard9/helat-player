@@ -33,13 +33,16 @@ class OpenedMedia(val media: Media, private val resource: Closeable?, val proxy:
  * [CachingProxy] on the phone, so parts already downloaded are not downloaded again when
  * playback jumps back; if the proxy cannot start, the link is played directly.
  */
-fun openVlcMedia(context: Context, libVlc: LibVLC, uri: Uri, useCache: Boolean = true): OpenedMedia {
+/** How far ahead playback of an online film downloads, in bursts (see [CachingProxy.ReadAhead]). */
+private val PLAYBACK_READ_AHEAD = CachingProxy.ReadAhead(lowBytes = 8L shl 20, highBytes = 48L shl 20)
+
+fun openVlcMedia(context: Context, libVlc: LibVLC, uri: Uri, useCache: Boolean = true, readAhead: Boolean = false): OpenedMedia {
     if (uri.scheme == "content") {
         val descriptor = context.contentResolver.openFileDescriptor(uri, "r")
             ?: throw IOException("Cannot open the file")
         return OpenedMedia(Media(libVlc, descriptor.fileDescriptor), descriptor)
     }
-    val proxy = if (useCache) openStreamProxy(context, uri) else null
+    val proxy = if (useCache) openStreamProxy(context, uri, readAhead = if (readAhead) PLAYBACK_READ_AHEAD else null) else null
     val media = Media(libVlc, proxy?.let { Uri.parse(it.url) } ?: uri)
     media.addOption(":network-caching=1500")
     return OpenedMedia(media, null, proxy)
@@ -48,9 +51,14 @@ fun openVlcMedia(context: Context, libVlc: LibVLC, uri: Uri, useCache: Boolean =
 /**
  * A [CachingProxy] for an online film ([uri] http or https), sharing the kept parts with every
  * other reader of the same film; null for other addresses or if it cannot start (then read the
- * link directly). The caller closes it. [trustKnownLength]: see [CachingProxy].
+ * link directly). The caller closes it. [trustKnownLength], [readAhead]: see [CachingProxy].
  */
-fun openStreamProxy(context: Context, uri: Uri, trustKnownLength: Boolean = false): CachingProxy? {
+fun openStreamProxy(
+    context: Context,
+    uri: Uri,
+    trustKnownLength: Boolean = false,
+    readAhead: CachingProxy.ReadAhead? = null,
+): CachingProxy? {
     if (uri.scheme != "http" && uri.scheme != "https") return null
     val app = context.applicationContext as? LinguaApp ?: return null
     return try {
@@ -60,6 +68,7 @@ fun openStreamProxy(context: Context, uri: Uri, trustKnownLength: Boolean = fals
             key = streamKey(uri.toString()),
             fileName = uri.lastPathSegment.orEmpty(),
             trustKnownLength = trustKnownLength,
+            readAhead = readAhead,
         ).start()
     } catch (e: Exception) {
         Log.w("VlcMedia", "Reading the link directly; the cache could not start", e)

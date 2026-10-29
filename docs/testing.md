@@ -23,7 +23,7 @@ calls. CI runs them before every build (`gradle testDebugUnitTest`); there is no
 | `player/LineSearchTest` | Which line is saved: track order, margins, Persian meaning, tracks without a line, duplicates. |
 | `player/LineStepTest` | Back/forward by line: previous and next start, the pause after a line, pressing again from a lead-in, first/last line, lines sharing a start. |
 | `player/LineLoopTest` | Loop jumps: waiting for the old position after a jump, repeating, early landing, giving up waiting, jumping a little early, never ending by itself. |
-| `stream/CachingProxyTest` | The proxy over real sockets: whole film, ranges, second read from the phone, mixed kept and new chunks, servers without ranges, a new proxy reusing chunks, refused paths/methods/ranges, loopback address with a secret, a clip proxy serving kept parts without asking the server. |
+| `stream/CachingProxyTest` | The proxy over real sockets: whole film, ranges, second read from the phone, mixed kept and new chunks, servers without ranges, a new proxy reusing chunks, refused paths/methods/ranges, loopback address with a secret, a clip proxy serving kept parts without asking the server, read-ahead bursts (a burst then rest, a new burst near the end of what is kept, jumps, servers without ranges). |
 | `stream/CachedByteSourceTest` | Subtitle reads from kept chunks: no network for kept parts, network from the first missing part, the short last chunk, free skips, before the film is opened. |
 | `stream/ChunkStoreTest` | Kept chunks after a restart, least recently used removed first, changed file length, wrong chunk size. |
 | `reminder/ReminderTimeTest` | When the next daily reminder is due (later today, tomorrow, on time, around midnight). |

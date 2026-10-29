@@ -51,6 +51,14 @@ class ChunkStore(private val root: File, private val maxBytes: Long, val chunkSi
         return if (meta.isFile) meta.readText().trim().toLongOrNull() else null
     }
 
+    /** Whether chunk [index] of film [key] is kept with the [expectedSize] (no read, no reordering). */
+    @Synchronized
+    fun has(key: String, index: Long, expectedSize: Int): Boolean {
+        load()
+        val file = chunkFile(key, index)
+        return lru.containsKey(file) && file.length() == expectedSize.toLong()
+    }
+
     /** Chunk [index] of film [key], if kept and of the [expectedSize]. */
     @Synchronized
     fun get(key: String, index: Long, expectedSize: Int): ByteArray? {
