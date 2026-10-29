@@ -2,7 +2,7 @@
 
 Current state of the project. Update at the end of every task.
 
-Last update: 2026-10-28, release `build-76`.
+Last update: 2026-10-28, release `build-77`.
 
 ## Features
 
@@ -42,7 +42,7 @@ Last update: 2026-10-28, release `build-76`.
 | Fix: step by the subtitle track on screen; ±5 s when subtitles are off | build-73 | Owner: back/forward did nothing on online links with built-in subtitles |
 | Line stepping: 5 s when the line is more than 10 s away; subtitle-on state also read on time updates | build-74 | **No** |
 | Online subtitle reads from the stream cache (Repeat, Loop, saving, back/forward); back/forward waits at most 3 s, spinner, presses not cancelled | build-75 | Yes ("very good") |
-| Battery: screen on only while playing; fewer recompositions; online films download in bursts (8 MB low, 48 MB high) | build-76 | **No** (watch playback, seeking, Loop online) |
+| Battery: screen on only while playing; fewer recompositions; online films download in bursts (8 MB low, 48 MB high) | build-77 | **No** (watch playback, seeking, Loop online) |
 | Fix: black picture with sound after loading a subtitle file or returning from the background (views re-attached); aspect chosen before the picture applied when it appears; loaded subtitle file in the Subtitles list | build-71 | **No** |
 | Lines preloaded in the background; Loop/Repeat/save find lines without a download; loop jumps 150 ms early | build-59 | **No** (owner: start of Loop was slow, pauses between repeats a little) |
 
