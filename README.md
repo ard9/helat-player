@@ -4,8 +4,6 @@
 
 An Android video player for language learning.
 
-<p align="center"><img src="docs/media/helat-player-demo.gif" width="360" alt="Saving a line from a film and seeing it as a card"></p>
-
 **[Watch the full demo with sound (60 s)](docs/media/helat-player-demo.mp4)**
 
 
