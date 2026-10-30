@@ -27,7 +27,7 @@ enum class AppLanguage(val tag: String) {
 data class ClipMargins(val beforeMs: Long, val afterMs: Long) {
     companion object {
         const val MAX_MS = 1_500L
-        val DEFAULT = ClipMargins(450, 450)
+        val DEFAULT = ClipMargins(200, 200)
     }
 }
 
@@ -202,8 +202,10 @@ class SettingsRepository(context: Context) {
 
         private const val KEY_COLOR = "subtitle_color"
         private const val KEY_SIZE = "subtitle_size"
-        private const val KEY_BEFORE = "clip_before_ms"
-        private const val KEY_AFTER = "clip_after_ms"
+        // New keys since build-78: the margins are now on top of a fixed 0.3 s
+        // (LineSearch.FIXED_PAD_MS), so values chosen before start again at the default.
+        private const val KEY_BEFORE = "clip_before_v2_ms"
+        private const val KEY_AFTER = "clip_after_v2_ms"
         private const val KEY_RP_COUNT = "roleplay_lines"
         private const val KEY_RP_PAUSE = "roleplay_pause"
         private const val KEY_RP_TEXT = "roleplay_show_text"

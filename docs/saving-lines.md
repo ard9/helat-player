@@ -27,8 +27,14 @@ Code: `ui/PlayerScreen.kt` (`findLine`, `quickSave`, `openEditor`), `ui/CardEdit
    (hysteresis, short-gap merge, long-speech split). It reports when the sentence may extend
    past the checked part. The card then has no text.
 
-The found range is widened by the user's **clip margins** (default 0.45 s each side, max
+The found range of a subtitle line is widened by a fixed 0.3 s (`LineSearch.FIXED_PAD_MS`)
+plus the user's **clip margins** (default 0.2 s each side, max
 1.5 s, `SettingsRepository`), then `ClipService` cuts the audio and the card goes to Box 1.
+The same range is used by Loop and Repeat. Lines found by speech detection get only the
+margins (the speech bounds are already the audio). Subtitle times are set for reading: they
+start at or a little before the speech and linger ~0.3-0.5 s after it, and downloaded
+subtitles are often a few hundred ms off; the fixed pad covers that. Margins chosen before
+build-78 were reset (new preference keys), as their meaning changed.
 
 ## Reading MKV/WebM (`subtitle/mkv/`)
 

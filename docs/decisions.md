@@ -60,6 +60,13 @@ jump back to the line start was a new HTTP request whenever the buffer had fille
 buffer only delays that. The app now plays online films through `CachingProxy`, which keeps
 downloaded chunks on disk (200 MB), so jumps back are local.
 
+## 2026-10-30 A fixed 0.3 s around subtitle lines
+
+The owner found that clips came out right with the margins but cut words when the margins were
+made smaller. Subtitle times are for reading, not speech. Owner's choice: always keep 0.3 s
+before and after a subtitle line, with the user's margins on top (default 0.2 s). Snapping
+the clip to the speech with speech detection was proposed and not chosen for now.
+
 ## 2026-10-29 Battery: screen on only while playing, read-ahead in bursts
 
 The screen used to stay on as long as the player was open, also paused. The cellular radio
