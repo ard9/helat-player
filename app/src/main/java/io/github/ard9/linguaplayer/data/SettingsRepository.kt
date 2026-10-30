@@ -202,7 +202,7 @@ class SettingsRepository(context: Context) {
 
         private const val KEY_COLOR = "subtitle_color"
         private const val KEY_SIZE = "subtitle_size"
-        // New keys since build-78: the margins are now on top of a fixed 0.3 s
+        // New keys since build-78: the margins are now on top of fixed pads
         // (LineSearch.FIXED_BEFORE_MS / FIXED_AFTER_MS), so values chosen before start again at the default.
         private const val KEY_BEFORE = "clip_before_v2_ms"
         private const val KEY_AFTER = "clip_after_v2_ms"
