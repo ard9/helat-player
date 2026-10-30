@@ -46,14 +46,16 @@ object LineSearch {
     }
 
     /**
-     * Always kept around a subtitle line, before the user's margins: subtitle times are set for
-     * reading, not to the speech (often a little off), and with small margins words were cut.
+     * Always kept before and after a subtitle line, under the user's margins: subtitle times are
+     * set for reading, not to the speech (often a little off), and with small margins words were
+     * cut. More before, as starts were cut more often (the owner's choice).
      */
-    const val FIXED_PAD_MS = 300L
+    const val FIXED_BEFORE_MS = 500L
+    const val FIXED_AFTER_MS = 250L
 
-    /** The line's range widened by [FIXED_PAD_MS] and [margins] (never before 0). */
+    /** The line's range widened by the fixed pads and [margins] (never before 0). */
     fun widen(line: SubtitleLine, margins: ClipMargins): Pair<Long, Long> =
-        max(0L, line.startMs - FIXED_PAD_MS - margins.beforeMs) to line.endMs + FIXED_PAD_MS + margins.afterMs
+        max(0L, line.startMs - FIXED_BEFORE_MS - margins.beforeMs) to line.endMs + FIXED_AFTER_MS + margins.afterMs
 
     /** The line of a subtitle file at [atMs]. */
     fun fromFile(lines: List<SubtitleLine>, atMs: Long, margins: ClipMargins): FoundLine? {

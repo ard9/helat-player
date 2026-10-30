@@ -41,8 +41,8 @@ class LineSearchTest {
     @Test
     fun `a line from a track gets the fixed pad, margins and its Persian meaning`() {
         val found = LineSearch.fromTrack(search, 1, margins)!!
-        // 5.0-7.0 s, 0.3 s fixed plus 0.4 s before and 0.6 s after.
-        assertEquals(FoundLine(4_300, 7_900, "How are you?", "حالت چطوره؟", 1), found)
+        // 5.0-7.0 s: 0.5 s fixed plus 0.4 s before, 0.25 s fixed plus 0.6 s after.
+        assertEquals(FoundLine(4_100, 7_850, "How are you?", "حالت چطوره؟", 1), found)
     }
 
     @Test
@@ -60,13 +60,13 @@ class LineSearchTest {
     @Test
     fun `with no margins the fixed pad is still kept`() {
         val found = LineSearch.fromFile(listOf(SubtitleLine(5_000, 6_000, "Hi")), 5_500, ClipMargins(0, 0))!!
-        assertEquals(4_700L to 6_300L, found.startMs to found.endMs)
+        assertEquals(4_500L to 6_250L, found.startMs to found.endMs)
     }
 
     @Test
     fun `margins never go before the start of the film`() {
         val found = LineSearch.fromFile(listOf(SubtitleLine(200, 1_500, "Hi")), 1_000, margins)!!
-        assertEquals(0L to 2_400L, found.startMs to found.endMs)
+        assertEquals(0L to 2_350L, found.startMs to found.endMs)
         assertEquals(-1, found.trackIndex)
     }
 
