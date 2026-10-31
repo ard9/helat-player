@@ -46,6 +46,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.ard9.linguaplayer.data.Card
 import io.github.ard9.linguaplayer.data.CardRepository
+import io.github.ard9.linguaplayer.data.BoxIntervals
 import io.github.ard9.linguaplayer.data.Leitner
 
 /** Flashcard review. Front: the frame and the audio. Back: the line on the frame and its meaning. */
@@ -54,6 +55,7 @@ import io.github.ard9.linguaplayer.data.Leitner
 fun ReviewScreen(
     cards: List<Card>,
     repository: CardRepository,
+    intervals: BoxIntervals,
     speed: Float,
     onSpeedChange: (Float) -> Unit,
     onBack: () -> Unit,
@@ -188,11 +190,11 @@ fun ReviewScreen(
                 if (textShown) {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                         OutlinedButton(
-                            onClick = { repository.update(Leitner.forgot(card, System.currentTimeMillis())) },
+                            onClick = { repository.update(Leitner.forgot(card, System.currentTimeMillis(), intervals)) },
                             modifier = Modifier.weight(1f),
                         ) { Text(stringResource(R.string.didnt_know)) }
                         Button(
-                            onClick = { repository.update(Leitner.knew(card, System.currentTimeMillis())) },
+                            onClick = { repository.update(Leitner.knew(card, System.currentTimeMillis(), intervals)) },
                             modifier = Modifier.weight(1f),
                         ) { Text(stringResource(R.string.knew_it)) }
                     }

@@ -48,6 +48,24 @@ class CardRepository(context: Context) {
     @Synchronized
     fun update(card: Card) = save(_cards.value.map { if (it.id == card.id) card else it })
 
+    /** Saves several changed cards at once (moving cards between boxes). */
+    @Synchronized
+    fun updateAll(changed: List<Card>) {
+        val byId = changed.associateBy { it.id }
+        save(_cards.value.map { byId[it.id] ?: it })
+    }
+
+    /** Deletes the cards with these ids, with their audio and pictures. */
+    @Synchronized
+    fun deleteAll(ids: Set<String>) {
+        val (gone, kept) = _cards.value.partition { it.id in ids }
+        gone.forEach { card ->
+            audioFile(card).delete()
+            imageFile(card)?.delete()
+        }
+        save(kept)
+    }
+
     @Synchronized
     fun delete(card: Card) {
         audioFile(card).delete()

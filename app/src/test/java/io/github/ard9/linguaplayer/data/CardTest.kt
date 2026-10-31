@@ -1,5 +1,6 @@
 package io.github.ard9.linguaplayer.data
 
+import java.time.ZoneId
 import java.util.Locale
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -14,20 +15,58 @@ class CardTest {
         box = 1, createdAt = 0, nextReviewAt = 0,
     )
 
+    private val utc = ZoneId.of("UTC")
+    private val defaults = BoxIntervals.DEFAULT
+
     @Test
-    fun `knowing a card moves it up and doubles the wait`() {
-        val now = 1_000_000L
-        val next = Leitner.knew(card, now)
+    fun `knowing a card moves it up, due from the start of the day two days on`() {
+        val now = 1_000_000L // 00:16 on day 0.
+        val next = Leitner.knew(card, now, defaults, utc)
         assertEquals(2, next.box)
-        assertEquals(now + 2 * day, next.nextReviewAt)
-        assertEquals(5, Leitner.knew(card.copy(box = 5), now).box)
+        assertEquals(2 * day, next.nextReviewAt)
+        assertEquals(5, Leitner.knew(card.copy(box = 5), now, defaults, utc).box)
+    }
+
+    @Test
+    fun `the time of day of the answer does not matter`() {
+        val evening = 22 * 60 * 60 * 1000L
+        assertEquals(2 * day, Leitner.knew(card, evening, defaults, utc).nextReviewAt)
+        assertEquals(2 * day, Leitner.knew(card, 1L, defaults, utc).nextReviewAt)
+    }
+
+    @Test
+    fun `days start at midnight in the phone's time zone`() {
+        val tehran = ZoneId.of("Asia/Tehran") // UTC+3:30
+        // 22:00 UTC on day 0 is already 01:30 on day 1 in Tehran.
+        val now = 22 * 60 * 60 * 1000L
+        val due = Leitner.forgot(card, now, defaults, tehran).nextReviewAt
+        // Day 2 at 00:00 Tehran = day 1 at 20:30 UTC.
+        assertEquals(day + 20 * 60 * 60 * 1000L + 30 * 60 * 1000L, due)
     }
 
     @Test
     fun `forgetting a card sends it back to box 1`() {
-        val next = Leitner.forgot(card.copy(box = 4), 0)
+        val next = Leitner.forgot(card.copy(box = 4), 0, defaults, utc)
         assertEquals(1, next.box)
         assertEquals(day, next.nextReviewAt)
+    }
+
+    @Test
+    fun `chosen intervals are used`() {
+        val mine = BoxIntervals(listOf(1, 3, 7, 14, 30))
+        assertEquals(3 * day, Leitner.knew(card, 5_000, mine, utc).nextReviewAt)
+        assertEquals(30 * day, Leitner.knew(card.copy(box = 4), 5_000, mine, utc).nextReviewAt)
+    }
+
+    @Test
+    fun `a card moved by hand is due as if it had just reached that box`() {
+        val moved = Leitner.moveTo(card.copy(box = 2), 4, 5_000, defaults, utc)
+        assertEquals(4, moved.box)
+        assertEquals(8 * day, moved.nextReviewAt)
+        val relearn = Leitner.moveTo(card.copy(box = 5, nextReviewAt = 99 * day), 1, 5_000, defaults, utc)
+        assertEquals(1, relearn.box)
+        assertEquals("box 1 is due at once", 5_000L, relearn.nextReviewAt)
+        assertEquals(5, Leitner.moveTo(card, 9, 0, defaults, utc).box)
     }
 
     @Test

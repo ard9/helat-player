@@ -137,6 +137,7 @@ private fun AppNavigation(
     val positions by app.recents.positions.collectAsState()
     val rolePlayPrefs by app.settings.rolePlay.collectAsState()
     val clipSpeed by app.settings.clipSpeed.collectAsState()
+    val boxIntervals by app.settings.boxIntervals.collectAsState()
     val reminder by app.settings.reminder.collectAsState()
     val lastBackupAt by app.settings.lastBackupAt.collectAsState()
     val backupSnoozedUntil by app.settings.backupSnoozedUntil.collectAsState()
@@ -260,6 +261,7 @@ private fun AppNavigation(
         Screen.Box -> BoxScreen(
             cards = cards,
             repository = app.cards,
+            intervals = boxIntervals,
             selectedBox = selectedBox,
             onSelectBox = { selectedBox = it },
             onOpenCard = { screen = Screen.CardDetail(it.id) },
@@ -270,10 +272,10 @@ private fun AppNavigation(
             if (card == null) {
                 LaunchedEffect(Unit) { screen = Screen.Box }
             } else {
-                CardScreen(card, app.cards, clipSpeed, app.settings::setClipSpeed, onBack = { screen = Screen.Box })
+                CardScreen(card, app.cards, boxIntervals, clipSpeed, app.settings::setClipSpeed, onBack = { screen = Screen.Box })
             }
         }
-        Screen.Review -> ReviewScreen(cards, app.cards, clipSpeed, app.settings::setClipSpeed, onBack = { screen = Screen.Home })
+        Screen.Review -> ReviewScreen(cards, app.cards, boxIntervals, clipSpeed, app.settings::setClipSpeed, onBack = { screen = Screen.Home })
         Screen.Settings -> SettingsScreen(
             language = language,
             onLanguageChange = onLanguageChange,
@@ -282,6 +284,8 @@ private fun AppNavigation(
                 app.settings.setReminder(value)
                 if (value.enabled) ReviewReminder.schedule(context, value.minutesOfDay) else ReviewReminder.cancel(context)
             },
+            intervals = boxIntervals,
+            onIntervalsChange = app.settings::setBoxIntervals,
             onOpenGuide = { screen = Screen.Guide(fromSettings = true) },
             onBack = { screen = Screen.Home },
         )

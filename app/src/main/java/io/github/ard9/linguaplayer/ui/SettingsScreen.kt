@@ -1,6 +1,16 @@
 package io.github.ard9.linguaplayer.ui
 
 import io.github.ard9.linguaplayer.reminder.ReviewReminder
+import io.github.ard9.linguaplayer.data.BoxIntervals
+import io.github.ard9.linguaplayer.data.Leitner
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import io.github.ard9.linguaplayer.data.ReminderPrefs
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -65,6 +75,8 @@ fun SettingsScreen(
     onLanguageChange: (AppLanguage) -> Unit,
     reminder: ReminderPrefs,
     onReminderChange: (ReminderPrefs) -> Unit,
+    intervals: BoxIntervals,
+    onIntervalsChange: (BoxIntervals) -> Unit,
     onOpenGuide: () -> Unit,
     onBack: () -> Unit,
 ) {
@@ -111,6 +123,8 @@ fun SettingsScreen(
 
             ReminderSection(reminder, onReminderChange)
 
+            IntervalsSection(intervals, onIntervalsChange)
+
             Surface(
                 color = Cinema.Seat,
                 shape = RoundedCornerShape(16.dp),
@@ -140,6 +154,60 @@ fun SettingsScreen(
 
             AboutSection()
         }
+    }
+}
+
+/** Days between reviews for each box; a box never comes sooner than the one before it. */
+@Composable
+private fun IntervalsSection(intervals: BoxIntervals, onChange: (BoxIntervals) -> Unit) {
+    Surface(color = Cinema.Seat, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(stringResource(R.string.intervals_title), style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.intervals_text), style = MaterialTheme.typography.bodySmall, color = Cinema.Dim)
+            for (box in 1..Leitner.BOX_COUNT) {
+                IntervalRow(box, intervals.daysFor(box)) { onChange(intervals.with(box, it)) }
+            }
+            if (intervals != BoxIntervals.DEFAULT) {
+                TextButton(onClick = { onChange(BoxIntervals.DEFAULT) }) { Text(stringResource(R.string.intervals_reset)) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun IntervalRow(box: Int, days: Int, onChange: (Int) -> Unit) {
+    // Typed numbers are applied when done (keyboard Done or leaving the field), so passing
+    // through "3" on the way to "30" does not lower the earlier boxes.
+    var text by remember(days) { mutableStateOf(days.toString()) }
+    fun commit() {
+        val value = text.toIntOrNull()
+        if (value != null && value != days) onChange(value) else text = days.toString()
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(stringResource(R.string.box_n, box), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        IconButton(onClick = { onChange(days - 1) }, enabled = days > BoxIntervals.MIN_DAYS) {
+            Text("−", style = MaterialTheme.typography.titleLarge)
+        }
+        OutlinedTextField(
+            value = text,
+            onValueChange = { typed -> text = typed.filter { it.isDigit() }.take(3) },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyLarge.copy(textAlign = TextAlign.Center),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { commit() }),
+            modifier = Modifier
+                .width(72.dp)
+                .onFocusChanged { if (!it.isFocused) commit() },
+        )
+        IconButton(onClick = { onChange(days + 1) }, enabled = days < BoxIntervals.MAX_DAYS) {
+            Text("+", style = MaterialTheme.typography.titleLarge)
+        }
+        Text(
+            pluralStringResource(R.plurals.days_unit, days),
+            style = MaterialTheme.typography.bodyMedium,
+            color = Cinema.Dim,
+            modifier = Modifier.width(40.dp),
+        )
     }
 }
 

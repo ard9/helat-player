@@ -33,6 +33,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.ard9.linguaplayer.data.Card
 import io.github.ard9.linguaplayer.data.CardRepository
+import io.github.ard9.linguaplayer.data.BoxIntervals
+import io.github.ard9.linguaplayer.data.Leitner
 import io.github.ard9.linguaplayer.data.formatTime
 
 /** One card, full size: frame with its line, meaning, and the audio playing on open. */
@@ -41,6 +43,7 @@ import io.github.ard9.linguaplayer.data.formatTime
 fun CardScreen(
     card: Card,
     repository: CardRepository,
+    intervals: BoxIntervals,
     speed: Float,
     onSpeedChange: (Float) -> Unit,
     onBack: () -> Unit,
@@ -52,6 +55,7 @@ fun CardScreen(
     val picture = rememberCardImage(repository.imageFile(card), maxWidthPx = 1080)
     var editing by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var moving by remember { mutableStateOf(false) }
 
     LaunchedEffect(card.id) { if (hasAudio) audio.play(audioFile) }
 
@@ -98,6 +102,9 @@ fun CardScreen(
                     }
                 }
                 OutlinedButton(onClick = { editing = true }) { Text(stringResource(R.string.edit)) }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(onClick = { moving = true }) { Text(stringResource(R.string.move_to_box)) }
                 TextButton(onClick = { confirmDelete = true }) {
                     Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
                 }
@@ -114,6 +121,18 @@ fun CardScreen(
                 repository.update(card.copy(text = text, meaning = meaning))
                 editing = false
             },
+        )
+    }
+
+    if (moving) {
+        MoveToBoxDialog(
+            current = card.box,
+            intervals = intervals,
+            onMove = { box ->
+                repository.update(Leitner.moveTo(card, box, System.currentTimeMillis(), intervals))
+                moving = false
+            },
+            onDismiss = { moving = false },
         )
     }
 

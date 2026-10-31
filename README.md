@@ -22,7 +22,8 @@ made for it (voices generated with Kokoro TTS); in the app, role-play records yo
   around the sentence. Everything can be checked with Preview and adjusted before saving.
 - **Cards**: each saved line keeps its audio, a frame of the video, the text and your meaning.
   Tap a card to open it, search them by text, meaning or film, and review them as flashcards
-  in a 5-box Leitner system.
+  in a 5-box Leitner system. Select several cards (hold one) to move them to another box or
+  delete them together; how often each box comes back is set in Settings.
 - **Search subtitles**: type a word or part of a line to find every line that has it, and play
   the film from there. Online films need subtitle cues in the file (or load an SRT file).
 - **Listening practice**: ‹ Line and Line › jump to the previous or next subtitle line (5 s

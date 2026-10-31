@@ -60,6 +60,13 @@ jump back to the line start was a new HTTP request whenever the buffer had fille
 buffer only delays that. The app now plays online films through `CachingProxy`, which keeps
 downloaded chunks on disk (200 MB), so jumps back are local.
 
+## 2026-10-31 Cards due from the start of a day; intervals chosen by the user
+
+Due times were "answer time + N × 24 h", so a card answered at 22:00 was not due the next
+morning. Now a card is due from 00:00 (phone's time zone) N days later. The owner wanted the
+intervals per box to be his choice; a box is kept no shorter than the one before it so
+knowing a card never brings it back sooner.
+
 ## 2026-10-30 A fixed pad around subtitle lines
 
 The owner found that clips came out right with the margins but cut words when the margins were

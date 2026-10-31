@@ -1,5 +1,7 @@
 package io.github.ard9.linguaplayer.data
 
+import java.time.Instant
+import java.time.ZoneId
 import java.util.Locale
 import org.json.JSONObject
 import java.util.UUID
@@ -55,23 +57,38 @@ data class Card(
     }
 }
 
-/** Leitner system with 5 boxes. A box number is how well the card is known. */
+/**
+ * Leitner system with 5 boxes. A box number is how well the card is known. A card is next due
+ * at the start of a day (in the phone's time zone), so reviewing at a different hour does not
+ * push it later; how many days each box waits is set in Settings ([BoxIntervals]).
+ */
 object Leitner {
     const val BOX_COUNT = 5
-    private const val DAY_MS = 24L * 60 * 60 * 1000
-    private val intervalDays = intArrayOf(1, 2, 4, 8, 16)
-
-    fun intervalMs(box: Int): Long = intervalDays[box.coerceIn(1, BOX_COUNT) - 1] * DAY_MS
 
     fun isDue(card: Card, now: Long): Boolean = card.nextReviewAt <= now
 
-    fun knew(card: Card, now: Long): Card {
+    /** When a card that reaches [box] at [now] is due: the start of the day [intervals] ahead. */
+    fun dueAt(box: Int, now: Long, intervals: BoxIntervals, zone: ZoneId = ZoneId.systemDefault()): Long =
+        Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
+            .plusDays(intervals.daysFor(box).toLong())
+            .atStartOfDay(zone).toInstant().toEpochMilli()
+
+    fun knew(card: Card, now: Long, intervals: BoxIntervals, zone: ZoneId = ZoneId.systemDefault()): Card {
         val box = min(BOX_COUNT, card.box + 1)
-        return card.copy(box = box, nextReviewAt = now + intervalMs(box))
+        return card.copy(box = box, nextReviewAt = dueAt(box, now, intervals, zone))
     }
 
-    fun forgot(card: Card, now: Long): Card =
-        card.copy(box = 1, nextReviewAt = now + intervalMs(1))
+    fun forgot(card: Card, now: Long, intervals: BoxIntervals, zone: ZoneId = ZoneId.systemDefault()): Card =
+        card.copy(box = 1, nextReviewAt = dueAt(1, now, intervals, zone))
+
+    /**
+     * Moved by hand: due as if it had just reached [box]. Box 1 is due at once, as moving a card
+     * there means learning it again.
+     */
+    fun moveTo(card: Card, box: Int, now: Long, intervals: BoxIntervals, zone: ZoneId = ZoneId.systemDefault()): Card {
+        val target = box.coerceIn(1, BOX_COUNT)
+        return card.copy(box = target, nextReviewAt = if (target == 1) now else dueAt(target, now, intervals, zone))
+    }
 }
 
 /** Like [formatTime] but with tenths of a second, e.g. "1:23.4". */

@@ -12,9 +12,14 @@ reading so older cards load (`CardTest` covers loading old JSON).
 
 ## Leitner
 
-Five boxes. "I knew it" moves a card up one box, "Didn't know" back to Box 1. Intervals:
-Box 1 every day, then 2, 4, 8, 16 days (`Leitner`). A card is due when `nextReviewAt` has
-passed.
+Five boxes. "I knew it" moves a card up one box, "Didn't know" back to Box 1. Intervals in
+days per box, set in Settings (`data/BoxIntervals`, default 1, 2, 4, 8, 16; 1–365; a box is
+never shorter than the one before it, `with` raises later and lowers earlier boxes; stored as
+`box_interval_1..5`). A card is due from the start of the day (phone's time zone,
+`Leitner.dueAt`), so the hour of review does not push it later. New intervals apply from each
+card's next answer; `nextReviewAt` already set is kept. Moving cards by hand
+(`Leitner.moveTo`) schedules them as if they had just reached that box; Box 1 is due at once.
+Intervals are settings, not part of card backups.
 
 ## Screens
 
@@ -22,7 +27,12 @@ passed.
 - `BoxScreen`: the five boxes as tabs (`BoxBars`), cards of the selected box. A search field
   finds cards in all boxes (`CardSearch`: every word must appear in text, meaning or film;
   case, Arabic ي/ك and the half space are ignored; tested).
-- `CardScreen`: picture with text, play, edit text/meaning, delete (with its files).
+- `BoxScreen` selection: a long press selects a card; then taps add or remove cards, Select
+  all takes every card shown (the box, or the search results), and Move to box
+  (`MoveToBoxDialog` in `ui/CardActions.kt`) or Delete (with a confirmation;
+  `CardRepository.updateAll` / `deleteAll`, audio and pictures too) acts on all of them. Back
+  or ✕ ends the selection.
+- `CardScreen`: picture with text, play, edit text/meaning, move to another box, delete (with its files).
 - Card audio (`ClipAudioPlayer`, Media3) has a speed button in the card and review screens:
   1×, 0.75×, 0.5× (pitch kept), stored as `clip_speed` in `SettingsRepository`.
 - `ReviewScreen`: due cards one by one. The audio plays first; picture, text and meaning are

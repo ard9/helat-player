@@ -144,6 +144,14 @@ class SettingsRepository(context: Context) {
     )
     val clipMargins: StateFlow<ClipMargins> = _clipMargins
 
+    private val _boxIntervals = MutableStateFlow(
+        BoxIntervals.sanitized(
+            List(Leitner.BOX_COUNT) { i -> prefs.getInt(boxIntervalKey(i + 1), -1).takeIf { it > 0 } }
+        )
+    )
+    /** Days each Leitner box waits before review. */
+    val boxIntervals: StateFlow<BoxIntervals> = _boxIntervals
+
     private val _rolePlay = MutableStateFlow(
         RolePlayPrefs(
             prefs.getInt(KEY_RP_COUNT, RolePlayPrefs.DEFAULT.lineCount).coerceIn(RolePlayPrefs.MIN_LINES, RolePlayPrefs.MAX_LINES),
@@ -163,6 +171,14 @@ class SettingsRepository(context: Context) {
             .apply()
         _rolePlay.value = value
     }
+
+    fun setBoxIntervals(intervals: BoxIntervals) {
+        val clean = BoxIntervals.sanitized(intervals.days)
+        prefs.edit().apply { clean.days.forEachIndexed { i, d -> putInt(boxIntervalKey(i + 1), d) } }.apply()
+        _boxIntervals.value = clean
+    }
+
+    private fun boxIntervalKey(box: Int) = "box_interval_$box"
 
     fun setClipMargins(margins: ClipMargins) {
         prefs.edit().putLong(KEY_BEFORE, margins.beforeMs).putLong(KEY_AFTER, margins.afterMs).apply()
