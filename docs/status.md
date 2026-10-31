@@ -2,7 +2,7 @@
 
 Current state of the project. Update at the end of every task.
 
-Last update: 2026-10-28, release `build-81`.
+Last update: 2026-10-31, release `build-81`.
 
 ## Features
 
@@ -15,7 +15,7 @@ Last update: 2026-10-28, release `build-81`.
 | Quick save (tap) and editor (hold), Undo | | Yes |
 | Clip margins setting (fixed 0.3 s always + margins, default 0.2 s; old values reset) | build-78 | Owner: starts still cut on some lines |
 | Fixed pad 0.5 s before, 0.25 s after (+ margins, default 0.2 s) | build-79 | **No** |
-| Cards: select several (hold), Select all, Move to box, Delete together; Move on a card; review intervals in Settings; due from the start of a day | build-80 | **No** |
+| Cards: select several (hold), Select all, Move to box, Delete together; Move on a card; review intervals in Settings; due from the start of a day | build-81 | **No** |
 | Cards with picture and meaning; Leitner review | | Yes |
 | Blurred review (tap to reveal) | | **No** |
 | Backup and restore (ZIP) | | No report |
